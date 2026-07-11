@@ -1,0 +1,192 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id        String   @id @default(cuid())
+  sku       String   @unique
+  name      String
+  minStock  Int      @default(10)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Master-Variant group: null = Master/Standalone, has value = Varian
+  parentProductId String?
+  parentProduct   Product?   @relation("ProductGroup", fields: [parentProductId], references: [id], onDelete: Cascade)
+  childProducts   Product[]  @relation("ProductGroup")
+
+  variants ProductVariant[]
+  parts    Part[]
+}
+
+model ProductVariant {
+  id        String   @id @default(cuid())
+  productId String
+  color     String   @default("")
+  colorHex  String   @default("#2d3436")
+  type      String   @default("")
+  qty       Int      @default(0)
+  barcode   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product          Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  printQueueItems   PrintQueueItem[]
+  productionItems   ProductionItem[]
+  orderItems        OrderItem[]
+  opnameItems       StockOpnameItem[]
+}
+
+model PrintQueueItem {
+  id        String   @id @default(cuid())
+  variantId String
+  qty       Int
+  status    String   @default("Normal") // Priority, Normal, Urgent
+  note      String   @default("")         // Color note from order (e.g. "Navy Blue")
+  createdAt DateTime @default(now())
+
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+}
+
+model ProductionItem {
+  id          String    @id @default(cuid())
+  variantId   String
+  qty         Int
+  assignedTo  String    @default("")
+  status      String    @default("In Progress") // In Progress, Completed
+  note        String    @default("")            // Color note (e.g. "Navy Blue" from Req. Color)
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  variant     ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+  id        String   @id @default(cuid())
+  orderNo   String   @unique
+  status    String   @default("Pending") // Pending, Processing, Completed, Cancelled
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orderItems OrderItem[]
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  variantId String
+  qty       Int
+  status    String   @default("Not Ready") // Ready, Not Ready, In Queue
+  note      String   @default("")         // Custom color note (e.g. "Req. Color: Navy Blue")
+  createdAt DateTime @default(now())
+
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+}
+
+model Part {
+  id        String   @id @default(cuid())
+  productId String
+  name      String
+  barcode   String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  partColors PartColor[]
+}
+
+model Printer {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  type      String   @default("3D Printer") // 3D Printer, DTF, UV, Sublimation, Laser
+  brand     String   @default("")
+  model     String   @default("")
+  status    String   @default("Working") // Working, Need Maintenance, Offline
+  location  String   @default("")
+  notes     String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  maintenances PrinterMaintenance[]
+}
+
+model PrinterMaintenance {
+  id           String   @id @default(cuid())
+  printerId    String
+  type         String   // "Nozzle Change", "Lubricant", "Belt Tension", "Full Cleaning", "Custom"
+  customType   String?  // For custom maintenance type name
+  lastDone     DateTime // Last maintenance date
+  intervalDays Int      @default(90) // How often (days)
+  nextDue      DateTime // Auto-calculated: lastDone + intervalDays
+  notes        String   @default("")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  printer      Printer  @relation(fields: [printerId], references: [id], onDelete: Cascade)
+}
+
+model Color {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  hexCode   String   @default("#636e72")
+  status    String   @default("Active") // Active, Inactive
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PartColor {
+  id        String   @id @default(cuid())
+  partId    String
+  color     String
+  colorHex  String   @default("#2d3436")
+  qty       Int      @default(0)
+  minStock  Int      @default(10)
+  barcode   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  part Part @relation(fields: [partId], references: [id], onDelete: Cascade)
+}
+
+model StockOpname {
+  id          String              @id @default(cuid())
+  sessionNo   String              @unique
+  type        String              @default("Full")      // Full, Partial
+  status      String              @default("In Progress") // In Progress, Completed, Cancelled
+  notes       String              @default("")
+  totalItems  Int                 @default(0)
+  totalDiff   Int                 @default(0)
+  startedAt   DateTime            @default(now())
+  completedAt DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  items StockOpnameItem[]
+}
+
+model StockOpnameItem {
+  id          String      @id @default(cuid())
+  opnameId    String
+  variantId   String
+  systemQty   Int         @default(0)
+  actualQty   Int         @default(0)
+  difference  Int         @default(0)
+  adjusted    Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  opname  StockOpname     @relation(fields: [opnameId], references: [id], onDelete: Cascade)
+  variant ProductVariant  @relation(fields: [variantId], references: [id], onDelete: Cascade)
+}

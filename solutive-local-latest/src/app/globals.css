@@ -1,0 +1,194 @@
+@import "tailwindcss";
+@import "../../node_modules/tw-animate-css/dist/tw-animate.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-brand: #4a6741;
+  --color-brand-light: #5a7d50;
+  --color-brand-dark: #3d5535;
+  --color-surface: #f5f6fa;
+  --color-surface-card: #ffffff;
+  --color-text-heading: #2d3436;
+  --color-text-body: #4b5563;
+  --color-status-red: #dc2626;
+  --color-status-orange: #d97706;
+  --color-status-yellow: #f1c40f;
+  --color-status-blue-border: #dfe6e9;
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: #f5f6fa;
+  --foreground: #2d3436;
+  --card: #ffffff;
+  --card-foreground: #2d3436;
+  --popover: #ffffff;
+  --popover-foreground: #2d3436;
+  --primary: #4a6741;
+  --primary-foreground: #ffffff;
+  --secondary: #f0f0f0;
+  --secondary-foreground: #2d3436;
+  --muted: #f0f0f0;
+  --muted-foreground: #4b5563;
+  --accent: #f5f6fa;
+  --accent-foreground: #2d3436;
+  --destructive: #dc2626;
+  --border: #e8e8e8;
+  --input: #f0f0f0;
+  --ring: #4a6741;
+  --chart-1: #4a6741;
+  --chart-2: #4b5563;
+  --chart-3: #dc2626;
+  --chart-4: #d97706;
+  --chart-5: #f1c40f;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #2d3436;
+  --sidebar-primary: #4a6741;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f5f6fa;
+  --sidebar-accent-foreground: #2d3436;
+  --sidebar-border: #e8e8e8;
+  --sidebar-ring: #4a6741;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom scrollbar styles */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 2px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Mobile touch scrolling fix */
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+body {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+/* Fix mobile viewport height (address bar issue) */
+@supports (height: 100dvh) {
+  html, body {
+    height: 100dvh;
+  }
+}
+
+/* Touch-friendly scrolling for mobile */
+.overflow-y-auto,
+.overflow-auto {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Ensure dialogs don't cause background scroll on mobile */
+body dialog::backdrop,
+body [data-radix-popper-content-wrapper] {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Fix for Radix ScrollArea on mobile touch devices */
+[data-radix-scroll-area-viewport] {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent text selection on interactive elements on mobile */
+button,
+[role="button"] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Mobile input zoom prevention — keep font size >= 16px on iOS */
+@media screen and (max-width: 768px) {
+  input[type="text"],
+  input[type="search"],
+  input[type="number"],
+  input:not([type]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* Fix html5-qrcode scanner styling on mobile */
+#barcode-reader {
+  border: none !important;
+}
+
+#barcode-reader video {
+  border-radius: 0.75rem;
+  object-fit: cover;
+}
+
+#barcode-reader img[alt="Info icon"] {
+  display: none !important;
+}
+
+#qr-shaded-region {
+  border-color: rgba(74, 103, 65, 0.5) !important;
+}
+
+/* Fullscreen fix for mobile dialogs */
+@media screen and (max-width: 640px) {
+  [data-radix-dialog-content] {
+    max-height: 96vh !important;
+  }
+}
