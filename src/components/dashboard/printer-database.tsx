@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Plus,
   Pencil,
@@ -17,6 +17,8 @@ import {
   Clock,
   Calendar,
   Loader2,
+  ArrowUpDown,
+  Wallet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +63,8 @@ interface PrinterData {
   status: string;
   location: string;
   notes: string;
+  purchaseDate: string | null;
+  purchasePrice: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -72,6 +76,8 @@ interface PrinterFormData {
   status: string;
   location: string;
   notes: string;
+  purchaseDate: string;
+  purchasePrice: string;
 }
 
 interface MaintenanceRecord {
@@ -140,7 +146,7 @@ function getMaintenanceStatus(nextDue: string): { label: string; className: stri
 }
 
 function emptyForm(): PrinterFormData {
-  return { name: '', brand: '', model: '', status: 'Working', location: '', notes: '' };
+  return { name: '', brand: '', model: '', status: 'Working', location: '', notes: '', purchaseDate: '', purchasePrice: '' };
 }
 
 function emptyMaintenanceForm(): MaintenanceFormData {
@@ -185,6 +191,34 @@ export function PrinterDatabase() {
   const [showAddMaintenance, setShowAddMaintenance] = useState(false);
   const [editMaintenance, setEditMaintenance] = useState<MaintenanceRecord | null>(null);
   const [deleteMaintenanceId, setDeleteMaintenanceId] = useState<string | null>(null);
+  const [maintenanceSearch, setMaintenanceSearch] = useState('');
+  const [maintenanceSort, setMaintenanceSort] = useState<'lastDoneDesc' | 'nextDueAsc' | 'az'>('lastDoneDesc');
+
+  const filteredMaintenances = useMemo(() => {
+    const q = maintenanceSearch.trim().toLowerCase();
+    const withName = maintenances.map((m) => {
+      const typeInfo = MAINTENANCE_TYPES.find((t) => t.value === m.type);
+      const displayName = m.type === 'Custom' ? (m.customType || 'Custom') : (typeInfo?.label || m.type);
+      return { ...m, displayName };
+    });
+    const filtered = q
+      ? withName.filter((m) =>
+          m.displayName.toLowerCase().includes(q) ||
+          m.notes.toLowerCase().includes(q)
+        )
+      : withName;
+
+    return [...filtered].sort((a, b) => {
+      if (maintenanceSort === 'nextDueAsc') {
+        return new Date(a.nextDue).getTime() - new Date(b.nextDue).getTime();
+      }
+      if (maintenanceSort === 'az') {
+        return a.displayName.localeCompare(b.displayName);
+      }
+      // default: lastDoneDesc
+      return new Date(b.lastDone).getTime() - new Date(a.lastDone).getTime();
+    });
+  }, [maintenances, maintenanceSearch, maintenanceSort]);
 
   const fetchMaintenances = useCallback(async (printerId: string) => {
     try {
@@ -485,6 +519,8 @@ export function PrinterDatabase() {
           status: editPrinter.status,
           location: editPrinter.location,
           notes: editPrinter.notes,
+          purchaseDate: editPrinter.purchaseDate ? editPrinter.purchaseDate.slice(0, 10) : '',
+          purchasePrice: editPrinter.purchasePrice != null ? String(editPrinter.purchasePrice) : '',
         } : emptyForm()}
         onSubmit={async (data) => {
           if (!editPrinter) throw new Error('No printer selected');
@@ -515,6 +551,8 @@ export function PrinterDatabase() {
           setDetailPrinter(null);
           setMaintenancePrinterId(null);
           setMaintenances([]);
+          setMaintenanceSearch('');
+          setMaintenanceSort('lastDoneDesc');
         }
       }}>
         <DialogContent className="sm:max-w-lg rounded-xl max-h-[90vh] overflow-y-auto">
@@ -541,6 +579,27 @@ export function PrinterDatabase() {
                     </Badge>
                   </p>
                 </div>
+                {(detailPrinter.purchaseDate || detailPrinter.purchasePrice != null) && (
+                  <div className="bg-[#f5f6fa] rounded-lg p-3 space-y-1">
+                    <span className="text-[11px] text-[#6b7280] uppercase tracking-wider font-medium flex items-center gap-1.5">
+                      <Wallet className="w-3.5 h-3.5" />
+                      Info Pembelian
+                    </span>
+                    <div className="flex items-center justify-between text-sm text-[#2d3436] pt-0.5">
+                      <span className="flex items-center gap-1.5 text-[#4b5563]">
+                        <Calendar className="w-3.5 h-3.5 text-[#6b7280]" />
+                        {detailPrinter.purchaseDate
+                          ? new Date(detailPrinter.purchaseDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+                          : '-'}
+                      </span>
+                      <span className="font-semibold">
+                        {detailPrinter.purchasePrice != null
+                          ? `Rp ${detailPrinter.purchasePrice.toLocaleString('id-ID')}`
+                          : '-'}
+                      </span>
+                    </div>
+                  </div>
+                )}
                 {detailPrinter.location && (
                   <div className="flex items-center gap-2 text-sm text-[#4b5563]">
                     <MapPin className="w-4 h-4 text-[#6b7280]" />
@@ -580,15 +639,41 @@ export function PrinterDatabase() {
                   </button>
                 </div>
 
+                {maintenances.length > 0 && (
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#9ca3af]" />
+                      <Input
+                        value={maintenanceSearch}
+                        onChange={(e) => setMaintenanceSearch(e.target.value)}
+                        placeholder="Cari jenis maintenance, mis. nozzle, lubricant..."
+                        className="h-8 pl-8 text-xs bg-[#f5f6fa] border-[#e8e8e8] rounded-lg"
+                      />
+                    </div>
+                    <Select value={maintenanceSort} onValueChange={(v) => setMaintenanceSort(v as typeof maintenanceSort)}>
+                      <SelectTrigger className="h-8 w-[40px] px-2 text-xs bg-[#f5f6fa] border-[#e8e8e8] rounded-lg [&>svg:last-child]:hidden">
+                        <ArrowUpDown className="w-3.5 h-3.5 text-[#6b7280]" />
+                      </SelectTrigger>
+                      <SelectContent align="end">
+                        <SelectItem value="lastDoneDesc">Terbaru diganti</SelectItem>
+                        <SelectItem value="nextDueAsc">Jatuh tempo terdekat</SelectItem>
+                        <SelectItem value="az">A-Z jenis</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 {maintenanceLoading ? (
                   <div className="space-y-2">
                     {[1, 2].map(i => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}
                   </div>
                 ) : maintenances.length === 0 ? (
                   <p className="text-xs text-[#6b7280] text-center py-4">No maintenance records yet</p>
+                ) : filteredMaintenances.length === 0 ? (
+                  <p className="text-xs text-[#6b7280] text-center py-4">Nggak ada hasil untuk &quot;{maintenanceSearch}&quot;</p>
                 ) : (
                   <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                    {maintenances.map((m) => {
+                    {filteredMaintenances.map((m) => {
                       const status = getMaintenanceStatus(m.nextDue);
                       const typeInfo = MAINTENANCE_TYPES.find(t => t.value === m.type);
                       const displayName = m.type === 'Custom' ? (m.customType || 'Custom') : (typeInfo?.label || m.type);
@@ -836,6 +921,32 @@ function PrinterFormDialog({
                 value={form.model}
                 onChange={(e) => update('model', e.target.value)}
                 placeholder="e.g. Ender 3 V3"
+                className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg"
+              />
+            </div>
+          </div>
+
+          {/* Purchase Date + Price */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-[#2d3436] flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5" />
+                Tanggal Beli
+              </Label>
+              <Input
+                type="date"
+                value={form.purchaseDate}
+                onChange={(e) => update('purchaseDate', e.target.value)}
+                className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-[#2d3436]">Harga Beli (Rp)</Label>
+              <Input
+                type="number"
+                value={form.purchasePrice}
+                onChange={(e) => update('purchasePrice', e.target.value)}
+                placeholder="e.g. 8500000"
                 className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg"
               />
             </div>

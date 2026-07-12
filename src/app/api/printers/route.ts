@@ -21,7 +21,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, brand, model, status, location, notes } = body;
+    const { name, brand, model, status, location, notes, purchaseDate, purchasePrice } = body;
 
     if (!name || !name.trim()) {
       return NextResponse.json(
@@ -55,6 +55,10 @@ export async function POST(request: NextRequest) {
         status: status || "Working",
         location: location?.trim() || "",
         notes: notes?.trim() || "",
+        purchaseDate: purchaseDate ? new Date(purchaseDate) : null,
+        purchasePrice: purchasePrice !== undefined && purchasePrice !== null && purchasePrice !== ""
+          ? parseInt(purchasePrice, 10)
+          : null,
       },
     });
 

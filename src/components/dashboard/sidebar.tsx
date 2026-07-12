@@ -198,7 +198,7 @@ export function Sidebar({ activeItem, onItemClick, onScanBarcode, collapsed, onT
                       <TooltipTrigger asChild>
                         <button
                           onClick={() => toggleGroup(group.id)}
-                          className={`w-full flex items-center justify-center py-1.5 rounded-lg text-[11px] font-medium text-[#6b7280] transition-colors cursor-pointer`}
+                          className={`w-full flex items-center justify-center px-0 py-2.5 rounded-lg text-[11px] font-medium text-[#6b7280] transition-colors cursor-pointer`}
                         >
                           <GroupIcon className="w-3.5 h-3.5" />
                         </button>
@@ -216,7 +216,7 @@ export function Sidebar({ activeItem, onItemClick, onScanBarcode, collapsed, onT
                           <TooltipTrigger asChild>
                             <button
                               onClick={() => handleItemClick(child.id)}
-                              className={`w-full flex items-center justify-center rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${
+                              className={`w-full flex items-center justify-center px-0 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${
                                 childActive
                                   ? 'bg-[#4a6741] text-white shadow-sm'
                                   : 'text-[#4b5563] hover:bg-[#f5f6fa] hover:text-[#2d3436]'

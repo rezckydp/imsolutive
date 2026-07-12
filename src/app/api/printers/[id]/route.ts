@@ -35,7 +35,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, brand, model, status, location, notes } = body;
+    const { name, brand, model, status, location, notes, purchaseDate, purchasePrice } = body;
 
     const existing = await db.printer.findUnique({ where: { id } });
     if (!existing) {
@@ -75,6 +75,15 @@ export async function PUT(
         ...(status !== undefined && { status }),
         ...(location !== undefined && { location: location.trim() }),
         ...(notes !== undefined && { notes: notes.trim() }),
+        ...(purchaseDate !== undefined && {
+          purchaseDate: purchaseDate ? new Date(purchaseDate) : null,
+        }),
+        ...(purchasePrice !== undefined && {
+          purchasePrice:
+            purchasePrice === null || purchasePrice === ""
+              ? null
+              : parseInt(purchasePrice, 10),
+        }),
       },
     });
 

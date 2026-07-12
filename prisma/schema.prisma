@@ -115,6 +115,8 @@ model Printer {
   status    String   @default("Working") // Working, Need Maintenance, Offline
   location  String   @default("")
   notes     String   @default("")
+  purchaseDate  DateTime?
+  purchasePrice Int?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
