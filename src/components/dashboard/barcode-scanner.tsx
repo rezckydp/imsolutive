@@ -29,9 +29,14 @@ import {
   CheckCircle2,
   Loader2,
   ScanBarcode,
+  Upload,
+  FileText,
+  AlertTriangle,
 } from 'lucide-react';
 
 type ScannerMode = 'order' | 'production';
+type OrderSubMode = 'manual' | 'pdf';
+type PdfStage = 'idle' | 'uploading' | 'review';
 
 interface ScannedItem {
   id: string;
@@ -109,6 +114,12 @@ export function BarcodeScanner({
   onProductionAdded,
 }: BarcodeScannerProps) {
   const [mode, setMode] = useState<ScannerMode>('order');
+  const [orderSubMode, setOrderSubMode] = useState<OrderSubMode>('manual');
+  const [pickingListNo, setPickingListNo] = useState('');
+  const [pdfStage, setPdfStage] = useState<PdfStage>('idle');
+  const [pdfFileName, setPdfFileName] = useState('');
+  const [pdfError, setPdfError] = useState('');
+  const pdfInputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState<ScannedItem[]>([]);
   const [manualCode, setManualCode] = useState('');
   const [lookingUp, setLookingUp] = useState(false);
@@ -120,6 +131,16 @@ export function BarcodeScanner({
   // For production mode
   const [printers, setPrinters] = useState<Array<{ id: string; name: string; status: string }>>([]);
   const [selectedPrinter, setSelectedPrinter] = useState('');
+
+  // Reset order-specific sub-state when switching to production mode
+  useEffect(() => {
+    if (mode === 'production') {
+      setOrderSubMode('manual');
+      setPdfStage('idle');
+      setPdfFileName('');
+      setPdfError('');
+    }
+  }, [mode]);
 
   // Fetch printers for production mode
   useEffect(() => {
@@ -252,6 +273,71 @@ export function BarcodeScanner({
     if (e.key === 'Enter') handleManualLookup();
   };
 
+  // ============ PDF UPLOAD (Picking List) ============
+
+  const handlePdfFileSelected = async (file: File) => {
+    setPdfFileName(file.name);
+    setPdfStage('uploading');
+    setPdfError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/orders/parse-picking-list', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setPdfError(data.error || 'Gagal membaca PDF');
+        setPdfStage('idle');
+        return;
+      }
+
+      if (data.pickingListNo) setPickingListNo(data.pickingListNo);
+
+      const extracted: ScannedItem[] = (data.items || []).map(
+        (it: {
+          code: string;
+          variantId: string | null;
+          sku: string;
+          name: string;
+          color: string;
+          colorHex: string;
+          type: string;
+          qty: number;
+          matched: boolean;
+        }) => ({
+          id: `pdf-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          code: it.code,
+          sku: it.sku,
+          productName: it.name || (it.matched ? '' : 'SKU tidak ditemukan di database'),
+          variantId: it.variantId || '',
+          color: it.color,
+          colorHex: it.colorHex || '#000000',
+          type: it.type,
+          qty: it.qty || 1,
+          note: '',
+        })
+      );
+
+      setItems(extracted);
+      setPdfStage('review');
+    } catch {
+      setPdfError('Gagal mengupload file. Coba lagi.');
+      setPdfStage('idle');
+    }
+  };
+
+  const resetPdfUpload = () => {
+    setPdfStage('idle');
+    setPdfFileName('');
+    setPdfError('');
+    setItems([]);
+  };
+
   // ============ ITEM MANAGEMENT ============
 
   const updateItemQty = (itemId: string, delta: number) => {
@@ -313,11 +399,16 @@ export function BarcodeScanner({
     const validItems = items.filter((i) => i.variantId);
     if (validItems.length === 0) return;
 
+    if (mode === 'order' && !pickingListNo.trim()) {
+      setLookupError('No. Picking List wajib diisi sebelum submit');
+      return;
+    }
+
     setSubmitting(true);
 
     try {
       if (mode === 'order') {
-        const orderNo = `ORD-${Date.now()}`;
+        const orderNo = pickingListNo.trim();
         const res = await fetch('/api/orders', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -336,6 +427,8 @@ export function BarcodeScanner({
 
         setItems([]);
         setLookupError('');
+        setPickingListNo('');
+        resetPdfUpload();
         onOrderCreated?.();
         onOpenChange(false);
       } else {
@@ -372,6 +465,9 @@ export function BarcodeScanner({
       setLookupError('');
       setManualCode('');
       setMode('order');
+      setOrderSubMode('manual');
+      setPickingListNo('');
+      resetPdfUpload();
     }
     onOpenChange(val);
   };
@@ -432,29 +528,147 @@ export function BarcodeScanner({
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden flex flex-col px-4 pb-4 max-md:px-3 max-md:pb-3">
-          {/* Manual Input */}
-          <div className="mt-3 flex gap-2 flex-shrink-0">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6b7280]" />
-              <Input
-                ref={inputRef}
-                value={manualCode}
-                onChange={(e) => setManualCode(e.target.value)}
-                onKeyDown={handleManualKeyDown}
-                placeholder="Ketik barcode atau SKU..."
-                disabled={lookingUp}
-                autoFocus
-                className="pl-9 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg h-11"
-              />
+          {/* No. Picking List — order mode only */}
+          {mode === 'order' && (
+            <div className="mt-3 flex-shrink-0 space-y-2">
+              <div>
+                <label className="text-[11px] font-medium text-[#4b5563] flex items-center gap-1.5 mb-1">
+                  <FileText className="w-3.5 h-3.5" />
+                  No. Picking List
+                </label>
+                <Input
+                  value={pickingListNo}
+                  onChange={(e) => setPickingListNo(e.target.value)}
+                  placeholder="e.g. PICK-000775"
+                  disabled={orderSubMode === 'pdf' && pdfStage === 'review'}
+                  className="h-9 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg disabled:opacity-70"
+                />
+                {orderSubMode === 'pdf' && pdfStage === 'review' && pickingListNo && (
+                  <p className="text-[11px] text-[#15803d] flex items-center gap-1 mt-1">
+                    <CheckCircle2 className="w-3 h-3" /> Terdeteksi otomatis dari PDF — bisa diedit kalau salah baca
+                  </p>
+                )}
+              </div>
+
+              {/* Manual/PDF sub-mode toggle */}
+              <div className="flex gap-1 bg-[#f5f6fa] p-0.5 rounded-lg w-fit">
+                <button
+                  onClick={() => setOrderSubMode('manual')}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                    orderSubMode === 'manual' ? 'bg-white text-[#2d3436] shadow-sm' : 'text-[#6b7280] hover:text-[#2d3436]'
+                  }`}
+                >
+                  <ScanBarcode className="w-3.5 h-3.5" />
+                  Manual / Scan
+                </button>
+                <button
+                  onClick={() => setOrderSubMode('pdf')}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                    orderSubMode === 'pdf' ? 'bg-white text-[#2d3436] shadow-sm' : 'text-[#6b7280] hover:text-[#2d3436]'
+                  }`}
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  Upload PDF
+                </button>
+              </div>
             </div>
-            <Button
-              onClick={handleManualLookup}
-              disabled={lookingUp || !manualCode.trim()}
-              className="bg-[#4a6741] hover:bg-[#3d5535] text-white h-11 px-5 rounded-lg flex-shrink-0 disabled:opacity-50"
-            >
-              {lookingUp ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-            </Button>
-          </div>
+          )}
+
+          {/* Manual Input */}
+          {!(mode === 'order' && orderSubMode === 'pdf') && (
+            <div className="mt-3 flex gap-2 flex-shrink-0">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6b7280]" />
+                <Input
+                  ref={inputRef}
+                  value={manualCode}
+                  onChange={(e) => setManualCode(e.target.value)}
+                  onKeyDown={handleManualKeyDown}
+                  placeholder="Ketik barcode atau SKU..."
+                  disabled={lookingUp}
+                  autoFocus
+                  className="pl-9 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg h-11"
+                />
+              </div>
+              <Button
+                onClick={handleManualLookup}
+                disabled={lookingUp || !manualCode.trim()}
+                className="bg-[#4a6741] hover:bg-[#3d5535] text-white h-11 px-5 rounded-lg flex-shrink-0 disabled:opacity-50"
+              >
+                {lookingUp ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+              </Button>
+            </div>
+          )}
+
+          {/* PDF Upload — order mode + pdf sub-mode only */}
+          {mode === 'order' && orderSubMode === 'pdf' && (
+            <div className="mt-3 flex-shrink-0">
+              <input
+                ref={pdfInputRef}
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handlePdfFileSelected(f);
+                  e.target.value = '';
+                }}
+              />
+
+              {pdfStage === 'idle' && (
+                <button
+                  onClick={() => pdfInputRef.current?.click()}
+                  className="w-full border-2 border-dashed border-[#e8e8e8] hover:border-[#4a6741] rounded-xl py-8 flex flex-col items-center gap-2 text-[#6b7280] hover:text-[#4a6741] transition-colors cursor-pointer"
+                >
+                  <Upload className="w-6 h-6" />
+                  <span className="text-sm font-medium">Klik untuk upload PDF Picking List</span>
+                  <span className="text-[11px] text-[#9ca3af]">Format .pdf dari Desty / omnichannel lainnya</span>
+                </button>
+              )}
+
+              {pdfStage === 'uploading' && (
+                <div className="w-full border border-[#e8e8e8] rounded-xl py-8 flex flex-col items-center gap-2">
+                  <Loader2 className="w-5 h-5 text-[#4a6741] animate-spin" />
+                  <span className="text-sm text-[#4b5563]">Membaca {pdfFileName}...</span>
+                  <span className="text-[11px] text-[#9ca3af]">Mencocokkan SKU ke database</span>
+                </div>
+              )}
+
+              {pdfStage === 'review' && (
+                <div className="flex items-center justify-between bg-[#f5f6fa] rounded-lg px-3 py-2">
+                  <span className="text-xs text-[#4b5563] flex items-center gap-1.5 truncate">
+                    <FileText className="w-3.5 h-3.5 flex-shrink-0" /> {pdfFileName}
+                  </span>
+                  <button onClick={resetPdfUpload} className="text-[11px] text-[#4a6741] font-medium hover:underline cursor-pointer flex-shrink-0">
+                    Ganti file
+                  </button>
+                </div>
+              )}
+
+              {pdfError && (
+                <div className="mt-2 p-2.5 rounded-lg bg-[#dc2626]/5 border border-[#dc2626]/20 flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-[#dc2626] flex-shrink-0 mt-0.5" />
+                  <span className="text-xs text-[#dc2626] flex-1">{pdfError}</span>
+                  <button onClick={() => setPdfError('')} className="text-[#dc2626]/60 hover:text-[#dc2626] cursor-pointer flex-shrink-0">
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
+
+              {pdfStage === 'review' && items.length > 0 && (
+                <div className="mt-2 flex items-center gap-3 text-[11px]">
+                  <span className="flex items-center gap-1 text-[#15803d] font-medium">
+                    <CheckCircle2 className="w-3 h-3" /> {items.filter((i) => i.variantId).length} SKU cocok
+                  </span>
+                  {items.some((i) => !i.variantId) && (
+                    <span className="flex items-center gap-1 text-[#d97706] font-medium">
+                      <AlertTriangle className="w-3 h-3" /> {items.filter((i) => !i.variantId).length} perlu dicek manual
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Lookup Error */}
           {lookupError && (
@@ -631,7 +845,7 @@ export function BarcodeScanner({
               <div className="mt-3 flex-shrink-0">
                 <Button
                   onClick={handleSubmit}
-                  disabled={submitting || validItemCount === 0}
+                  disabled={submitting || validItemCount === 0 || (mode === 'order' && !pickingListNo.trim())}
                   className={`w-full h-11 rounded-lg font-semibold text-sm disabled:opacity-50 ${
                     mode === 'order'
                       ? 'bg-[#4a6741] hover:bg-[#3d5535] text-white'
@@ -656,7 +870,7 @@ export function BarcodeScanner({
           )}
 
           {/* Empty state */}
-          {items.length === 0 && !lookingUp && (
+          {items.length === 0 && !lookingUp && !(mode === 'order' && orderSubMode === 'pdf') && (
             <div className="mt-6 flex flex-col items-center justify-center py-8 md:py-12 text-center flex-shrink-0">
               <div className="w-16 h-16 rounded-full bg-[#f5f6fa] flex items-center justify-center mb-3">
                 <ScanBarcode className="w-7 h-7 text-[#6b7280]" />

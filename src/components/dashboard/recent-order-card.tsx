@@ -72,6 +72,7 @@ function formatDate(isoString: string) {
 export function RecentOrderCard({ items = [], loading = false, onDataChange }: RecentOrderCardProps) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'urgency' | 'newest' | 'oldest' | 'pickingList'>('urgency');
   const [expanded, setExpanded] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<RecentOrderItem | null>(null);
@@ -82,10 +83,29 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
   // Filter out cancelled orders from display
   const activeItems = items.filter((i) => i.orderStatus !== 'Cancelled');
 
-  // Sort by createdAt descending (newest first)
-  const sortedItems = [...activeItems].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  // Status priority for "urgency" sort: Not Ready needs action first, then In Queue, then Ready
+  const statusRank = (status: string) => {
+    if (status === 'Not Ready') return 0;
+    if (status === 'In Queue') return 1;
+    return 2; // Ready
+  };
+
+  const sortedItems = [...activeItems].sort((a, b) => {
+    if (sortBy === 'urgency') {
+      const rankDiff = statusRank(a.itemStatus) - statusRank(b.itemStatus);
+      if (rankDiff !== 0) return rankDiff;
+      // Within the same status, oldest first (FIFO — longest-waiting order gets fulfilled first)
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    }
+    if (sortBy === 'oldest') {
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    }
+    if (sortBy === 'pickingList') {
+      return a.orderNo.localeCompare(b.orderNo);
+    }
+    // newest (default fallback)
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
 
   // FIFO order index (chronological) for Not Ready items — oldest = #1
   const notReadyFifoMap = new Map<string, number>();
@@ -209,6 +229,16 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
                 <option value="Ready">Ready</option>
                 <option value="Not Ready">Not Ready</option>
                 <option value="In Queue">In Queue</option>
+              </select>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                className="h-8 text-xs rounded-lg bg-white border-[#e8e8e8] px-2 text-[#4b5563] focus:outline-none focus:ring-1 focus:ring-[#4a6741]/30 cursor-pointer"
+              >
+                <option value="urgency">Sort: Urgency</option>
+                <option value="oldest">Sort: Terlama</option>
+                <option value="newest">Sort: Terbaru</option>
+                <option value="pickingList">Sort: No. Picking List</option>
               </select>
             </div>
           </div>
