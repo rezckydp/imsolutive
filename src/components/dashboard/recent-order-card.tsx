@@ -75,6 +75,7 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'urgency' | 'newest' | 'oldest' | 'pickingList'>('urgency');
   const [expanded, setExpanded] = useState(false);
+  const [detailOrderId, setDetailOrderId] = useState<string | null>(null);
   const [deleteItemTarget, setDeleteItemTarget] = useState<{ orderId: string; itemId: string; sku: string; color: string } | null>(null);
   const [editingItem, setEditingItem] = useState<RecentOrderItem | null>(null);
   const [editQty, setEditQty] = useState<number>(1);
@@ -193,9 +194,7 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
   };
 
   // Stats
-  const readyCount = activeItems.filter((i) => i.itemStatus === 'Ready').length;
   const notReadyCount = activeItems.filter((i) => i.itemStatus === 'Not Ready').length;
-  const inQueueCount = activeItems.filter((i) => i.itemStatus === 'In Queue').length;
 
   return (
     <>
@@ -205,17 +204,9 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
             <div className="flex items-center gap-3">
               <CardTitle className="text-sm font-semibold text-[#2d3436]">Recent Order</CardTitle>
               <div className="flex items-center gap-2">
-                <Badge className="text-[11px] px-2 py-0 rounded-full bg-[#15803d]/10 text-[#15803d] border-[#15803d]/30 gap-1" variant="outline">
-                  <CheckCircle2 className="w-2.5 h-2.5" />
-                  {readyCount} Ready
-                </Badge>
                 <Badge className="text-[11px] px-2 py-0 rounded-full bg-[#dc2626]/10 text-[#dc2626] border-[#dc2626]/30 gap-1" variant="outline">
                   <Clock className="w-2.5 h-2.5" />
-                  {notReadyCount} Not Ready
-                </Badge>
-                <Badge className="text-[11px] px-2 py-0 rounded-full bg-[#2563eb]/10 text-[#2563eb] border-[#2563eb]/30 gap-1" variant="outline">
-                  <Printer className="w-2.5 h-2.5" />
-                  {inQueueCount} In Queue
+                  {notReadyCount} Belum Ready
                 </Badge>
               </div>
             </div>
@@ -302,7 +293,14 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
                             <span className="text-xs text-[#6b7280]">
                               {formatDate(item.createdAt)}
                             </span>
-                            <p className="text-[11px] text-[#b2bec3] mt-0.5">{item.orderNo}</p>
+                            <button
+                              onClick={() => setDetailOrderId(item.orderId)}
+                              title="Lihat semua item di Picking List ini"
+                              className="flex items-center gap-1 text-[11px] text-[#4a6741] mt-0.5 hover:underline cursor-pointer font-medium"
+                            >
+                              <Eye className="w-3 h-3" />
+                              {item.orderNo}
+                            </button>
                           </td>
                           <td className="py-3 px-4">
                             <span className="text-sm font-semibold text-[#4a6741] bg-[#f0f0f0] px-1.5 py-0.5 rounded">
@@ -435,6 +433,135 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
           </div>
         </CardContent>
       </Card>
+
+      {/* Picking List Detail Panel */}
+      <Dialog open={!!detailOrderId} onOpenChange={(o) => !o && setDetailOrderId(null)}>
+        <DialogContent className="sm:max-w-md rounded-xl max-h-[85vh] flex flex-col p-0">
+          {(() => {
+            const detailItems = activeItems.filter((i) => i.orderId === detailOrderId);
+            const dReady = detailItems.filter((i) => i.itemStatus === 'Ready').length;
+            const dNotReady = detailItems.filter((i) => i.itemStatus === 'Not Ready').length;
+            const dInQueue = detailItems.filter((i) => i.itemStatus === 'In Queue').length;
+            return (
+              <>
+                <DialogHeader className="px-5 pt-5 pb-0 flex-shrink-0">
+                  <DialogTitle className="text-[#2d3436] flex items-center gap-2">
+                    <ShoppingCart className="w-4 h-4 text-[#4a6741]" />
+                    {detailItems[0]?.orderNo || 'Picking List'}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {detailItems[0] && formatDate(detailItems[0].createdAt)} · {detailItems.length} item
+                  </DialogDescription>
+                  <div className="flex items-center gap-2 pt-1">
+                    {dReady > 0 && (
+                      <Badge className="text-[11px] px-2 py-0 rounded-full bg-[#15803d]/10 text-[#15803d] border-[#15803d]/30 gap-1" variant="outline">
+                        <CheckCircle2 className="w-2.5 h-2.5" />{dReady} Ready
+                      </Badge>
+                    )}
+                    {dNotReady > 0 && (
+                      <Badge className="text-[11px] px-2 py-0 rounded-full bg-[#dc2626]/10 text-[#dc2626] border-[#dc2626]/30 gap-1" variant="outline">
+                        <Clock className="w-2.5 h-2.5" />{dNotReady} Not Ready
+                      </Badge>
+                    )}
+                    {dInQueue > 0 && (
+                      <Badge className="text-[11px] px-2 py-0 rounded-full bg-[#2563eb]/10 text-[#2563eb] border-[#2563eb]/30 gap-1" variant="outline">
+                        <Printer className="w-2.5 h-2.5" />{dInQueue} In Queue
+                      </Badge>
+                    )}
+                  </div>
+                </DialogHeader>
+
+                <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2">
+                  {detailItems.length === 0 && (
+                    <p className="text-sm text-[#6b7280] text-center py-6">Semua item di Picking List ini sudah dihapus/selesai.</p>
+                  )}
+                  {detailItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`p-3 rounded-lg border ${
+                        item.itemStatus === 'Ready' ? 'border-[#15803d]/20 bg-[#15803d]/[0.03]' : 'border-[#e8e8e8] bg-white'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-semibold text-[#2d3436] bg-[#f0f0f0] px-1.5 py-0.5 rounded">
+                              {item.sku}
+                            </span>
+                            <Badge
+                              className={`text-[10px] px-1.5 py-0 rounded-full font-semibold gap-1 ${
+                                item.itemStatus === 'Ready'
+                                  ? 'bg-[#15803d]/10 text-[#15803d] border-[#15803d]/30'
+                                  : item.itemStatus === 'In Queue'
+                                  ? 'bg-[#2563eb]/10 text-[#2563eb] border-[#2563eb]/30'
+                                  : 'bg-[#dc2626]/10 text-[#dc2626] border-[#dc2626]/30'
+                              }`}
+                              variant="outline"
+                            >
+                              {item.itemStatus}
+                            </Badge>
+                          </div>
+                          <p className="text-[11px] text-[#6b7280] mt-0.5 truncate">{item.name}</p>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <span className="w-3 h-3 rounded-full border border-gray-300 flex-shrink-0" style={{ backgroundColor: item.colorHex }} />
+                            <span className="text-xs text-[#4b5563]">{item.color}{item.type ? ` - ${item.type}` : ''}</span>
+                            <span className="text-xs text-[#2d3436] font-medium ml-1">× {item.orderedQty}</span>
+                          </div>
+                          {item.note && (
+                            <p className="text-[11px] text-[#d97706] font-medium mt-1">{item.note}</p>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {item.itemStatus === 'Not Ready' && (
+                            <button
+                              onClick={() => handleSendToQueue(item)}
+                              disabled={!!actionLoading}
+                              title="Send to Print Queue"
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-[#2563eb] hover:bg-[#2563eb]/10 transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                              <ArrowRight className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {(item.itemStatus === 'Not Ready' || item.itemStatus === 'Ready') && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setEditingItem(item);
+                                  setEditQty(item.orderedQty);
+                                  setEditNote(item.note || '');
+                                  setEditVariantId(item.variantId);
+                                }}
+                                title="Edit qty / ganti varian"
+                                className="w-7 h-7 rounded-lg flex items-center justify-center text-[#4b5563] hover:bg-[#f5f6fa] transition-colors cursor-pointer"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setDeleteItemTarget({ orderId: item.orderId, itemId: item.id, sku: item.sku, color: item.color })}
+                                title="Hapus item ini (customer cancel)"
+                                className="w-7 h-7 rounded-lg flex items-center justify-center text-[#dc2626] hover:bg-[#dc2626]/10 transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="px-5 py-4 border-t border-[#f0f0f0] flex-shrink-0">
+                  <Button variant="outline" onClick={() => setDetailOrderId(null)} className="w-full rounded-lg border-[#e8e8e8] text-[#4b5563]">
+                    Tutup
+                  </Button>
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Item Dialog */}
       <Dialog open={!!editingItem} onOpenChange={() => setEditingItem(null)}>
