@@ -441,6 +441,7 @@ export default function Home() {
       id: item.id,
       orderId: order.id,
       orderNo: order.orderNo,
+      variantId: item.variant.id,
       sku: item.variant.product.sku,
       name: item.variant.product.name,
       color: item.variant.color,
