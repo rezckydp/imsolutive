@@ -45,6 +45,35 @@ export async function getGroupVariantIds(productId: string): Promise<string[]> {
 }
 
 /**
+ * Get all variant IDs across a product group (master + child products) that
+ * represent the SAME physical color/type as the given variant — i.e. the
+ * variants that share one pooled stock via syncStockToGroup. Includes the
+ * variant itself. Falls back to just [variantId] if the variant is standalone
+ * or not found.
+ */
+export async function getGroupSiblingVariantIds(variantId: string): Promise<string[]> {
+  const variant = await db.productVariant.findUnique({
+    where: { id: variantId },
+    include: { product: true },
+  });
+  if (!variant) return [variantId];
+
+  const groupIds = await getProductGroup(variant.product.id);
+  if (groupIds.length <= 1) return [variantId];
+
+  const siblings = await db.productVariant.findMany({
+    where: {
+      productId: { in: groupIds },
+      color: variant.color,
+      type: variant.type,
+    },
+    select: { id: true },
+  });
+
+  return siblings.map((s) => s.id);
+}
+
+/**
  * Get a display label for a variant based on its color and type.
  * - Both color and type: "Red - XL"
  * - Only color: "Red"
@@ -204,15 +233,18 @@ export async function refreshOrderItemStatuses(variantId: string): Promise<void>
 /**
  * When qty is added to the Print Queue for a variant, mark that many
  * "Not Ready" order items (FIFO, oldest first, whole-item only) as "In Queue".
- * This keeps Recent Order's "In Queue" status in sync no matter where the
- * Print Queue item was created from (manual add, or the Send-to-Queue button).
+ * Matches across sibling SKUs in the same product group (master + children,
+ * same color/type) since they share one physical stock pool — an order for
+ * the child SKU should count against a queue entry created for the master
+ * SKU, and vice versa.
  */
 export async function syncOrderItemsToQueue(variantId: string, qtyQueued: number): Promise<void> {
   if (qtyQueued <= 0) return;
   try {
+    const siblingIds = await getGroupSiblingVariantIds(variantId);
     const candidates = await db.orderItem.findMany({
       where: {
-        variantId,
+        variantId: { in: siblingIds },
         status: "Not Ready",
         order: { status: { not: "Cancelled" } },
       },
@@ -238,6 +270,7 @@ export async function syncOrderItemsToQueue(variantId: string, qtyQueued: number
 /**
  * When qty is removed from the Print Queue for a variant (item deleted or
  * qty reduced), revert that many "In Queue" order items back to "Not Ready".
+ * Matches across sibling SKUs in the same product group (see syncOrderItemsToQueue).
  * There's no direct link between a PrintQueueItem and the OrderItem(s) it
  * represents, so this reverts the most recently created "In Queue" orders
  * first — a reasonable approximation since those are typically the last
@@ -246,9 +279,10 @@ export async function syncOrderItemsToQueue(variantId: string, qtyQueued: number
 export async function revertOrderItemsFromQueue(variantId: string, qtyRemoved: number): Promise<void> {
   if (qtyRemoved <= 0) return;
   try {
+    const siblingIds = await getGroupSiblingVariantIds(variantId);
     const candidates = await db.orderItem.findMany({
       where: {
-        variantId,
+        variantId: { in: siblingIds },
         status: "In Queue",
         order: { status: { not: "Cancelled" } },
       },
@@ -267,16 +301,19 @@ export async function revertOrderItemsFromQueue(variantId: string, qtyRemoved: n
     console.error(`Error reverting order items from queue for variant ${variantId}:`, error);
   }
 }
+
 /**
  * When qty is sent from Print Queue → Production, promote that many
  * "In Queue" order items (FIFO, whole-item only) to "In Production".
+ * Matches across sibling SKUs in the same product group.
  */
 export async function promoteOrderItemsToProduction(variantId: string, qty: number): Promise<void> {
   if (qty <= 0) return;
   try {
+    const siblingIds = await getGroupSiblingVariantIds(variantId);
     const candidates = await db.orderItem.findMany({
       where: {
-        variantId,
+        variantId: { in: siblingIds },
         status: "In Queue",
         order: { status: { not: "Cancelled" } },
       },
@@ -299,13 +336,15 @@ export async function promoteOrderItemsToProduction(variantId: string, qty: numb
 /**
  * When a Production item is sent back to Print Queue, demote that many
  * "In Production" order items (FIFO, whole-item only) back to "In Queue".
+ * Matches across sibling SKUs in the same product group.
  */
 export async function demoteProductionItemsToQueue(variantId: string, qty: number): Promise<void> {
   if (qty <= 0) return;
   try {
+    const siblingIds = await getGroupSiblingVariantIds(variantId);
     const candidates = await db.orderItem.findMany({
       where: {
-        variantId,
+        variantId: { in: siblingIds },
         status: "In Production",
         order: { status: { not: "Cancelled" } },
       },
@@ -324,9 +363,13 @@ export async function demoteProductionItemsToQueue(variantId: string, qty: numbe
     console.error(`Error demoting production items to queue for variant ${variantId}:`, error);
   }
 }
+
 /**
  * Full repair pass for one variant: recompute the In Queue / In Production
  * split from scratch based on current Print Queue + Production Item totals.
+ * Matches across sibling SKUs in the same product group (master + children,
+ * same color/type) since a Print Queue entry created under any one of them
+ * represents demand shared by the whole group's pooled stock.
  * Walks active (non-Ready) order items oldest-first, allocates the first
  * `productionQty` worth to "In Production", the next `queuedQty` worth to
  * "In Queue", and leaves the remainder as "Not Ready". Safe to re-run —
@@ -338,9 +381,10 @@ export async function resyncOrderItemStatuses(
   productionQty: number
 ): Promise<void> {
   try {
+    const siblingIds = await getGroupSiblingVariantIds(variantId);
     const candidates = await db.orderItem.findMany({
       where: {
-        variantId,
+        variantId: { in: siblingIds },
         status: { in: ["Not Ready", "In Queue", "In Production"] },
         order: { status: { not: "Cancelled" } },
       },
@@ -368,6 +412,7 @@ export async function resyncOrderItemStatuses(
     console.error(`Error resyncing order item statuses for variant ${variantId}:`, error);
   }
 }
+
 
 /**
  * Refresh order statuses for ALL variants that have active order items.
