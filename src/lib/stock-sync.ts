@@ -267,6 +267,107 @@ export async function revertOrderItemsFromQueue(variantId: string, qtyRemoved: n
     console.error(`Error reverting order items from queue for variant ${variantId}:`, error);
   }
 }
+/**
+ * When qty is sent from Print Queue → Production, promote that many
+ * "In Queue" order items (FIFO, whole-item only) to "In Production".
+ */
+export async function promoteOrderItemsToProduction(variantId: string, qty: number): Promise<void> {
+  if (qty <= 0) return;
+  try {
+    const candidates = await db.orderItem.findMany({
+      where: {
+        variantId,
+        status: "In Queue",
+        order: { status: { not: "Cancelled" } },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    let remaining = qty;
+    for (const item of candidates) {
+      if (remaining <= 0) break;
+      if (item.qty <= remaining) {
+        await db.orderItem.update({ where: { id: item.id }, data: { status: "In Production" } });
+        remaining -= item.qty;
+      }
+    }
+  } catch (error) {
+    console.error(`Error promoting order items to production for variant ${variantId}:`, error);
+  }
+}
+
+/**
+ * When a Production item is sent back to Print Queue, demote that many
+ * "In Production" order items (FIFO, whole-item only) back to "In Queue".
+ */
+export async function demoteProductionItemsToQueue(variantId: string, qty: number): Promise<void> {
+  if (qty <= 0) return;
+  try {
+    const candidates = await db.orderItem.findMany({
+      where: {
+        variantId,
+        status: "In Production",
+        order: { status: { not: "Cancelled" } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    let remaining = qty;
+    for (const item of candidates) {
+      if (remaining <= 0) break;
+      if (item.qty <= remaining) {
+        await db.orderItem.update({ where: { id: item.id }, data: { status: "In Queue" } });
+        remaining -= item.qty;
+      }
+    }
+  } catch (error) {
+    console.error(`Error demoting production items to queue for variant ${variantId}:`, error);
+  }
+}
+/**
+ * Full repair pass for one variant: recompute the In Queue / In Production
+ * split from scratch based on current Print Queue + Production Item totals.
+ * Walks active (non-Ready) order items oldest-first, allocates the first
+ * `productionQty` worth to "In Production", the next `queuedQty` worth to
+ * "In Queue", and leaves the remainder as "Not Ready". Safe to re-run —
+ * used by the manual "Sync Status" repair action.
+ */
+export async function resyncOrderItemStatuses(
+  variantId: string,
+  queuedQty: number,
+  productionQty: number
+): Promise<void> {
+  try {
+    const candidates = await db.orderItem.findMany({
+      where: {
+        variantId,
+        status: { in: ["Not Ready", "In Queue", "In Production"] },
+        order: { status: { not: "Cancelled" } },
+      },
+      orderBy: { createdAt: "asc" }, // FIFO
+    });
+    if (candidates.length === 0) return;
+
+    let productionBudget = productionQty;
+    let queueBudget = queuedQty;
+
+    for (const item of candidates) {
+      let targetStatus: "In Production" | "In Queue" | "Not Ready" = "Not Ready";
+      if (item.qty <= productionBudget) {
+        targetStatus = "In Production";
+        productionBudget -= item.qty;
+      } else if (item.qty <= queueBudget) {
+        targetStatus = "In Queue";
+        queueBudget -= item.qty;
+      }
+      if (item.status !== targetStatus) {
+        await db.orderItem.update({ where: { id: item.id }, data: { status: targetStatus } });
+      }
+    }
+  } catch (error) {
+    console.error(`Error resyncing order item statuses for variant ${variantId}:`, error);
+  }
+}
 
 /**
  * Refresh order statuses for ALL variants that have active order items.

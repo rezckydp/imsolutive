@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { syncOrderItemsToQueue, revertOrderItemsFromQueue } from "@/lib/stock-sync";
+import { syncOrderItemsToQueue, revertOrderItemsFromQueue, promoteOrderItemsToProduction } from "@/lib/stock-sync";
 
 // PATCH update print queue item (qty, status)
 export async function PATCH(
@@ -74,12 +74,15 @@ export async function PATCH(
 }
 
 // DELETE remove item from print queue
+// ?reason=promoted — item is moving forward to Production (order items → In Production)
+// (default / no param) — item is being cancelled from the queue (order items → Not Ready)
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+    const reason = request.nextUrl.searchParams.get("reason");
 
     const existing = await db.printQueueItem.findUnique({ where: { id } });
     if (!existing) {
@@ -91,8 +94,13 @@ export async function DELETE(
 
     await db.printQueueItem.delete({ where: { id } });
 
-    // Deleting from Print Queue — revert matching In Queue orders back to Not Ready
-    await revertOrderItemsFromQueue(existing.variantId, existing.qty);
+    if (reason === "promoted") {
+      // Moving forward to Production — order items go In Queue → In Production
+      await promoteOrderItemsToProduction(existing.variantId, existing.qty);
+    } else {
+      // Cancelled from the queue — order items go back to Not Ready
+      await revertOrderItemsFromQueue(existing.variantId, existing.qty);
+    }
 
     return NextResponse.json({
       message: "Print queue item removed successfully",

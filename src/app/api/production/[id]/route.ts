@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { syncStockToGroup, refreshOrderItemStatuses, getGroupVariantIds } from "@/lib/stock-sync";
+import { syncStockToGroup, refreshOrderItemStatuses, getGroupVariantIds, demoteProductionItemsToQueue } from "@/lib/stock-sync";
 
 // PUT update production item — with shared stock sync on complete/revert
 export async function PUT(
@@ -113,6 +113,9 @@ export async function DELETE(
     }
 
     await db.productionItem.delete({ where: { id } });
+
+    // This DELETE only happens via "send back to print queue" — demote order items accordingly
+    await demoteProductionItemsToQueue(existing.variantId, existing.qty);
 
     return NextResponse.json({
       message: "Production item deleted successfully",

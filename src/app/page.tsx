@@ -273,8 +273,8 @@ export default function Home() {
         body: JSON.stringify({ variantId: printQueueItem.variantId, qty: printQueueItem.qty, note: printQueueItem.note || '' }),
       });
       if (prodRes.ok) {
-        // 2. Remove from print queue
-        await fetch(`/api/print-queue/${printQueueItem.id}`, { method: 'DELETE' });
+        // 2. Remove from print queue (reason=promoted → order items advance to In Production)
+        await fetch(`/api/print-queue/${printQueueItem.id}?reason=promoted`, { method: 'DELETE' });
         fetchDashboardData();
       }
     } catch {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CheckCircle2, Clock, Eye, Pencil, Trash2, AlertCircle, ChevronDown, ChevronUp, ShoppingCart, Printer, ArrowRight, RefreshCw } from 'lucide-react';
+import { CheckCircle2, Clock, Eye, Pencil, Trash2, AlertCircle, ChevronDown, ChevronUp, ShoppingCart, Printer, ArrowRight, RefreshCw, Factory } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -89,11 +89,12 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
   // Filter out cancelled orders from display
   const activeItems = items.filter((i) => i.orderStatus !== 'Cancelled');
 
-  // Status priority for "urgency" sort: Not Ready needs action first, then In Queue, then Ready
+  // Status priority for "urgency" sort: Not Ready needs action first, then In Queue/In Production, then Ready
   const statusRank = (status: string) => {
     if (status === 'Not Ready') return 0;
     if (status === 'In Queue') return 1;
-    return 2; // Ready
+    if (status === 'In Production') return 2;
+    return 3; // Ready
   };
 
   const sortedItems = [...activeItems].sort((a, b) => {
@@ -256,6 +257,7 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
                 <option value="Ready">Ready</option>
                 <option value="Not Ready">Not Ready</option>
                 <option value="In Queue">In Queue</option>
+                <option value="In Production">In Production</option>
               </select>
               <select
                 value={sortBy}
@@ -362,6 +364,8 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
                                   ? 'bg-[#15803d]/10 text-[#15803d] border-[#15803d]/30'
                                   : item.itemStatus === 'In Queue'
                                   ? 'bg-[#2563eb]/10 text-[#2563eb] border-[#2563eb]/30'
+                                  : item.itemStatus === 'In Production'
+                                  ? 'bg-[#7c3aed]/10 text-[#7c3aed] border-[#7c3aed]/30'
                                   : 'bg-[#dc2626]/10 text-[#dc2626] border-[#dc2626]/30'
                               }`}
                               variant="outline"
@@ -370,6 +374,8 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
                                 <CheckCircle2 className="w-2.5 h-2.5" />
                               ) : item.itemStatus === 'In Queue' ? (
                                 <Printer className="w-2.5 h-2.5" />
+                              ) : item.itemStatus === 'In Production' ? (
+                                <Factory className="w-2.5 h-2.5" />
                               ) : (
                                 <Clock className="w-2.5 h-2.5" />
                               )}
@@ -424,6 +430,13 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
                                   In Queue
                                 </span>
                               )}
+
+                              {item.itemStatus === 'In Production' && (
+                                <span className="text-[11px] text-[#7c3aed] flex items-center gap-1">
+                                  <Factory className="w-3 h-3" />
+                                  In Production
+                                </span>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -467,6 +480,7 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
             const dReady = detailItems.filter((i) => i.itemStatus === 'Ready').length;
             const dNotReady = detailItems.filter((i) => i.itemStatus === 'Not Ready').length;
             const dInQueue = detailItems.filter((i) => i.itemStatus === 'In Queue').length;
+            const dInProduction = detailItems.filter((i) => i.itemStatus === 'In Production').length;
             return (
               <>
                 <DialogHeader className="px-5 pt-5 pb-0 flex-shrink-0">
@@ -491,6 +505,11 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
                     {dInQueue > 0 && (
                       <Badge className="text-[11px] px-2 py-0 rounded-full bg-[#2563eb]/10 text-[#2563eb] border-[#2563eb]/30 gap-1" variant="outline">
                         <Printer className="w-2.5 h-2.5" />{dInQueue} In Queue
+                      </Badge>
+                    )}
+                    {dInProduction > 0 && (
+                      <Badge className="text-[11px] px-2 py-0 rounded-full bg-[#7c3aed]/10 text-[#7c3aed] border-[#7c3aed]/30 gap-1" variant="outline">
+                        <Factory className="w-2.5 h-2.5" />{dInProduction} In Production
                       </Badge>
                     )}
                   </div>
@@ -519,6 +538,8 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
                                   ? 'bg-[#15803d]/10 text-[#15803d] border-[#15803d]/30'
                                   : item.itemStatus === 'In Queue'
                                   ? 'bg-[#2563eb]/10 text-[#2563eb] border-[#2563eb]/30'
+                                  : item.itemStatus === 'In Production'
+                                  ? 'bg-[#7c3aed]/10 text-[#7c3aed] border-[#7c3aed]/30'
                                   : 'bg-[#dc2626]/10 text-[#dc2626] border-[#dc2626]/30'
                               }`}
                               variant="outline"
