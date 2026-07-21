@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { syncOrderItemsToQueue, revertOrderItemsFromQueue } from "@/lib/stock-sync";
 
 // PATCH update print queue item (qty, status)
 export async function PATCH(
@@ -51,6 +52,17 @@ export async function PATCH(
       },
     });
 
+    // If qty changed, keep Recent Order's In Queue statuses in sync
+    if (updateData.qty !== undefined) {
+      const newQty = updateData.qty as number;
+      const delta = newQty - existing.qty;
+      if (delta > 0) {
+        await syncOrderItemsToQueue(existing.variantId, delta);
+      } else if (delta < 0) {
+        await revertOrderItemsFromQueue(existing.variantId, -delta);
+      }
+    }
+
     return NextResponse.json(updated);
   } catch (error) {
     console.error("Error updating print queue item:", error);
@@ -78,6 +90,9 @@ export async function DELETE(
     }
 
     await db.printQueueItem.delete({ where: { id } });
+
+    // Deleting from Print Queue — revert matching In Queue orders back to Not Ready
+    await revertOrderItemsFromQueue(existing.variantId, existing.qty);
 
     return NextResponse.json({
       message: "Print queue item removed successfully",

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { syncOrderItemsToQueue } from "@/lib/stock-sync";
 
 // GET all print queue items with variant → product
 export async function GET() {
@@ -69,6 +70,9 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+    // Reflect this in Recent Order — mark matching Not Ready orders as In Queue
+    await syncOrderItemsToQueue(variantId, qty || 1);
 
     return NextResponse.json(item, { status: 201 });
   } catch (error) {

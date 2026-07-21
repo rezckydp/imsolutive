@@ -202,6 +202,73 @@ export async function refreshOrderItemStatuses(variantId: string): Promise<void>
 }
 
 /**
+ * When qty is added to the Print Queue for a variant, mark that many
+ * "Not Ready" order items (FIFO, oldest first, whole-item only) as "In Queue".
+ * This keeps Recent Order's "In Queue" status in sync no matter where the
+ * Print Queue item was created from (manual add, or the Send-to-Queue button).
+ */
+export async function syncOrderItemsToQueue(variantId: string, qtyQueued: number): Promise<void> {
+  if (qtyQueued <= 0) return;
+  try {
+    const candidates = await db.orderItem.findMany({
+      where: {
+        variantId,
+        status: "Not Ready",
+        order: { status: { not: "Cancelled" } },
+      },
+      orderBy: { createdAt: "asc" }, // FIFO — oldest waiting order gets queued first
+    });
+
+    let remaining = qtyQueued;
+    for (const item of candidates) {
+      if (remaining <= 0) break;
+      if (item.qty <= remaining) {
+        await db.orderItem.update({ where: { id: item.id }, data: { status: "In Queue" } });
+        remaining -= item.qty;
+      }
+      // If an item's qty is bigger than what's left of this queue addition,
+      // skip it (can't partially queue a single order item) and keep looking
+      // at smaller ones further down the FIFO line.
+    }
+  } catch (error) {
+    console.error(`Error syncing order items to queue for variant ${variantId}:`, error);
+  }
+}
+
+/**
+ * When qty is removed from the Print Queue for a variant (item deleted or
+ * qty reduced), revert that many "In Queue" order items back to "Not Ready".
+ * There's no direct link between a PrintQueueItem and the OrderItem(s) it
+ * represents, so this reverts the most recently created "In Queue" orders
+ * first — a reasonable approximation since those are typically the last
+ * ones queued.
+ */
+export async function revertOrderItemsFromQueue(variantId: string, qtyRemoved: number): Promise<void> {
+  if (qtyRemoved <= 0) return;
+  try {
+    const candidates = await db.orderItem.findMany({
+      where: {
+        variantId,
+        status: "In Queue",
+        order: { status: { not: "Cancelled" } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    let remaining = qtyRemoved;
+    for (const item of candidates) {
+      if (remaining <= 0) break;
+      if (item.qty <= remaining) {
+        await db.orderItem.update({ where: { id: item.id }, data: { status: "Not Ready" } });
+        remaining -= item.qty;
+      }
+    }
+  } catch (error) {
+    console.error(`Error reverting order items from queue for variant ${variantId}:`, error);
+  }
+}
+
+/**
  * Refresh order statuses for ALL variants that have active order items.
  * Useful for dashboard load to ensure all statuses are up-to-date.
  */
