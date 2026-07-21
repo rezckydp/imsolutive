@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CheckCircle2, Clock, Eye, Pencil, Trash2, AlertCircle, ChevronDown, ChevronUp, ShoppingCart, Printer, ArrowRight } from 'lucide-react';
+import { CheckCircle2, Clock, Eye, Pencil, Trash2, AlertCircle, ChevronDown, ChevronUp, ShoppingCart, Printer, ArrowRight, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -75,6 +75,7 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'urgency' | 'newest' | 'oldest' | 'pickingList'>('urgency');
   const [expanded, setExpanded] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [detailOrderId, setDetailOrderId] = useState<string | null>(null);
   const [deleteItemTarget, setDeleteItemTarget] = useState<{ orderId: string; itemId: string; sku: string; color: string } | null>(null);
   const [editingItem, setEditingItem] = useState<RecentOrderItem | null>(null);
@@ -152,7 +153,22 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
     }
   };
 
-  // Fetch sibling variants (colors) for the product being edited
+  const handleResync = async () => {
+    setSyncing(true);
+    try {
+      const res = await fetch('/api/print-queue/resync', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      toast.success(data.message || 'Status disinkronkan.');
+      onDataChange?.();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal sinkronisasi');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+
   useEffect(() => {
     if (!editingItem) {
       setVariantOptions([]);
@@ -208,6 +224,15 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
                   <Clock className="w-2.5 h-2.5" />
                   {notReadyCount} Belum Ready
                 </Badge>
+                <button
+                  onClick={handleResync}
+                  disabled={syncing}
+                  title="Sinkronkan status In Queue dengan Print Queue"
+                  className="text-[11px] text-[#6b7280] hover:text-[#4a6741] flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3 h-3 ${syncing ? 'animate-spin' : ''}`} />
+                  {syncing ? 'Syncing...' : 'Sync Status'}
+                </button>
               </div>
             </div>
             <div className="flex items-center gap-2">
