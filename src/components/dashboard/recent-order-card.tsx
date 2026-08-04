@@ -73,7 +73,8 @@ function formatDate(isoString: string) {
 export function RecentOrderCard({ items = [], loading = false, onDataChange }: RecentOrderCardProps) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'urgency' | 'newest' | 'oldest' | 'pickingList'>('urgency');
+  const [sortBy, setSortBy] = useState<'oldest' | 'newest'>('oldest');
+  const [viewMode, setViewMode] = useState<'picking' | 'adjustment'>('picking');
   const [expanded, setExpanded] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [detailOrderId, setDetailOrderId] = useState<string | null>(null);
@@ -89,34 +90,25 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
   // Filter out cancelled orders from display
   const activeItems = items.filter((i) => i.orderStatus !== 'Cancelled');
 
-  // Status priority for "urgency" sort: Not Ready needs action first, then In Queue/In Production, then Ready
-  const statusRank = (status: string) => {
-    if (status === 'Not Ready') return 0;
-    if (status === 'In Queue') return 1;
-    if (status === 'In Production') return 2;
-    return 3; // Ready
-  };
+  // Picking List (PICK-xxx, or anything not explicitly ADJ) vs Adjustment (ADJ-xxx)
+  const isAdjustment = (orderNo: string) => orderNo.trim().toUpperCase().startsWith('ADJ');
+  const viewItems = activeItems.filter((i) =>
+    viewMode === 'adjustment' ? isAdjustment(i.orderNo) : !isAdjustment(i.orderNo)
+  );
+  const pickingCount = activeItems.filter((i) => !isAdjustment(i.orderNo)).length;
+  const adjustmentCount = activeItems.filter((i) => isAdjustment(i.orderNo)).length;
 
-  const sortedItems = [...activeItems].sort((a, b) => {
-    if (sortBy === 'urgency') {
-      const rankDiff = statusRank(a.itemStatus) - statusRank(b.itemStatus);
-      if (rankDiff !== 0) return rankDiff;
-      // Within the same status, oldest first (FIFO — longest-waiting order gets fulfilled first)
-      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+  const sortedItems = [...viewItems].sort((a, b) => {
+    if (sortBy === 'newest') {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     }
-    if (sortBy === 'oldest') {
-      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-    }
-    if (sortBy === 'pickingList') {
-      return a.orderNo.localeCompare(b.orderNo);
-    }
-    // newest (default fallback)
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    // 'oldest' (default) — FIFO: longest-waiting Picking List first
+    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
   });
 
-  // FIFO order index (chronological) for Not Ready items — oldest = #1
+  // FIFO order index (chronological) for Not Ready items — oldest = #1 (Picking List view only)
   const notReadyFifoMap = new Map<string, number>();
-  [...activeItems]
+  [...viewItems]
     .filter((i) => i.itemStatus === 'Not Ready')
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
     .forEach((item, idx) => notReadyFifoMap.set(item.id, idx + 1));
@@ -128,7 +120,7 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
       item.name.toLowerCase().includes(search.toLowerCase()) ||
       item.color.toLowerCase().includes(search.toLowerCase()) ||
       item.orderNo.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = statusFilter === 'all' || item.itemStatus === statusFilter;
+    const matchStatus = viewMode === 'adjustment' || statusFilter === 'all' || item.itemStatus === statusFilter;
     return matchSearch && matchStatus;
   });
 
@@ -211,20 +203,48 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
   };
 
   // Stats
-  const notReadyCount = activeItems.filter((i) => i.itemStatus === 'Not Ready').length;
+  const notReadyCount = viewItems.filter((i) => i.itemStatus === 'Not Ready').length;
 
   return (
     <>
       <Card className="rounded-xl shadow-sm border-0">
         <CardHeader className="pb-3 px-4 pt-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <CardTitle className="text-sm font-semibold text-[#2d3436]">Recent Order</CardTitle>
+              <div className="flex items-center gap-1 bg-[#f5f6fa] p-0.5 rounded-full">
+                <button
+                  onClick={() => setViewMode('picking')}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                    viewMode === 'picking' ? 'bg-white text-[#2d3436] shadow-sm' : 'text-[#6b7280] hover:text-[#2d3436]'
+                  }`}
+                >
+                  <ShoppingCart className="w-3 h-3" />
+                  Picking List
+                  <span className={`text-[10px] px-1.5 py-0 rounded-full ${viewMode === 'picking' ? 'bg-[#4a6741]/10 text-[#4a6741]' : 'bg-[#e8e8e8] text-[#6b7280]'}`}>
+                    {pickingCount}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setViewMode('adjustment')}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                    viewMode === 'adjustment' ? 'bg-white text-[#2d3436] shadow-sm' : 'text-[#6b7280] hover:text-[#2d3436]'
+                  }`}
+                >
+                  <AlertCircle className="w-3 h-3" />
+                  Adjustment
+                  <span className={`text-[10px] px-1.5 py-0 rounded-full ${viewMode === 'adjustment' ? 'bg-[#d97706]/10 text-[#d97706]' : 'bg-[#e8e8e8] text-[#6b7280]'}`}>
+                    {adjustmentCount}
+                  </span>
+                </button>
+              </div>
               <div className="flex items-center gap-2">
-                <Badge className="text-[11px] px-2 py-0 rounded-full bg-[#dc2626]/10 text-[#dc2626] border-[#dc2626]/30 gap-1" variant="outline">
-                  <Clock className="w-2.5 h-2.5" />
-                  {notReadyCount} Belum Ready
-                </Badge>
+                {viewMode === 'picking' && (
+                  <Badge className="text-[11px] px-2 py-0 rounded-full bg-[#dc2626]/10 text-[#dc2626] border-[#dc2626]/30 gap-1" variant="outline">
+                    <Clock className="w-2.5 h-2.5" />
+                    {notReadyCount} Belum Ready
+                  </Badge>
+                )}
                 <button
                   onClick={handleResync}
                   disabled={syncing}
@@ -248,26 +268,25 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
                   className="pl-8 h-8 text-xs rounded-lg bg-[#f5f6fa] border-[#e8e8e8] w-[160px]"
                 />
               </div>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="h-8 text-xs rounded-lg bg-white border-[#e8e8e8] px-2 text-[#4b5563] focus:outline-none focus:ring-1 focus:ring-[#4a6741]/30 cursor-pointer"
-              >
-                <option value="all">All Status</option>
-                <option value="Ready">Ready</option>
-                <option value="Not Ready">Not Ready</option>
-                <option value="In Queue">In Queue</option>
-                <option value="In Production">In Production</option>
-              </select>
+              {viewMode === 'picking' && (
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="h-8 text-xs rounded-lg bg-white border-[#e8e8e8] px-2 text-[#4b5563] focus:outline-none focus:ring-1 focus:ring-[#4a6741]/30 cursor-pointer"
+                >
+                  <option value="all">All Status</option>
+                  <option value="Ready">Ready</option>
+                  <option value="Not Ready">Not Ready</option>
+                  <option value="In Production">In Production</option>
+                </select>
+              )}
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
                 className="h-8 text-xs rounded-lg bg-white border-[#e8e8e8] px-2 text-[#4b5563] focus:outline-none focus:ring-1 focus:ring-[#4a6741]/30 cursor-pointer"
               >
-                <option value="urgency">Sort: Urgency</option>
                 <option value="oldest">Sort: Terlama</option>
                 <option value="newest">Sort: Terbaru</option>
-                <option value="pickingList">Sort: No. Picking List</option>
               </select>
             </div>
           </div>
