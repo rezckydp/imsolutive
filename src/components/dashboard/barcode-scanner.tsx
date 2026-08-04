@@ -41,8 +41,10 @@ type PdfStage = 'idle' | 'uploading' | 'review';
 // "Req. Color" variants (customer picks a custom color per order) must never
 // auto-stack with each other — each scan represents a different customer's
 // request and needs its own qty + note, even though they share one variantId.
-const isRequestColorVariant = (color: string) =>
-  color.toLowerCase().includes('req') || color.toLowerCase().includes('request') || color === '';
+// Detected via the variant's `type` (e.g. "Req. Color"), NOT an empty color
+// name — plenty of legitimate fixed variants (like "Default") also have an
+// empty color name and must keep stacking normally.
+const isRequestColorVariant = (type: string) => type.toLowerCase().includes('req');
 
 interface ScannedItem {
   id: string;
@@ -210,7 +212,7 @@ export function BarcodeScanner({
         };
 
         setItems((prev) => {
-          const existing = !isRequestColorVariant(result.color || '') && prev.find((i) => i.variantId === result.variantId);
+          const existing = !isRequestColorVariant(result.variantType || '') && prev.find((i) => i.variantId === result.variantId);
           if (existing) {
             return prev.map((i) =>
               i.variantId === result.variantId ? { ...i, qty: i.qty + 1 } : i
@@ -234,7 +236,7 @@ export function BarcodeScanner({
         };
 
         setItems((prev) => {
-          const existing = !isRequestColorVariant(v.color) && prev.find((i) => i.variantId === v.id);
+          const existing = !isRequestColorVariant(v.type || '') && prev.find((i) => i.variantId === v.id);
           if (existing) {
             return prev.map((i) =>
               i.variantId === v.id ? { ...i, qty: i.qty + 1 } : i
@@ -808,7 +810,7 @@ export function BarcodeScanner({
                       )}
 
                       {/* Note input for Req. Color items */}
-                      {item.variantId && isRequestColorVariant(item.color) && (
+                      {item.variantId && isRequestColorVariant(item.type) && (
                         <div className="mt-1.5">
                           <input
                             type="text"
