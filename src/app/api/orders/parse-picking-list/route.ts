@@ -72,7 +72,15 @@ export async function POST(request: NextRequest) {
 
     // 3. Tokenize and scan for known codes + nearby quantity
     const tokens = text.split(/\s+/).filter(Boolean);
-    const seen = new Set<string>();
+    // Tracks the token index of the last time each code was matched. A Picking
+    // List row shows the same SKU text twice (once as the barcode caption,
+    // once in the "SKU" column) — those two occurrences sit close together and
+    // should collapse into one row. But if the SAME SKU appears again much
+    // further down the stream, that's a genuinely separate order (e.g. two
+    // different customers both requesting a custom "Req. Color" item) and
+    // must become its own row, not get silently dropped.
+    const lastMatchIndex = new Map<string, number>();
+    const SAME_ROW_TOKEN_WINDOW = 20;
     const items: ExtractedItem[] = [];
 
     for (let i = 0; i < tokens.length; i++) {
@@ -83,7 +91,12 @@ export async function POST(request: NextRequest) {
       const variant = barcodeMap.get(code);
       const product = !variant ? skuMap.get(code) : undefined;
       if (!variant && !product) continue;
-      if (seen.has(code)) continue; // already resolved this code earlier in the stream
+
+      const lastIdx = lastMatchIndex.get(code);
+      if (lastIdx !== undefined && i - lastIdx <= SAME_ROW_TOKEN_WINDOW) {
+        // Same row's duplicate caption/column text — not a new order, skip
+        continue;
+      }
 
       // Look ahead a few tokens for a standalone small integer = Qty
       let qty = 1;
@@ -94,7 +107,7 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      seen.add(code);
+      lastMatchIndex.set(code, i);
 
       if (variant) {
         items.push({
@@ -145,7 +158,7 @@ export async function POST(request: NextRequest) {
     for (const raw of tokens) {
       const code = raw.toUpperCase().replace(/[^A-Z0-9-]/g, "");
       if (code.length < 4 || !code.includes("-")) continue;
-      if (seen.has(code) || unmatchedCodes.has(code)) continue;
+      if (lastMatchIndex.has(code) || unmatchedCodes.has(code)) continue;
       if (barcodeMap.has(code) || skuMap.has(code)) continue;
       // Heuristic: looks like a product code (letters+digits+hyphen, not a long marketplace order id)
       if (/^[A-Z]{2,}[A-Z0-9]*-[A-Z0-9-]+$/.test(code) && code.length <= 25) {
