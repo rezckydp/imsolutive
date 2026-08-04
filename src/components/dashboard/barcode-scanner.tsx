@@ -38,6 +38,12 @@ type ScannerMode = 'order' | 'production';
 type OrderSubMode = 'manual' | 'pdf';
 type PdfStage = 'idle' | 'uploading' | 'review';
 
+// "Req. Color" variants (customer picks a custom color per order) must never
+// auto-stack with each other — each scan represents a different customer's
+// request and needs its own qty + note, even though they share one variantId.
+const isRequestColorVariant = (color: string) =>
+  color.toLowerCase().includes('req') || color.toLowerCase().includes('request') || color === '';
+
 interface ScannedItem {
   id: string;
   code: string;
@@ -204,7 +210,7 @@ export function BarcodeScanner({
         };
 
         setItems((prev) => {
-          const existing = prev.find((i) => i.variantId === result.variantId);
+          const existing = !isRequestColorVariant(result.color || '') && prev.find((i) => i.variantId === result.variantId);
           if (existing) {
             return prev.map((i) =>
               i.variantId === result.variantId ? { ...i, qty: i.qty + 1 } : i
@@ -228,7 +234,7 @@ export function BarcodeScanner({
         };
 
         setItems((prev) => {
-          const existing = prev.find((i) => i.variantId === v.id);
+          const existing = !isRequestColorVariant(v.color) && prev.find((i) => i.variantId === v.id);
           if (existing) {
             return prev.map((i) =>
               i.variantId === v.id ? { ...i, qty: i.qty + 1 } : i
@@ -802,7 +808,7 @@ export function BarcodeScanner({
                       )}
 
                       {/* Note input for Req. Color items */}
-                      {item.variantId && (item.color.toLowerCase().includes('req') || item.color.toLowerCase().includes('request') || item.color === '') && (
+                      {item.variantId && isRequestColorVariant(item.color) && (
                         <div className="mt-1.5">
                           <input
                             type="text"
