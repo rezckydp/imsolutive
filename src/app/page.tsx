@@ -17,6 +17,7 @@ import { StockOpname } from '@/components/dashboard/stock-opname';
 import { SettingsPage } from '@/components/dashboard/settings-page';
 import { PrinterDatabase } from '@/components/dashboard/printer-database';
 import { ColorManagement } from '@/components/dashboard/color-management';
+import { DateRangePicker, type SimpleDateRange } from '@/components/dashboard/date-range-picker';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Menu, ScanBarcode, Package } from 'lucide-react';
@@ -202,6 +203,26 @@ export default function Home() {
   // Dashboard data
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [orderDateRange, setOrderDateRange] = useState<SimpleDateRange>(null);
+  const [filteredOrderCount, setFilteredOrderCount] = useState<number | null>(null);
+  const [orderCountLoading, setOrderCountLoading] = useState(false);
+
+  useEffect(() => {
+    if (!orderDateRange) {
+      setFilteredOrderCount(null);
+      return;
+    }
+    setOrderCountLoading(true);
+    const params = new URLSearchParams({
+      from: orderDateRange.from.toISOString(),
+      to: orderDateRange.to.toISOString(),
+    });
+    fetch(`/api/dashboard/orders-count?${params}`)
+      .then((r) => r.json())
+      .then((data) => setFilteredOrderCount(data.count ?? 0))
+      .catch(() => setFilteredOrderCount(null))
+      .finally(() => setOrderCountLoading(false));
+  }, [orderDateRange]);
   const [error, setError] = useState<string | null>(null);
 
   const fetchDashboardData = useCallback(async () => {
@@ -596,9 +617,9 @@ export default function Home() {
               </div>
 
               <div className="bg-white rounded-xl shadow-sm p-3 md:p-4">
-                <div className="flex items-center justify-between mb-2 md:mb-3">
-                  <span className="text-[11px] md:text-xs text-[#4b5563] font-medium">Total Orders</span>
-                  <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#d97706]/10 flex items-center justify-center">
+                <div className="flex items-center justify-between mb-2 md:mb-3 gap-2">
+                  <span className="text-[11px] md:text-xs text-[#4b5563] font-medium flex-shrink-0">Total Orders</span>
+                  <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#d97706]/10 flex items-center justify-center flex-shrink-0">
                     <svg className="w-3.5 h-3.5 md:w-4 md:h-4 text-[#d97706]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                     </svg>
@@ -608,8 +629,13 @@ export default function Home() {
                   <SummaryCardSkeleton />
                 ) : (
                   <>
-                    <p className="text-xl md:text-2xl font-bold text-[#d97706]">{summary?.totalOrders ?? 0}</p>
-                    <p className="text-[11px] md:text-xs text-[#4b5563]">total orders</p>
+                    <p className="text-xl md:text-2xl font-bold text-[#d97706]">
+                      {orderCountLoading ? '…' : orderDateRange ? (filteredOrderCount ?? 0) : (summary?.totalOrders ?? 0)}
+                    </p>
+                    <div className="flex items-center justify-between gap-2 mt-1">
+                      <p className="text-[11px] md:text-xs text-[#4b5563]">{orderDateRange ? 'dalam range' : 'total orders'}</p>
+                      <DateRangePicker value={orderDateRange} onChange={setOrderDateRange} />
+                    </div>
                   </>
                 )}
               </div>
