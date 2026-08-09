@@ -74,6 +74,7 @@ interface ProductData {
   sku: string;
   name: string;
   minStock: number;
+  estPrintMinutes?: number | null;
   parentProductId?: string | null;
   parentProduct?: { id: string; sku: string; name: string } | null;
   childProducts?: Array<{ id: string; sku: string; name: string }>;
@@ -231,6 +232,7 @@ export function StockManagement() {
   const [editSku, setEditSku] = useState('');
   const [editName, setEditName] = useState('');
   const [editMinStock, setEditMinStock] = useState(10);
+  const [editEstPrintMinutes, setEditEstPrintMinutes] = useState<string>('');
   const [editVariants, setEditVariants] = useState<VariantData[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -605,6 +607,7 @@ export function StockManagement() {
     setEditSku(product.sku);
     setEditName(product.name);
     setEditMinStock(product.minStock);
+    setEditEstPrintMinutes(product.estPrintMinutes != null ? String(product.estPrintMinutes) : '');
     // Separate variants into color variants and type variants
     const colorVariants: VariantData[] = [];
     const typeVariantsData: TypeVariantData[] = [];
@@ -732,6 +735,7 @@ export function StockManagement() {
           sku: editSku.trim(),
           name: editName,
           minStock: editMinStock,
+          estPrintMinutes: editEstPrintMinutes.trim() ? parseInt(editEstPrintMinutes, 10) : null,
           variants: allVariants,
         }),
       });
@@ -1722,20 +1726,37 @@ export function StockManagement() {
                   />
                 </div>
 
-                {/* Min Stock — only for standalone/master */}
+                {/* Min Stock + Est. Print Minutes — only for standalone/master */}
                 {!isVariant && (
-                  <div className="space-y-1.5">
-                    <Label className="text-sm font-medium text-[#2d3436]">
-                      Min Stock Level
-                      {isMaster && <span className="text-[11px] text-[#4a6741] ml-1.5 font-normal">(sync to variants)</span>}
-                    </Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      value={editMinStock}
-                      onChange={(e) => setEditMinStock(parseInt(e.target.value) || 0)}
-                      className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg w-32"
-                    />
+                  <div className="flex gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-sm font-medium text-[#2d3436]">
+                        Min Stock Level
+                        {isMaster && <span className="text-[11px] text-[#4a6741] ml-1.5 font-normal">(sync to variants)</span>}
+                      </Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={editMinStock}
+                        onChange={(e) => setEditMinStock(parseInt(e.target.value) || 0)}
+                        className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg w-32"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm font-medium text-[#2d3436]">
+                        Est. Print (menit/pcs)
+                        {isMaster && <span className="text-[11px] text-[#4a6741] ml-1.5 font-normal">(sync to variants)</span>}
+                      </Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={editEstPrintMinutes}
+                        onChange={(e) => setEditEstPrintMinutes(e.target.value)}
+                        placeholder="e.g. 45"
+                        className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg w-32"
+                      />
+                      <p className="text-[11px] text-[#6b7280]">Buat estimasi durasi Print Queue</p>
+                    </div>
                   </div>
                 )}
 
