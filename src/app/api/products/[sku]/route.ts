@@ -52,7 +52,7 @@ export async function PUT(
   try {
     const { sku } = await params;
     const body = await request.json();
-    const { sku: newSku, name, minStock, variants, parts } = body;
+    const { sku: newSku, name, minStock, estPrintMinutes, variants, parts } = body;
 
     // Check product exists
     const existing = await db.product.findUnique({
@@ -97,14 +97,21 @@ export async function PUT(
       data: {
         ...(name !== undefined && { name }),
         ...(minStock !== undefined && { minStock }),
+        ...(estPrintMinutes !== undefined && { estPrintMinutes }),
       },
     });
 
-    // If master and minStock changed, sync to all children
+    // If master and minStock/estPrintMinutes changed, sync to all children
     if (isMaster && minStock !== undefined && existing.childProducts.length > 0) {
       await db.product.updateMany({
         where: { parentProductId: existing.id },
         data: { minStock },
+      });
+    }
+    if (isMaster && estPrintMinutes !== undefined && existing.childProducts.length > 0) {
+      await db.product.updateMany({
+        where: { parentProductId: existing.id },
+        data: { estPrintMinutes },
       });
     }
 

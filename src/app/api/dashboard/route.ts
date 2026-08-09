@@ -94,12 +94,27 @@ export async function GET() {
       (v) => v.qty >= 0 && v.qty < v.product.minStock
     );
 
+    // Print Queue duration estimate — sum(qty × product.estPrintMinutes), skipping
+    // items whose product doesn't have an estimate set yet
+    let printQueueDurationMinutes = 0;
+    let printQueueItemsMissingEstimate = 0;
+    for (const item of printQueueItems) {
+      const estPerPcs = item.variant.product.estPrintMinutes;
+      if (estPerPcs != null) {
+        printQueueDurationMinutes += estPerPcs * item.qty;
+      } else {
+        printQueueItemsMissingEstimate++;
+      }
+    }
+
     const summary = {
       totalProducts,
       totalVariants,
       minusStockCount: minusStockProducts.length,
       lowStockCount: lowStockProducts.length,
       printQueueCount: printQueueItems.length,
+      printQueueDurationMinutes,
+      printQueueItemsMissingEstimate,
       productionCount: productionItems.length,
       totalOrders,
     };

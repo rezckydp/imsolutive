@@ -15,6 +15,7 @@ model Product {
   sku       String   @unique
   name      String
   minStock  Int      @default(10)
+  estPrintMinutes Int?     // estimated print time per pcs (minutes), used for Print Queue duration
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

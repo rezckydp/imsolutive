@@ -123,9 +123,19 @@ interface DashboardData {
     minusStockCount: number;
     lowStockCount: number;
     printQueueCount: number;
+    printQueueDurationMinutes: number;
+    printQueueItemsMissingEstimate: number;
     productionCount: number;
     totalOrders: number;
   };
+}
+
+function formatDuration(totalMinutes: number): string {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = Math.round(totalMinutes % 60);
+  if (hours === 0) return `${minutes} menit`;
+  if (minutes === 0) return `${hours} jam`;
+  return `${hours} jam ${minutes} menit`;
 }
 
 function SummaryCardSkeleton() {
@@ -611,7 +621,17 @@ export default function Home() {
                 ) : (
                   <>
                     <p className="text-xl md:text-2xl font-bold text-[#2563eb]">{summary?.printQueueCount ?? 0}</p>
-                    <p className="text-[11px] md:text-xs text-[#4b5563]">in queue</p>
+                    <p className="text-[11px] md:text-xs text-[#4b5563]">
+                      in queue
+                      {summary && summary.printQueueDurationMinutes > 0 && (
+                        <> · ~{formatDuration(summary.printQueueDurationMinutes)}</>
+                      )}
+                    </p>
+                    {summary && summary.printQueueItemsMissingEstimate > 0 && (
+                      <p className="text-[10px] text-[#d97706] mt-0.5">
+                        {summary.printQueueItemsMissingEstimate} item belum ada estimasi
+                      </p>
+                    )}
                   </>
                 )}
               </div>

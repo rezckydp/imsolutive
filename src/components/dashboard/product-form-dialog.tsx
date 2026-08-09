@@ -33,6 +33,7 @@ interface ProductFormDialogProps {
     sku: string;
     name: string;
     minStock: number;
+    estPrintMinutes?: number | null;
     variants: Array<{
       id: string;
       color: string;
@@ -63,6 +64,7 @@ interface FormData {
   sku: string;
   name: string;
   minStock: string;
+  estPrintMinutes: string;
   variants: Variant[];
 }
 
@@ -83,6 +85,7 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
     sku: '',
     name: '',
     minStock: '10',
+    estPrintMinutes: '',
     variants: [createEmptyVariant()],
   });
   const [saving, setSaving] = useState(false);
@@ -94,6 +97,7 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
         sku: product.sku,
         name: product.name,
         minStock: String(product.minStock),
+        estPrintMinutes: product.estPrintMinutes != null ? String(product.estPrintMinutes) : '',
         variants: product.variants.map((v) => ({
           id: v.id,
           color: v.color,
@@ -108,6 +112,7 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
         sku: '',
         name: '',
         minStock: '10',
+        estPrintMinutes: '',
         variants: [createEmptyVariant()],
       });
     }
@@ -184,6 +189,7 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
       const body: Record<string, unknown> = {
         name: form.name.trim(),
         minStock: parseInt(form.minStock, 10) || 10,
+        estPrintMinutes: form.estPrintMinutes.trim() ? parseInt(form.estPrintMinutes, 10) : null,
         variants: form.variants.map((v) => ({
           ...(v.id && !v._delete && { id: v.id }),
           ...(v._delete && { id: v.id, _delete: true }),
@@ -266,16 +272,30 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
             />
           </div>
 
-          {/* Min Stock */}
-          <div className="space-y-1.5">
-            <Label className="text-sm font-medium text-[#2d3436]">Min Stock Level</Label>
-            <Input
-              type="number"
-              min="0"
-              value={form.minStock}
-              onChange={(e) => updateField('minStock', e.target.value)}
-              className="h-10 text-sm bg-[#f0f0f0] border-none focus-visible:ring-1 focus-visible:ring-[#4a6741]/30 w-32"
-            />
+          {/* Min Stock + Est. Print Minutes */}
+          <div className="flex gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-[#2d3436]">Min Stock Level</Label>
+              <Input
+                type="number"
+                min="0"
+                value={form.minStock}
+                onChange={(e) => updateField('minStock', e.target.value)}
+                className="h-10 text-sm bg-[#f0f0f0] border-none focus-visible:ring-1 focus-visible:ring-[#4a6741]/30 w-32"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-[#2d3436]">Est. Print (menit/pcs)</Label>
+              <Input
+                type="number"
+                min="0"
+                value={form.estPrintMinutes}
+                onChange={(e) => updateField('estPrintMinutes', e.target.value)}
+                placeholder="e.g. 45"
+                className="h-10 text-sm bg-[#f0f0f0] border-none focus-visible:ring-1 focus-visible:ring-[#4a6741]/30 w-32"
+              />
+              <p className="text-[11px] text-[#6b7280]">Buat estimasi durasi Print Queue</p>
+            </div>
           </div>
 
           {/* Variants Section */}
