@@ -18,6 +18,7 @@ import { SettingsPage } from '@/components/dashboard/settings-page';
 import { PrinterDatabase } from '@/components/dashboard/printer-database';
 import { ColorManagement } from '@/components/dashboard/color-management';
 import { DateRangePicker, type SimpleDateRange } from '@/components/dashboard/date-range-picker';
+import { LeaderboardCard } from '@/components/dashboard/leaderboard-card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Menu, ScanBarcode, Package } from 'lucide-react';
@@ -713,8 +714,9 @@ export default function Home() {
               />
             </div>
 
-            {/* Bottom Row: Leaderboard (coming in a later phase) + Production History */}
-            <div className="grid grid-cols-1 gap-3 md:gap-4 mb-4">
+            {/* Bottom Row: Leaderboard + Production History */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 md:gap-4 mb-4">
+              <LeaderboardCard />
               <ProductionHistoryCard
                 items={allProductionItems}
                 loading={loading}
