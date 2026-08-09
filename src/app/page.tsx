@@ -548,26 +548,7 @@ export default function Home() {
             </div>
 
             {/* Summary Cards Row */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6">
-              <div className="bg-white rounded-xl shadow-sm p-3 md:p-4">
-                <div className="flex items-center justify-between mb-2 md:mb-3">
-                  <span className="text-[11px] md:text-xs text-[#4b5563] font-medium">Total Products</span>
-                  <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#4a6741]/10 flex items-center justify-center">
-                    <svg className="w-3.5 h-3.5 md:w-4 md:h-4 text-[#4a6741]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                    </svg>
-                  </div>
-                </div>
-                {loading ? (
-                  <SummaryCardSkeleton />
-                ) : (
-                  <>
-                    <p className="text-xl md:text-2xl font-bold text-[#2d3436]">{summary?.totalProducts ?? 0}</p>
-                    <p className="text-[11px] md:text-xs text-[#4b5563]">{summary?.totalVariants ?? 0} variants</p>
-                  </>
-                )}
-              </div>
-
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-6">
               <div className="bg-white rounded-xl shadow-sm p-3 md:p-4">
                 <div className="flex items-center justify-between mb-2 md:mb-3">
                   <span className="text-[11px] md:text-xs text-[#4b5563] font-medium">Stock Alert</span>
@@ -657,7 +638,16 @@ export default function Home() {
               </div>
             )}
 
-            {/* Top Row: Three Cards */}
+            {/* Recent Order — moved up: primary place to send items to Print Queue */}
+            <div className="mb-3 md:mb-4">
+              <RecentOrderCard
+                items={recentOrderItems}
+                loading={loading}
+                onDataChange={fetchDashboardData}
+              />
+            </div>
+
+            {/* Middle Row: Stok Minus / Low Stock, Print Queue, In Production */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4 mb-3 md:mb-4">
               <LowStockCard minusItems={minusStockItems} lowItems={lowStockItems} loading={loading} onSendToPrintQueue={handleSendToPrintQueue} printQueueItems={printQueueItems} productionItems={productionItems} />
               <PrintQueueCard
@@ -677,13 +667,8 @@ export default function Home() {
               />
             </div>
 
-            {/* Bottom Row: Recent Order + Production History */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 md:gap-4 mb-4">
-              <RecentOrderCard
-                items={recentOrderItems}
-                loading={loading}
-                onDataChange={fetchDashboardData}
-              />
+            {/* Bottom Row: Leaderboard (coming in a later phase) + Production History */}
+            <div className="grid grid-cols-1 gap-3 md:gap-4 mb-4">
               <ProductionHistoryCard
                 items={allProductionItems}
                 loading={loading}
