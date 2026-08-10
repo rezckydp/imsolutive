@@ -28,7 +28,11 @@ export async function GET(request: NextRequest) {
       },
       include: {
         variant: {
-          include: { product: true },
+          include: {
+            product: {
+              include: { parentProduct: true },
+            },
+          },
         },
       },
     });
@@ -45,11 +49,14 @@ export async function GET(request: NextRequest) {
     const productMap = new Map<string, ProductAgg>();
 
     for (const item of orderItems) {
-      const product = item.variant.product;
-      let agg = productMap.get(product.id);
+      // Roll child SKU (SKU Variant) sales up into their Master product —
+      // they share one physical stock pool, so they should count as one entry.
+      const effectiveProduct = item.variant.product.parentProduct ?? item.variant.product;
+
+      let agg = productMap.get(effectiveProduct.id);
       if (!agg) {
-        agg = { productId: product.id, sku: product.sku, name: product.name, totalQty: 0, variantMap: new Map() };
-        productMap.set(product.id, agg);
+        agg = { productId: effectiveProduct.id, sku: effectiveProduct.sku, name: effectiveProduct.name, totalQty: 0, variantMap: new Map() };
+        productMap.set(effectiveProduct.id, agg);
       }
       agg.totalQty += item.qty;
 
