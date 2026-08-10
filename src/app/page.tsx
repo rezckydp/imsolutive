@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Sidebar } from '@/components/dashboard/sidebar';
 import { Header } from '@/components/dashboard/header';
-import { LowStockCard, type LowStockItem } from '@/components/dashboard/low-stock-card';
+import { LowStockCard, type LowStockItem, type RecommendationItem } from '@/components/dashboard/low-stock-card';
 import { PrintQueueCard, type PrintQueueItem } from '@/components/dashboard/print-queue-card';
 import { InProductionCard, type ProductionItem } from '@/components/dashboard/in-production-card';
 import { ProductionHistoryCard, type ProductionHistoryItem } from '@/components/dashboard/production-history-card';
@@ -235,6 +235,21 @@ export default function Home() {
       .finally(() => setOrderCountLoading(false));
   }, [orderDateRange]);
   const [error, setError] = useState<string | null>(null);
+  const [recommendationItems, setRecommendationItems] = useState<RecommendationItem[]>([]);
+  const [recommendationLoading, setRecommendationLoading] = useState(true);
+
+  const fetchRecommendations = useCallback(async () => {
+    try {
+      setRecommendationLoading(true);
+      const res = await fetch('/api/dashboard/reorder-recommendations');
+      const data = await res.json();
+      setRecommendationItems(data.recommendations || []);
+    } catch {
+      // silent — Recommendation tab just stays empty
+    } finally {
+      setRecommendationLoading(false);
+    }
+  }, []);
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -246,12 +261,13 @@ export default function Home() {
       }
       const data = await res.json();
       setDashboardData(data);
+      fetchRecommendations(); // fire-and-forget, own loading state
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchRecommendations]);
 
   useEffect(() => {
     if (activeNavItem === 'dashboard') {
@@ -333,12 +349,12 @@ export default function Home() {
     return map;
   }, [dashboardData?.recentOrders]);
 
-  const handleSendToPrintQueue = useCallback(async (variantId: string) => {
+  const handleSendToPrintQueue = useCallback(async (variantId: string, qty?: number) => {
     try {
       const res = await fetch('/api/print-queue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ variantId, qty: 1, status: 'Normal', note: variantNoteMap[variantId] || '' }),
+        body: JSON.stringify({ variantId, qty: qty && qty > 0 ? qty : 1, status: 'Normal', note: variantNoteMap[variantId] || '' }),
       });
       if (res.ok) {
         fetchDashboardData();
@@ -696,7 +712,7 @@ export default function Home() {
 
             {/* Middle Row: Stok Minus / Low Stock, Print Queue, In Production */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4 mb-3 md:mb-4">
-              <LowStockCard minusItems={minusStockItems} lowItems={lowStockItems} loading={loading} onSendToPrintQueue={handleSendToPrintQueue} printQueueItems={printQueueItems} productionItems={productionItems} />
+              <LowStockCard minusItems={minusStockItems} lowItems={lowStockItems} recommendationItems={recommendationItems} recommendationLoading={recommendationLoading} loading={loading} onSendToPrintQueue={handleSendToPrintQueue} printQueueItems={printQueueItems} productionItems={productionItems} />
               <PrintQueueCard
                 items={printQueueItems}
                 loading={loading}
