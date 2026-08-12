@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { syncOrderItemsToQueue } from "@/lib/stock-sync";
+import { syncOrderItemsToQueue, resolveToMasterVariantId } from "@/lib/stock-sync";
 
 // GET all print queue items with variant → product
 export async function GET() {
@@ -57,9 +57,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Always queue under the Master SKU's variant, even if this specific
+    // variantId belongs to a child SKU Variant (they share pooled stock).
+    const printQueueVariantId = await resolveToMasterVariantId(variantId);
+
     const item = await db.printQueueItem.create({
       data: {
-        variantId,
+        variantId: printQueueVariantId,
         qty: qty || 1,
         status: itemStatus,
         note: note || "",
@@ -72,7 +76,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Reflect this in Recent Order — mark matching Not Ready orders as In Queue
-    await syncOrderItemsToQueue(variantId, qty || 1);
+    await syncOrderItemsToQueue(printQueueVariantId, qty || 1);
 
     return NextResponse.json(item, { status: 201 });
   } catch (error) {

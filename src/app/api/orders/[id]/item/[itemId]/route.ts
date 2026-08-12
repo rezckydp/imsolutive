@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { syncStockToGroup, refreshOrderItemStatuses } from "@/lib/stock-sync";
+import { syncStockToGroup, refreshOrderItemStatuses, resolveToMasterVariantId } from "@/lib/stock-sync";
 
 // PUT update order item quantity, note, and/or variant (color swap) — adjusts stock accordingly
 export async function PUT(
@@ -244,10 +244,12 @@ export async function PATCH(
       );
     }
 
-    // Create Print Queue item — carry over the note from the order item
+    // Create Print Queue item — always under the Master SKU's variant, even if
+    // this order was placed against a child SKU Variant. Carry over the note.
+    const printQueueVariantId = await resolveToMasterVariantId(orderItem.variantId);
     await db.printQueueItem.create({
       data: {
-        variantId: orderItem.variantId,
+        variantId: printQueueVariantId,
         qty: orderItem.qty,
         status: "Normal",
         note: orderItem.note || "",

@@ -74,6 +74,34 @@ export async function getGroupSiblingVariantIds(variantId: string): Promise<stri
 }
 
 /**
+ * Resolve any variant to its MASTER product's equivalent variant (same
+ * color/type) — used whenever an item is sent to Print Queue, so the queue
+ * always shows the Master SKU rather than a child SKU Variant, no matter
+ * which SKU the original order was placed against. Falls back to the
+ * original variantId if the product is already a Master/Standalone, or if
+ * no matching color/type exists under the Master (shouldn't normally happen
+ * since stock is pooled by color/type across the group).
+ */
+export async function resolveToMasterVariantId(variantId: string): Promise<string> {
+  const variant = await db.productVariant.findUnique({
+    where: { id: variantId },
+    include: { product: true },
+  });
+  if (!variant || !variant.product.parentProductId) return variantId;
+
+  const masterVariant = await db.productVariant.findFirst({
+    where: {
+      productId: variant.product.parentProductId,
+      color: variant.color,
+      type: variant.type,
+    },
+    select: { id: true },
+  });
+
+  return masterVariant?.id ?? variantId;
+}
+
+/**
  * Get a display label for a variant based on its color and type.
  * - Both color and type: "Red - XL"
  * - Only color: "Red"

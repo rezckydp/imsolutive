@@ -191,7 +191,7 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
     colorHex: string;
     type: string;
     totalQty: number;
-    orderNos: Set<string>;
+    orderRefs: Map<string, string>; // orderId -> orderNo
     items: RecentOrderItem[];
     oldestCreatedAt: string;
   }
@@ -208,14 +208,14 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
         colorHex: it.colorHex,
         type: it.type,
         totalQty: 0,
-        orderNos: new Set(),
+        orderRefs: new Map(),
         items: [],
         oldestCreatedAt: it.createdAt,
       });
     }
     const g = summaryMap.get(key)!;
     g.totalQty += it.orderedQty;
-    g.orderNos.add(it.orderNo);
+    g.orderRefs.set(it.orderId, it.orderNo);
     g.items.push(it);
     if (new Date(it.createdAt).getTime() < new Date(g.oldestCreatedAt).getTime()) {
       g.oldestCreatedAt = it.createdAt;
@@ -461,8 +461,8 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
                       <th className="text-left text-xs font-medium text-[#4b5563] py-3 px-4">Urgency</th>
                       <th className="text-left text-xs font-medium text-[#4b5563] py-3 px-4">Master SKU</th>
                       <th className="text-left text-xs font-medium text-[#4b5563] py-3 px-4">Warna</th>
-                      <th className="text-right text-xs font-medium text-[#4b5563] py-3 px-4">Butuh Print</th>
-                      <th className="text-right text-xs font-medium text-[#4b5563] py-3 px-4">Dari</th>
+                      <th className="text-right text-xs font-medium text-[#4b5563] py-3 px-4">Jumlah</th>
+                      <th className="text-left text-xs font-medium text-[#4b5563] py-3 px-4">Picking List</th>
                       <th className="text-right text-xs font-medium text-[#4b5563] py-3 px-4">Actions</th>
                     </tr>
                   </thead>
@@ -520,8 +520,20 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
                             <span className="text-base font-bold text-[#dc2626]">{g.totalQty}</span>
                             <span className="text-xs text-[#6b7280]"> pcs</span>
                           </td>
-                          <td className="py-3 px-4 text-right">
-                            <span className="text-xs text-[#6b7280]">{g.orderNos.size} Picking List</span>
+                          <td className="py-3 px-4 text-left">
+                            <div className="flex flex-wrap gap-1">
+                              {Array.from(g.orderRefs.entries()).map(([orderId, orderNo]) => (
+                                <button
+                                  key={orderId}
+                                  onClick={() => setDetailOrderId(orderId)}
+                                  title="Lihat detail Picking List ini"
+                                  className="text-[11px] text-[#4a6741] bg-[#4a6741]/10 hover:bg-[#4a6741]/20 px-1.5 py-0.5 rounded-full font-medium cursor-pointer flex items-center gap-0.5"
+                                >
+                                  <Eye className="w-2.5 h-2.5" />
+                                  {orderNo}
+                                </button>
+                              ))}
+                            </div>
                           </td>
                           <td className="py-3 px-4 text-right">
                             <button
