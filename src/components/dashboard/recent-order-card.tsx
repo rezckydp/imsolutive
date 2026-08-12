@@ -81,6 +81,17 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
   const [readyExpanded, setReadyExpanded] = useState(false);
   const [bulkPrintingOrderId, setBulkPrintingOrderId] = useState<string | null>(null);
   const [bulkPrintingGroupKey, setBulkPrintingGroupKey] = useState<string | null>(null);
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+  const ITEMS_PREVIEW_COUNT = 4;
+
+  const toggleCardExpanded = (orderId: string) => {
+    setExpandedCards((prev) => {
+      const next = new Set(prev);
+      if (next.has(orderId)) next.delete(orderId);
+      else next.add(orderId);
+      return next;
+    });
+  };
   const [syncing, setSyncing] = useState(false);
   const [detailOrderId, setDetailOrderId] = useState<string | null>(null);
   const [deleteItemTarget, setDeleteItemTarget] = useState<{ orderId: string; itemId: string; sku: string; color: string } | null>(null);
@@ -195,10 +206,16 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
     items: RecentOrderItem[];
     oldestCreatedAt: string;
   }
+  const isRequestColorType = (type: string) => type.toLowerCase().includes('req');
+
   const summaryMap = new Map<string, SummaryGroup>();
   for (const it of pickingListItems) {
     if (it.itemStatus !== 'Not Ready' || !searchMatch(it)) continue;
-    const key = `${it.groupSku}|${it.color}|${it.type}`;
+    // Req. Color items each represent a distinct customer color request — never
+    // merge them together, or the specific requested color (in `note`) gets lost.
+    const key = isRequestColorType(it.type)
+      ? `${it.groupSku}|reqcolor|${it.id}`
+      : `${it.groupSku}|${it.color}|${it.type}`;
     if (!summaryMap.has(key)) {
       summaryMap.set(key, {
         key,
@@ -513,7 +530,12 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2">
                               <span className="w-3 h-3 rounded-full flex-shrink-0 border border-gray-300" style={{ backgroundColor: g.colorHex }} />
-                              <span className="text-sm text-[#4b5563]">{g.color}{g.type ? ` - ${g.type}` : ''}</span>
+                              <div>
+                                <span className="text-sm text-[#4b5563]">{g.color}{g.type ? ` - ${g.type}` : ''}</span>
+                                {isRequestColorType(g.type) && g.items[0]?.note && (
+                                  <p className="text-[11px] text-[#d97706] font-semibold">{g.items[0].note}</p>
+                                )}
+                              </div>
                             </div>
                           </td>
                           <td className="py-3 px-4 text-right">
@@ -633,7 +655,7 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
                               <p className="text-[10px] text-[#9ca3af] mb-2">{formatDate(card.createdAt)}</p>
 
                               <div className="space-y-1 mb-2">
-                                {card.items.map((item) => {
+                                {(expandedCards.has(card.orderId) ? card.items : card.items.slice(0, ITEMS_PREVIEW_COUNT)).map((item) => {
                                   const itemMeta: Record<string, { color: string; icon: typeof Clock }> = {
                                     'Not Ready': { color: '#dc2626', icon: Clock },
                                     'In Queue': { color: '#2563eb', icon: Printer },
@@ -676,6 +698,24 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
                                     </div>
                                   );
                                 })}
+                                {card.items.length > ITEMS_PREVIEW_COUNT && (
+                                  <button
+                                    onClick={() => toggleCardExpanded(card.orderId)}
+                                    className="flex items-center gap-1 text-[10px] text-[#4a6741] hover:underline cursor-pointer pt-0.5"
+                                  >
+                                    {expandedCards.has(card.orderId) ? (
+                                      <>
+                                        <ChevronUp className="w-3 h-3" />
+                                        Sembunyikan
+                                      </>
+                                    ) : (
+                                      <>
+                                        <ChevronDown className="w-3 h-3" />
+                                        +{card.items.length - ITEMS_PREVIEW_COUNT} item lainnya
+                                      </>
+                                    )}
+                                  </button>
+                                )}
                               </div>
 
                               <div className="flex items-center gap-2">
