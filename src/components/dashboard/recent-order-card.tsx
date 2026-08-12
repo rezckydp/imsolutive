@@ -82,7 +82,6 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
   const [bulkPrintingOrderId, setBulkPrintingOrderId] = useState<string | null>(null);
   const [bulkPrintingGroupKey, setBulkPrintingGroupKey] = useState<string | null>(null);
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
-  const ITEMS_PREVIEW_COUNT = 4;
 
   const toggleCardExpanded = (orderId: string) => {
     setExpandedCards((prev) => {
@@ -652,10 +651,25 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
                                   </span>
                                 )}
                               </div>
-                              <p className="text-[10px] text-[#9ca3af] mb-2">{formatDate(card.createdAt)}</p>
 
+                              <button
+                                onClick={() => toggleCardExpanded(card.orderId)}
+                                className="w-full flex items-center justify-between text-left mb-2 cursor-pointer group/toggle"
+                              >
+                                <span className="text-[10px] text-[#9ca3af]">{formatDate(card.createdAt)}</span>
+                                <span className="text-[10px] text-[#4a6741] font-medium flex items-center gap-0.5 group-hover/toggle:underline">
+                                  {card.items.length} item
+                                  {expandedCards.has(card.orderId) ? (
+                                    <ChevronUp className="w-3 h-3" />
+                                  ) : (
+                                    <ChevronDown className="w-3 h-3" />
+                                  )}
+                                </span>
+                              </button>
+
+                              {expandedCards.has(card.orderId) && (
                               <div className="space-y-1 mb-2">
-                                {(expandedCards.has(card.orderId) ? card.items : card.items.slice(0, ITEMS_PREVIEW_COUNT)).map((item) => {
+                                {card.items.map((item) => {
                                   const itemMeta: Record<string, { color: string; icon: typeof Clock }> = {
                                     'Not Ready': { color: '#dc2626', icon: Clock },
                                     'In Queue': { color: '#2563eb', icon: Printer },
@@ -698,25 +712,8 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
                                     </div>
                                   );
                                 })}
-                                {card.items.length > ITEMS_PREVIEW_COUNT && (
-                                  <button
-                                    onClick={() => toggleCardExpanded(card.orderId)}
-                                    className="flex items-center gap-1 text-[10px] text-[#4a6741] hover:underline cursor-pointer pt-0.5"
-                                  >
-                                    {expandedCards.has(card.orderId) ? (
-                                      <>
-                                        <ChevronUp className="w-3 h-3" />
-                                        Sembunyikan
-                                      </>
-                                    ) : (
-                                      <>
-                                        <ChevronDown className="w-3 h-3" />
-                                        +{card.items.length - ITEMS_PREVIEW_COUNT} item lainnya
-                                      </>
-                                    )}
-                                  </button>
-                                )}
                               </div>
+                              )}
 
                               <div className="flex items-center gap-2">
                                 <div className="flex-1 h-1 bg-[#f0f0f0] rounded-full overflow-hidden">
