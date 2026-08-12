@@ -114,6 +114,7 @@ interface DashboardData {
         product: {
           sku: string;
           name: string;
+          parentProduct?: { sku: string; name: string } | null;
         };
       };
     }>;
@@ -485,23 +486,29 @@ export default function Home() {
 
   // Flatten orders into individual order items for RecentOrderCard (FIFO sorted)
   const recentOrderItems: RecentOrderItem[] = (dashboardData?.recentOrders ?? []).flatMap((order) =>
-    order.orderItems.map((item) => ({
-      id: item.id,
-      orderId: order.id,
-      orderNo: order.orderNo,
-      variantId: item.variant.id,
-      sku: item.variant.product.sku,
-      name: item.variant.product.name,
-      color: item.variant.color,
-      colorHex: item.variant.colorHex,
-      type: item.variant.type || '',
-      orderedQty: item.qty,
-      currentStock: item.variant.qty,
-      itemStatus: item.status,       // Ready, Not Ready, In Queue (from DB)
-      orderStatus: order.status,      // Pending, Processing, Completed, Cancelled
-      note: item.note || '',
-      createdAt: order.createdAt,
-    }))
+    order.orderItems.map((item) => {
+      const product = item.variant.product;
+      const masterProduct = product.parentProduct ?? product;
+      return {
+        id: item.id,
+        orderId: order.id,
+        orderNo: order.orderNo,
+        variantId: item.variant.id,
+        sku: product.sku,
+        name: product.name,
+        groupSku: masterProduct.sku,
+        groupName: masterProduct.name,
+        color: item.variant.color,
+        colorHex: item.variant.colorHex,
+        type: item.variant.type || '',
+        orderedQty: item.qty,
+        currentStock: item.variant.qty,
+        itemStatus: item.status,       // Ready, Not Ready, In Queue (from DB)
+        orderStatus: order.status,      // Pending, Processing, Completed, Cancelled
+        note: item.note || '',
+        createdAt: order.createdAt,
+      };
+    })
   );
 
   const summary = dashboardData?.summary;

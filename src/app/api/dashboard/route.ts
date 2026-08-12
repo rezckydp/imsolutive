@@ -68,13 +68,17 @@ export async function GET() {
           orderItems: {
             include: {
               variant: {
-                include: { product: true },
+                include: {
+                  product: {
+                    include: { parentProduct: true },
+                  },
+                },
               },
             },
           },
         },
         orderBy: { createdAt: "desc" },
-        take: 20,
+        take: 300,
       }),
       db.product.count(),
       db.productVariant.count(),
