@@ -193,6 +193,7 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
     totalQty: number;
     orderNos: Set<string>;
     items: RecentOrderItem[];
+    oldestCreatedAt: string;
   }
   const summaryMap = new Map<string, SummaryGroup>();
   for (const it of pickingListItems) {
@@ -209,14 +210,26 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
         totalQty: 0,
         orderNos: new Set(),
         items: [],
+        oldestCreatedAt: it.createdAt,
       });
     }
     const g = summaryMap.get(key)!;
     g.totalQty += it.orderedQty;
     g.orderNos.add(it.orderNo);
     g.items.push(it);
+    if (new Date(it.createdAt).getTime() < new Date(g.oldestCreatedAt).getTime()) {
+      g.oldestCreatedAt = it.createdAt;
+    }
   }
-  const summaryGroups = Array.from(summaryMap.values()).sort((a, b) => b.totalQty - a.totalQty);
+  // Urgency-first: whichever group has been waiting longest (oldest contributing
+  // order) goes on top — matches the FIFO philosophy used everywhere else.
+  const summaryGroups = Array.from(summaryMap.values()).sort(
+    (a, b) => new Date(a.oldestCreatedAt).getTime() - new Date(b.oldestCreatedAt).getTime()
+  );
+  const daysWaiting = (iso: string) => {
+    const ms = Date.now() - new Date(iso).getTime();
+    return Math.max(0, Math.floor(ms / (1000 * 60 * 60 * 24)));
+  };
 
   const handleSendToQueue = async (item: RecentOrderItem) => {
     setActionLoading(item.id);
@@ -445,6 +458,7 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
                 <table className="w-full">
                   <thead>
                     <tr className="bg-[#f5f6fa]">
+                      <th className="text-left text-xs font-medium text-[#4b5563] py-3 px-4">Urgency</th>
                       <th className="text-left text-xs font-medium text-[#4b5563] py-3 px-4">Master SKU</th>
                       <th className="text-left text-xs font-medium text-[#4b5563] py-3 px-4">Warna</th>
                       <th className="text-right text-xs font-medium text-[#4b5563] py-3 px-4">Butuh Print</th>
@@ -461,7 +475,7 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
                       </>
                     ) : summaryGroups.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="text-center py-10">
+                        <td colSpan={6} className="text-center py-10">
                           <div className="flex flex-col items-center gap-3">
                             <div className="w-12 h-12 rounded-full bg-[#f5f6fa] flex items-center justify-center">
                               <Sparkles className="w-6 h-6 text-[#6b7280]" />
@@ -472,8 +486,24 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
                         </td>
                       </tr>
                     ) : (
-                      summaryGroups.map((g) => (
+                      summaryGroups.map((g, idx) => {
+                        const days = daysWaiting(g.oldestCreatedAt);
+                        const urgencyColor = days >= 5 ? '#dc2626' : days >= 2 ? '#d97706' : '#6b7280';
+                        return (
                         <tr key={g.key} className="border-t border-[#f0f0f0] hover:bg-[#fafafa] transition-colors">
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="text-[11px] font-bold w-5 h-5 rounded-full flex items-center justify-center text-white flex-shrink-0"
+                                style={{ backgroundColor: urgencyColor }}
+                              >
+                                {idx + 1}
+                              </span>
+                              <span className="text-xs font-medium" style={{ color: urgencyColor }}>
+                                {days === 0 ? 'Hari ini' : `${days} hari`}
+                              </span>
+                            </div>
+                          </td>
                           <td className="py-3 px-4">
                             <span className="text-sm font-semibold text-[#4a6741] bg-[#f0f0f0] px-1.5 py-0.5 rounded">
                               {g.groupSku}
@@ -509,7 +539,8 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
                             </button>
                           </td>
                         </tr>
-                      ))
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -599,13 +630,37 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
                                   };
                                   const im = itemMeta[item.itemStatus] || itemMeta['Not Ready'];
                                   const ItemIcon = im.icon;
+                                  const canEdit = item.itemStatus === 'Not Ready' || item.itemStatus === 'Ready';
                                   return (
-                                    <div key={item.id} className="flex items-center gap-1.5 text-[11px]">
+                                    <div key={item.id} className="flex items-center gap-1.5 text-[11px] group">
                                       <ItemIcon className="w-3 h-3 flex-shrink-0" style={{ color: im.color }} />
                                       <span className="text-[#4b5563] truncate flex-1">
                                         {item.sku} <span className="text-[#9ca3af]">· {item.color}{item.type ? ` - ${item.type}` : ''}</span>
                                       </span>
                                       <span className="text-[#2d3436] font-medium flex-shrink-0">×{item.orderedQty}</span>
+                                      {canEdit && (
+                                        <span className="flex items-center gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <button
+                                            onClick={() => {
+                                              setEditingItem(item);
+                                              setEditQty(item.orderedQty);
+                                              setEditNote(item.note || '');
+                                              setEditVariantId(item.variantId);
+                                            }}
+                                            title="Edit qty / ganti varian"
+                                            className="w-4 h-4 flex items-center justify-center text-[#4b5563] hover:text-[#2d3436] cursor-pointer"
+                                          >
+                                            <Pencil className="w-3 h-3" />
+                                          </button>
+                                          <button
+                                            onClick={() => setDeleteItemTarget({ orderId: item.orderId, itemId: item.id, sku: item.sku, color: item.color })}
+                                            title="Hapus item ini (customer cancel)"
+                                            className="w-4 h-4 flex items-center justify-center text-[#dc2626] hover:text-[#b91c1c] cursor-pointer"
+                                          >
+                                            <Trash2 className="w-3 h-3" />
+                                          </button>
+                                        </span>
+                                      )}
                                     </div>
                                   );
                                 })}
