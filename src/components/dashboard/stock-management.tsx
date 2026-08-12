@@ -232,6 +232,9 @@ export function StockManagement() {
   const [editSku, setEditSku] = useState('');
   const [editName, setEditName] = useState('');
   const [editMinStock, setEditMinStock] = useState(10);
+  const [reparentTargetSku, setReparentTargetSku] = useState('');
+  const [reparentConfirmOpen, setReparentConfirmOpen] = useState(false);
+  const [reparenting, setReparenting] = useState(false);
   const [editEstPrintMinutes, setEditEstPrintMinutes] = useState<string>('');
   const [editVariants, setEditVariants] = useState<VariantData[]>([]);
   const [saving, setSaving] = useState(false);
@@ -608,6 +611,7 @@ export function StockManagement() {
     setEditName(product.name);
     setEditMinStock(product.minStock);
     setEditEstPrintMinutes(product.estPrintMinutes != null ? String(product.estPrintMinutes) : '');
+    setReparentTargetSku(product.parentProduct?.sku || '');
     // Separate variants into color variants and type variants
     const colorVariants: VariantData[] = [];
     const typeVariantsData: TypeVariantData[] = [];
@@ -753,6 +757,33 @@ export function StockManagement() {
       alert('Gagal menyimpan. Coba lagi.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // ============ REPARENT (move child SKU to a different Master) ============
+
+  const handleReparent = async () => {
+    if (!editProduct || !reparentTargetSku) return;
+    setReparenting(true);
+    try {
+      const res = await fetch(`/api/products/${editProduct.sku}/reparent`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newParentSku: reparentTargetSku }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Gagal memindahkan ke Master baru');
+        setReparenting(false);
+        return;
+      }
+      setReparentConfirmOpen(false);
+      setEditProduct(null);
+      fetchProducts();
+    } catch {
+      alert('Gagal memindahkan ke Master baru. Coba lagi.');
+    } finally {
+      setReparenting(false);
     }
   };
 
@@ -1685,6 +1716,39 @@ export function StockManagement() {
                 </div>
               )}
 
+              {/* Reparent: move this child SKU to a different Master */}
+              {isVariant && editProduct.parentProduct && (
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium text-[#2d3436]">Ganti SKU Induk</Label>
+                  <div className="flex gap-2">
+                    <Select value={reparentTargetSku} onValueChange={setReparentTargetSku}>
+                      <SelectTrigger className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg flex-1">
+                        <SelectValue placeholder="Pilih Master SKU..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {masterProducts.map((p) => (
+                          <SelectItem key={p.id} value={p.sku}>
+                            {p.sku} — {p.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={!reparentTargetSku || reparentTargetSku === editProduct.parentProduct.sku}
+                      onClick={() => setReparentConfirmOpen(true)}
+                      className="h-10 rounded-lg border-[#2563eb]/30 text-[#2563eb] hover:bg-[#2563eb]/10 flex-shrink-0"
+                    >
+                      Pindahkan
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-[#6b7280]">
+                    Pindah ke Master lain akan langsung nyamain stok, min stock, dan est. print ke Master baru itu.
+                  </p>
+                </div>
+              )}
+
               {/* Master sync info banner */}
               {isMaster && (
                 <div className="p-3 rounded-lg bg-[#4a6741]/5 border border-[#4a6741]/20">
@@ -2052,6 +2116,35 @@ export function StockManagement() {
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ============ REPARENT CONFIRMATION ============ */}
+      <Dialog open={reparentConfirmOpen} onOpenChange={(open) => !open && setReparentConfirmOpen(false)}>
+        <DialogContent className="sm:max-w-md rounded-xl">
+          <DialogHeader>
+            <DialogTitle className="text-[#2d3436]">Pindahkan ke Master Baru?</DialogTitle>
+            <DialogDescription className="text-[#4b5563]">
+              {editProduct?.sku} akan dipindah dari{' '}
+              <span className="font-semibold">{editProduct?.parentProduct?.sku}</span> ke{' '}
+              <span className="font-semibold text-[#2563eb]">{reparentTargetSku}</span>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="p-3 rounded-lg bg-[#d97706]/5 border border-[#d97706]/20 text-xs text-[#92400e]">
+            Stok, min stock, dan est. print produk ini akan <span className="font-semibold">langsung disamakan</span> ke Master baru (per warna yang cocok). Warna yang nggak ada di Master baru stoknya tetap seperti sekarang.
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setReparentConfirmOpen(false)} className="rounded-full px-5">
+              Batal
+            </Button>
+            <Button
+              onClick={handleReparent}
+              disabled={reparenting}
+              className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-full px-5 disabled:opacity-50"
+            >
+              {reparenting ? 'Memindahkan...' : 'Ya, Pindahkan'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
