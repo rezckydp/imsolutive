@@ -78,7 +78,7 @@ export async function GET() {
           },
         },
         orderBy: { createdAt: "desc" },
-        take: 300,
+        take: 10,
       }),
       db.product.count(),
       db.productVariant.count(),

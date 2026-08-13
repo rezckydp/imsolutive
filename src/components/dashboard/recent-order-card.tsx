@@ -207,8 +207,11 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
   }
   const isRequestColorType = (type: string) => type.toLowerCase().includes('req');
 
+  // Summary counts BOTH Picking List and Adjustment (Not Ready = real print
+  // need regardless of source). This is intentionally different from
+  // Leaderboard, which excludes Adjustment since that's about sales, not demand.
   const summaryMap = new Map<string, SummaryGroup>();
-  for (const it of pickingListItems) {
+  for (const it of activeItems) {
     if (it.itemStatus !== 'Not Ready' || !searchMatch(it)) continue;
     // Req. Color items each represent a distinct customer color request — never
     // merge them together, or the specific requested color (in `note`) gets lost.
@@ -478,7 +481,7 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
                       <th className="text-left text-xs font-medium text-[#4b5563] py-3 px-4">Master SKU</th>
                       <th className="text-left text-xs font-medium text-[#4b5563] py-3 px-4">Warna</th>
                       <th className="text-right text-xs font-medium text-[#4b5563] py-3 px-4">Jumlah</th>
-                      <th className="text-left text-xs font-medium text-[#4b5563] py-3 px-4">Picking List</th>
+                      <th className="text-left text-xs font-medium text-[#4b5563] py-3 px-4">Sumber</th>
                       <th className="text-right text-xs font-medium text-[#4b5563] py-3 px-4">Actions</th>
                     </tr>
                   </thead>
