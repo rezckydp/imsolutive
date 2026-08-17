@@ -41,10 +41,10 @@ type PdfStage = 'idle' | 'uploading' | 'review';
 // "Req. Color" variants (customer picks a custom color per order) must never
 // auto-stack with each other — each scan represents a different customer's
 // request and needs its own qty + note, even though they share one variantId.
-// Detected via the variant's `type` (e.g. "Req. Color"), NOT an empty color
-// name — plenty of legitimate fixed variants (like "Default") also have an
-// empty color name and must keep stacking normally.
-const isRequestColorVariant = (type: string) => type.toLowerCase().includes('req');
+// Detected via "req" appearing in either the color OR type field — some
+// products store it in Color, others in Type, so check both.
+const isRequestColorVariant = (color: string, type: string) =>
+  color.toLowerCase().includes('req') || type.toLowerCase().includes('req');
 
 interface ScannedItem {
   id: string;
@@ -124,6 +124,8 @@ export function BarcodeScanner({
   const [mode, setMode] = useState<ScannerMode>('order');
   const [orderSubMode, setOrderSubMode] = useState<OrderSubMode>('manual');
   const [pickingListNo, setPickingListNo] = useState('');
+  const [numberType, setNumberType] = useState<'picking' | 'adjustment'>('picking');
+  const [fetchingNumber, setFetchingNumber] = useState(false);
   const [pdfStage, setPdfStage] = useState<PdfStage>('idle');
   const [pdfFileName, setPdfFileName] = useState('');
   const [pdfError, setPdfError] = useState('');
@@ -161,6 +163,33 @@ export function BarcodeScanner({
         .catch(() => {});
     }
   }, [open, mode]);
+
+  const fetchNextNumber = useCallback(async (type: 'picking' | 'adjustment') => {
+    setFetchingNumber(true);
+    try {
+      const res = await fetch(`/api/orders/next-number?type=${type}`);
+      const data = await res.json();
+      if (data.nextOrderNo) setPickingListNo(data.nextOrderNo);
+    } catch {
+      // silent — person can still type the number manually
+    } finally {
+      setFetchingNumber(false);
+    }
+  }, []);
+
+  const handleNumberTypeChange = (type: 'picking' | 'adjustment') => {
+    setNumberType(type);
+    fetchNextNumber(type);
+  };
+
+  // Auto-fill No. Picking List with the next number when the dialog opens fresh
+  useEffect(() => {
+    if (open && mode === 'order' && !pickingListNo) {
+      setNumberType('picking');
+      fetchNextNumber('picking');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   // Auto-focus input when dialog opens, mode changes, or when lookup finishes
   useEffect(() => {
@@ -212,7 +241,7 @@ export function BarcodeScanner({
         };
 
         setItems((prev) => {
-          const existing = !isRequestColorVariant(result.variantType || '') && prev.find((i) => i.variantId === result.variantId);
+          const existing = !isRequestColorVariant(result.color || '', result.variantType || '') && prev.find((i) => i.variantId === result.variantId);
           if (existing) {
             return prev.map((i) =>
               i.variantId === result.variantId ? { ...i, qty: i.qty + 1 } : i
@@ -236,7 +265,7 @@ export function BarcodeScanner({
         };
 
         setItems((prev) => {
-          const existing = !isRequestColorVariant(v.type || '') && prev.find((i) => i.variantId === v.id);
+          const existing = !isRequestColorVariant(v.color || '', v.type || '') && prev.find((i) => i.variantId === v.id);
           if (existing) {
             return prev.map((i) =>
               i.variantId === v.id ? { ...i, qty: i.qty + 1 } : i
@@ -304,7 +333,10 @@ export function BarcodeScanner({
         return;
       }
 
-      if (data.pickingListNo) setPickingListNo(data.pickingListNo);
+      if (data.pickingListNo) {
+        setPickingListNo(data.pickingListNo);
+        setNumberType('picking');
+      }
 
       const extracted: ScannedItem[] = (data.items || []).map(
         (it: {
@@ -436,6 +468,7 @@ export function BarcodeScanner({
         setItems([]);
         setLookupError('');
         setPickingListNo('');
+        setNumberType('picking');
         resetPdfUpload();
         onOrderCreated?.();
         onOpenChange(false);
@@ -475,6 +508,7 @@ export function BarcodeScanner({
       setMode('order');
       setOrderSubMode('manual');
       setPickingListNo('');
+      setNumberType('picking');
       resetPdfUpload();
     }
     onOpenChange(val);
@@ -539,18 +573,41 @@ export function BarcodeScanner({
           {/* No. Picking List — order mode only */}
           {mode === 'order' && (
             <div className="mt-3 flex-shrink-0 space-y-2">
+              {/* Picking List / Adjustment toggle */}
+              <div className="flex gap-1 bg-[#f5f6fa] p-0.5 rounded-lg w-fit">
+                <button
+                  onClick={() => handleNumberTypeChange('picking')}
+                  className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                    numberType === 'picking' ? 'bg-white text-[#2d3436] shadow-sm' : 'text-[#6b7280] hover:text-[#2d3436]'
+                  }`}
+                >
+                  Picking List
+                </button>
+                <button
+                  onClick={() => handleNumberTypeChange('adjustment')}
+                  className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                    numberType === 'adjustment' ? 'bg-white text-[#d97706] shadow-sm' : 'text-[#6b7280] hover:text-[#2d3436]'
+                  }`}
+                >
+                  Adjustment
+                </button>
+              </div>
               <div>
                 <label className="text-[11px] font-medium text-[#4b5563] flex items-center gap-1.5 mb-1">
                   <FileText className="w-3.5 h-3.5" />
-                  No. Picking List
+                  No. {numberType === 'adjustment' ? 'Adjustment' : 'Picking List'}
+                  {fetchingNumber && <Loader2 className="w-3 h-3 animate-spin text-[#6b7280]" />}
                 </label>
                 <Input
                   value={pickingListNo}
                   onChange={(e) => setPickingListNo(e.target.value)}
-                  placeholder="e.g. PICK-000775"
+                  placeholder={numberType === 'adjustment' ? 'e.g. ADJ016' : 'e.g. PICK-000775'}
                   disabled={orderSubMode === 'pdf' && pdfStage === 'review'}
                   className="h-9 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg disabled:opacity-70"
                 />
+                <p className="text-[11px] text-[#6b7280] mt-1">
+                  Auto-terisi nomor berikutnya — bisa diedit manual kalau perlu
+                </p>
                 {orderSubMode === 'pdf' && pdfStage === 'review' && pickingListNo && (
                   <p className="text-[11px] text-[#15803d] flex items-center gap-1 mt-1">
                     <CheckCircle2 className="w-3 h-3" /> Terdeteksi otomatis dari PDF — bisa diedit kalau salah baca
@@ -810,7 +867,7 @@ export function BarcodeScanner({
                       )}
 
                       {/* Note input for Req. Color items */}
-                      {item.variantId && isRequestColorVariant(item.type) && (
+                      {item.variantId && isRequestColorVariant(item.color, item.type) && (
                         <div className="mt-1.5">
                           <input
                             type="text"
