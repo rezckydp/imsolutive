@@ -1,5 +1,0 @@
-ims.bysolutive.id {
-	encode gzip
-
-	reverse_proxy localhost:{$PORT:3000}
-}
