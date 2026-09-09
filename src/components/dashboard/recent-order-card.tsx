@@ -201,6 +201,7 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
     colorHex: string;
     type: string;
     totalQty: number;
+    currentStock: number; // net stock position for this variant (can be negative)
     orderRefs: Map<string, string>; // orderId -> orderNo
     items: RecentOrderItem[];
     oldestCreatedAt: string;
@@ -227,6 +228,7 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
         colorHex: it.colorHex,
         type: it.type,
         totalQty: 0,
+        currentStock: it.currentStock,
         orderRefs: new Map(),
         items: [],
         oldestCreatedAt: it.createdAt,
@@ -234,6 +236,9 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
     }
     const g = summaryMap.get(key)!;
     g.totalQty += it.orderedQty;
+    // Sibling variants in the group share pooled stock and should already
+    // match, but take the lowest reading in case of a stale one.
+    g.currentStock = Math.min(g.currentStock, it.currentStock);
     g.orderRefs.set(it.orderId, it.orderNo);
     g.items.push(it);
     if (new Date(it.createdAt).getTime() < new Date(g.oldestCreatedAt).getTime()) {
@@ -542,6 +547,11 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
                           </td>
                           <td className="py-3 px-4 text-right">
                             <span className="text-base font-bold text-[#dc2626]">{g.totalQty}</span>
+                            {g.currentStock < 0 && (
+                              <span className="text-xs font-semibold text-[#b91c1c]/70" title="Stok saat ini (net)">
+                                {' '}({g.currentStock})
+                              </span>
+                            )}
                             <span className="text-xs text-[#6b7280]"> pcs</span>
                           </td>
                           <td className="py-3 px-4 text-left">
