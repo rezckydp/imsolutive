@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { refreshOrderItemStatuses, refreshAllOrderStatuses } from "@/lib/stock-sync";
+import { getCurrentUser } from "@/lib/current-user";
+import { logActivity, snapshotVariant, snapshotStockOpname } from "@/lib/activity-log";
 
 // POST adjust stock — for all non-adjusted items, set variant qty to actualQty, mark adjusted
 // Then call refreshOrderItemStatuses for each adjusted variant and complete the session
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = getCurrentUser(request);
   try {
     const { id } = await params;
 
@@ -48,9 +51,15 @@ export async function POST(
     // For each non-adjusted item: update ProductVariant qty to actualQty, set adjusted=true
     const adjustedVariantIds: string[] = [];
     for (const item of session.items) {
-      await db.productVariant.update({
+      const updatedVariant = await db.productVariant.update({
         where: { id: item.variantId },
         data: { qty: item.actualQty },
+      });
+      await logActivity({
+        userId: user?.id ?? null, username: user?.username ?? 'unknown',
+        action: 'UPDATE', entityType: 'ProductVariant', entityId: updatedVariant.id,
+        entityLabel: `Stock Opname ${session.sessionNo}`,
+        before: snapshotVariant(item.variant), after: snapshotVariant(updatedVariant),
       });
 
       await db.stockOpnameItem.update({
@@ -83,6 +92,13 @@ export async function POST(
         status: "Completed",
         completedAt: new Date(),
       },
+    });
+
+    await logActivity({
+      userId: user?.id ?? null, username: user?.username ?? 'unknown',
+      action: 'UPDATE', entityType: 'StockOpname', entityId: updatedSession.id,
+      entityLabel: updatedSession.sessionNo,
+      before: snapshotStockOpname(session), after: snapshotStockOpname(updatedSession),
     });
 
     return NextResponse.json({

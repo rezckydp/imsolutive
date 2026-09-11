@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getCurrentUser } from "@/lib/current-user";
+import { logActivity, snapshotStockOpname } from "@/lib/activity-log";
 
 // GET all stock opname sessions ordered by createdAt desc, include _count of items
 export async function GET() {
@@ -25,6 +27,7 @@ export async function GET() {
 
 // POST create a new stock opname session with auto-generated sessionNo (SO-001, SO-002, ...)
 export async function POST(request: NextRequest) {
+  const user = getCurrentUser(request);
   try {
     const body = await request.json();
     const { type, notes } = body;
@@ -62,6 +65,12 @@ export async function POST(request: NextRequest) {
         notes: notes || "",
         startedAt: new Date(),
       },
+    });
+
+    await logActivity({
+      userId: user?.id ?? null, username: user?.username ?? 'unknown',
+      action: 'CREATE', entityType: 'StockOpname', entityId: session.id,
+      entityLabel: session.sessionNo, after: snapshotStockOpname(session),
     });
 
     return NextResponse.json(session, { status: 201 });

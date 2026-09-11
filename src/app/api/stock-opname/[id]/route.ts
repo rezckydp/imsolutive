@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getCurrentUser } from "@/lib/current-user";
+import { logActivity, snapshotStockOpname } from "@/lib/activity-log";
 
 // GET a single stock opname session with all items (include variant with product data)
 export async function GET(
@@ -45,6 +47,7 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = getCurrentUser(request);
   try {
     const { id } = await params;
     const body = await request.json();
@@ -78,6 +81,15 @@ export async function PUT(
       data,
     });
 
+    if (Object.keys(data).length > 0) {
+      await logActivity({
+        userId: user?.id ?? null, username: user?.username ?? 'unknown',
+        action: 'UPDATE', entityType: 'StockOpname', entityId: session.id,
+        entityLabel: session.sessionNo,
+        before: snapshotStockOpname(existing), after: snapshotStockOpname(session),
+      });
+    }
+
     return NextResponse.json(session);
   } catch (error) {
     console.error("Error updating stock opname session:", error);
@@ -90,9 +102,10 @@ export async function PUT(
 
 // DELETE a stock opname session (cascade deletes items)
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = getCurrentUser(request);
   try {
     const { id } = await params;
 
@@ -105,6 +118,13 @@ export async function DELETE(
     }
 
     await db.stockOpname.delete({ where: { id } });
+
+    // Note: items cascade-deleted alongside this aren't individually logged.
+    await logActivity({
+      userId: user?.id ?? null, username: user?.username ?? 'unknown',
+      action: 'DELETE', entityType: 'StockOpname', entityId: existing.id,
+      entityLabel: existing.sessionNo, before: snapshotStockOpname(existing),
+    });
 
     return NextResponse.json({
       message: "Stock opname session deleted successfully",
