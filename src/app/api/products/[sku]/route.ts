@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { syncMasterStockToGroup, refreshOrderItemStatuses } from "@/lib/stock-sync";
+import { getCurrentUser } from "@/lib/current-user";
+import { logActivity, snapshotProduct, snapshotVariant } from "@/lib/activity-log";
 
 // GET single product by SKU with variants and group info
 export async function GET(
@@ -49,6 +51,7 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ sku: string }> }
 ) {
+  const user = getCurrentUser(request);
   try {
     const { sku } = await params;
     const body = await request.json();
@@ -92,7 +95,8 @@ export async function PUT(
     const currentSku = trimmedNewSku || sku;
 
     // Update product fields
-    await db.product.update({
+    const productFieldsChanged = trimmedNewSku || name !== undefined || minStock !== undefined || estPrintMinutes !== undefined;
+    const updatedProduct = await db.product.update({
       where: { sku: currentSku },
       data: {
         ...(name !== undefined && { name }),
@@ -100,6 +104,14 @@ export async function PUT(
         ...(estPrintMinutes !== undefined && { estPrintMinutes }),
       },
     });
+    if (productFieldsChanged) {
+      await logActivity({
+        userId: user?.id ?? null, username: user?.username ?? 'unknown',
+        action: 'UPDATE', entityType: 'Product', entityId: updatedProduct.id,
+        entityLabel: updatedProduct.sku,
+        before: snapshotProduct(existing), after: snapshotProduct(updatedProduct),
+      });
+    }
 
     // If master and minStock/estPrintMinutes changed, sync to all children
     if (isMaster && minStock !== undefined && existing.childProducts.length > 0) {
@@ -124,13 +136,22 @@ export async function PUT(
         if (v._delete) {
           // Delete variant
           if (v.id) {
+            const oldVariant = existing.variants.find((ev) => ev.id === v.id);
             await db.productVariant.delete({ where: { id: v.id } });
+            if (oldVariant) {
+              await logActivity({
+                userId: user?.id ?? null, username: user?.username ?? 'unknown',
+                action: 'DELETE', entityType: 'ProductVariant', entityId: oldVariant.id,
+                entityLabel: `${currentSku} - ${oldVariant.color || oldVariant.type || 'Default'}`,
+                before: snapshotVariant(oldVariant),
+              });
+            }
           }
         } else if (v.id) {
           // Update existing variant
           const oldVariant = existing.variants.find((ev) => ev.id === v.id);
 
-          await db.productVariant.update({
+          const updatedVariant = await db.productVariant.update({
             where: { id: v.id },
             data: {
               ...(v.color !== undefined && { color: v.color }),
@@ -140,6 +161,14 @@ export async function PUT(
               ...(v.barcode !== undefined && { barcode: v.barcode || null }),
             },
           });
+          if (oldVariant) {
+            await logActivity({
+              userId: user?.id ?? null, username: user?.username ?? 'unknown',
+              action: 'UPDATE', entityType: 'ProductVariant', entityId: updatedVariant.id,
+              entityLabel: `${currentSku} - ${updatedVariant.color || updatedVariant.type || 'Default'}`,
+              before: snapshotVariant(oldVariant), after: snapshotVariant(updatedVariant),
+            });
+          }
 
           // If this is a master and qty changed, sync to all children variants
           if (
@@ -165,6 +194,12 @@ export async function PUT(
               qty: v.qty ?? 0,
               barcode: v.barcode || null,
             },
+          });
+          await logActivity({
+            userId: user?.id ?? null, username: user?.username ?? 'unknown',
+            action: 'CREATE', entityType: 'ProductVariant', entityId: newVariant.id,
+            entityLabel: `${currentSku} - ${newVariant.color || newVariant.type || 'Default'}`,
+            after: snapshotVariant(newVariant),
           });
 
           // If master, also create the same variant on all children with synced qty
@@ -313,9 +348,10 @@ export async function PUT(
 
 // DELETE product by SKU (cascades to variants, and children if master)
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ sku: string }> }
 ) {
+  const user = getCurrentUser(request);
   try {
     const { sku } = await params;
 
@@ -328,6 +364,15 @@ export async function DELETE(
     }
 
     await db.product.delete({ where: { sku } });
+
+    // Note: variants/parts cascade-deleted alongside this aren't individually
+    // logged here — restoring this entry brings back the Product row itself,
+    // not its cascade-deleted children.
+    await logActivity({
+      userId: user?.id ?? null, username: user?.username ?? 'unknown',
+      action: 'DELETE', entityType: 'Product', entityId: existing.id,
+      entityLabel: existing.sku, before: snapshotProduct(existing),
+    });
 
     return NextResponse.json({ message: "Product deleted successfully" });
   } catch (error) {

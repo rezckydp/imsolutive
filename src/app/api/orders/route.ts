@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { syncStockToGroup } from "@/lib/stock-sync";
+import { getCurrentUser } from "@/lib/current-user";
+import { logActivity, snapshotOrder, snapshotOrderItem } from "@/lib/activity-log";
 
 // GET all orders with items → variant → product
 export async function GET(request: NextRequest) {
@@ -66,6 +68,7 @@ export async function GET(request: NextRequest) {
 
 // POST create new order with order items (variantId) — with shared stock sync
 export async function POST(request: NextRequest) {
+  const user = getCurrentUser(request);
   try {
     const body = await request.json();
     const { orderNo, status, items } = body;
@@ -158,6 +161,20 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+    await logActivity({
+      userId: user?.id ?? null, username: user?.username ?? 'unknown',
+      action: 'CREATE', entityType: 'Order', entityId: order.id,
+      entityLabel: order.orderNo, after: snapshotOrder(order),
+    });
+    for (const item of order.orderItems) {
+      await logActivity({
+        userId: user?.id ?? null, username: user?.username ?? 'unknown',
+        action: 'CREATE', entityType: 'OrderItem', entityId: item.id,
+        entityLabel: `${order.orderNo} - ${item.variant.product.sku}`,
+        after: snapshotOrderItem(item),
+      });
+    }
 
     return NextResponse.json(order, { status: 201 });
   } catch (error) {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Settings, Info, Users, Plus, Pencil, Loader2, ShieldCheck, ShieldOff } from 'lucide-react';
+import { Settings, Info, Users, Plus, Pencil, Loader2, ShieldCheck, ShieldOff, History, RotateCcw, CheckCircle2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +39,25 @@ interface TeamAccount {
   createdAt: string;
 }
 
+interface ActivityLogEntry {
+  id: string;
+  username: string;
+  action: 'CREATE' | 'UPDATE' | 'DELETE';
+  entityType: string;
+  entityLabel: string;
+  restoredAt: string | null;
+  restoredBy: string | null;
+  createdAt: string;
+}
+
+function formatLogTime(iso: string): string {
+  const d = new Date(iso);
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+  const hh = d.getHours().toString().padStart(2, '0');
+  const mm = d.getMinutes().toString().padStart(2, '0');
+  return `${d.getDate()} ${months[d.getMonth()]}, ${hh}:${mm}`;
+}
+
 export function SettingsPage() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [accounts, setAccounts] = useState<TeamAccount[]>([]);
@@ -56,6 +75,37 @@ export function SettingsPage() {
   const [editRole, setEditRole] = useState<'ADMIN' | 'STAFF'>('STAFF');
   const [editActive, setEditActive] = useState(true);
   const [editPassword, setEditPassword] = useState('');
+
+  const [logs, setLogs] = useState<ActivityLogEntry[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(true);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+
+  const fetchLogs = useCallback(async () => {
+    setLoadingLogs(true);
+    try {
+      const res = await fetch('/api/activity-log');
+      if (res.ok) {
+        setLogs(await res.json());
+      }
+    } finally {
+      setLoadingLogs(false);
+    }
+  }, []);
+
+  const handleRestore = async (entry: ActivityLogEntry) => {
+    setRestoringId(entry.id);
+    try {
+      const res = await fetch(`/api/activity-log/${entry.id}/restore`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Gagal restore');
+      toast.success('Berhasil di-restore');
+      fetchLogs();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal restore');
+    } finally {
+      setRestoringId(null);
+    }
+  };
 
   const fetchAccounts = useCallback(async () => {
     setLoadingAccounts(true);
@@ -78,8 +128,9 @@ export function SettingsPage() {
   useEffect(() => {
     if (currentUser?.role === 'ADMIN') {
       fetchAccounts();
+      fetchLogs();
     }
-  }, [currentUser, fetchAccounts]);
+  }, [currentUser, fetchAccounts, fetchLogs]);
 
   const handleAdd = async () => {
     if (!addUsername || !addPassword) {
@@ -248,6 +299,89 @@ export function SettingsPage() {
                     <tr>
                       <td colSpan={4} className="text-center py-6 text-sm text-[#6b7280]">
                         Belum ada akun tim
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Activity Log — Admin only */}
+      {currentUser?.role === 'ADMIN' && (
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-[#e8e8e8]">
+            <h3 className="text-sm font-semibold text-[#2d3436] flex items-center gap-2">
+              <History className="w-4 h-4 text-[#4b5563]" />
+              Activity Log
+            </h3>
+          </div>
+          <div className="overflow-x-auto">
+            {loadingLogs ? (
+              <div className="flex items-center justify-center py-8 text-[#6b7280]">
+                <Loader2 className="w-5 h-5 animate-spin" />
+              </div>
+            ) : (
+              <table className="w-full min-w-[560px]">
+                <thead>
+                  <tr className="bg-[#f5f6fa]">
+                    <th className="text-left text-xs font-medium text-[#4b5563] py-2 px-3">Waktu</th>
+                    <th className="text-left text-xs font-medium text-[#4b5563] py-2 px-3">User</th>
+                    <th className="text-left text-xs font-medium text-[#4b5563] py-2 px-3">Aksi</th>
+                    <th className="text-left text-xs font-medium text-[#4b5563] py-2 px-3">Item</th>
+                    <th className="w-24 text-right text-xs font-medium text-[#4b5563] py-2 px-3">Restore</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {logs.map((entry) => (
+                    <tr key={entry.id} className="border-t border-[#f0f0f0]">
+                      <td className="py-2.5 px-3 text-xs text-[#6b7280] whitespace-nowrap">{formatLogTime(entry.createdAt)}</td>
+                      <td className="py-2.5 px-3 text-xs text-[#2d3436]">{entry.username}</td>
+                      <td className="py-2.5 px-3">
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] px-1.5 py-0 rounded-full font-semibold ${
+                            entry.action === 'CREATE'
+                              ? 'bg-[#15803d]/10 text-[#15803d] border-[#15803d]/30'
+                              : entry.action === 'DELETE'
+                              ? 'bg-[#dc2626]/10 text-[#dc2626] border-[#dc2626]/30'
+                              : 'bg-[#2563eb]/10 text-[#2563eb] border-[#2563eb]/30'
+                          }`}
+                        >
+                          {entry.action}
+                        </Badge>
+                      </td>
+                      <td className="py-2.5 px-3 text-xs text-[#4b5563]">
+                        <span className="text-[#9ca3af]">{entry.entityType}</span> · {entry.entityLabel}
+                      </td>
+                      <td className="py-2.5 px-3 text-right">
+                        {entry.restoredAt ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] text-[#15803d]">
+                            <CheckCircle2 className="w-3 h-3" /> Restored
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleRestore(entry)}
+                            disabled={restoringId === entry.id}
+                            title="Restore ke kondisi sebelumnya"
+                            className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-[#4a6741] hover:bg-[#4a6741]/10 transition-colors cursor-pointer disabled:opacity-50"
+                          >
+                            {restoringId === entry.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <RotateCcw className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {logs.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="text-center py-6 text-sm text-[#6b7280]">
+                        Belum ada aktivitas tercatat
                       </td>
                     </tr>
                   )}

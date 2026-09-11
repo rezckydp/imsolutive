@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { syncStockToGroup, refreshOrderItemStatuses, resolveToMasterVariantId } from "@/lib/stock-sync";
+import { getCurrentUser } from "@/lib/current-user";
+import { logActivity, snapshotOrderItem } from "@/lib/activity-log";
 
 // PUT update order item quantity, note, and/or variant (color swap) — adjusts stock accordingly
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
+  const user = getCurrentUser(request);
   try {
     const { id, itemId } = await params;
     const body = await request.json();
@@ -14,11 +17,20 @@ export async function PUT(
 
     // Support updating note only (without changing qty/variant)
     if (note !== undefined && qty === undefined && newVariantId === undefined) {
+      const beforeNoteItem = await db.orderItem.findUnique({ where: { id: itemId } });
       const updatedItem = await db.orderItem.update({
         where: { id: itemId },
         data: { note },
         include: { variant: { include: { product: true } } },
       });
+      if (beforeNoteItem) {
+        await logActivity({
+          userId: user?.id ?? null, username: user?.username ?? 'unknown',
+          action: 'UPDATE', entityType: 'OrderItem', entityId: updatedItem.id,
+          entityLabel: `${updatedItem.variant.product.sku}`,
+          before: snapshotOrderItem(beforeNoteItem), after: snapshotOrderItem(updatedItem),
+        });
+      }
       return NextResponse.json(updatedItem);
     }
 
@@ -90,6 +102,13 @@ export async function PUT(
       await refreshOrderItemStatuses(orderItem.variantId);
       await refreshOrderItemStatuses(newVariantId);
 
+      await logActivity({
+        userId: user?.id ?? null, username: user?.username ?? 'unknown',
+        action: 'UPDATE', entityType: 'OrderItem', entityId: updatedItem.id,
+        entityLabel: updatedItem.variant.product.sku,
+        before: snapshotOrderItem(orderItem), after: snapshotOrderItem(updatedItem),
+      });
+
       return NextResponse.json(updatedItem);
     }
 
@@ -137,6 +156,15 @@ export async function PUT(
       },
     });
 
+    if (refreshedItem) {
+      await logActivity({
+        userId: user?.id ?? null, username: user?.username ?? 'unknown',
+        action: 'UPDATE', entityType: 'OrderItem', entityId: refreshedItem.id,
+        entityLabel: refreshedItem.variant.product.sku,
+        before: snapshotOrderItem(orderItem), after: snapshotOrderItem(refreshedItem),
+      });
+    }
+
     return NextResponse.json(refreshedItem);
   } catch (error) {
     console.error("Error updating order item:", error);
@@ -150,9 +178,10 @@ export async function PUT(
 // DELETE — remove a single order item from its Picking List, restoring stock.
 // If this was the last item in the order, the parent order is deleted too.
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
+  const user = getCurrentUser(request);
   try {
     const { id, itemId } = await params;
 
@@ -187,6 +216,12 @@ export async function DELETE(
     }
 
     await db.orderItem.delete({ where: { id: itemId } });
+
+    await logActivity({
+      userId: user?.id ?? null, username: user?.username ?? 'unknown',
+      action: 'DELETE', entityType: 'OrderItem', entityId: orderItem.id,
+      entityLabel: order.orderNo, before: snapshotOrderItem(orderItem),
+    });
 
     // If that was the last item in this Picking List, clean up the empty order
     const remaining = order.orderItems.length - 1;
