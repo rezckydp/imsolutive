@@ -25,6 +25,7 @@ export interface ProductionItem {
   qty: number;
   assignedTo: string;
   note: string;
+  createdAt: string;
 }
 
 interface PrinterOption {
@@ -60,6 +61,9 @@ function SkeletonRows() {
             <Skeleton className="h-4 w-6 ml-auto" />
           </td>
           <td className="py-2.5 px-3">
+            <Skeleton className="h-4 w-16" />
+          </td>
+          <td className="py-2.5 px-3">
             <Skeleton className="h-7 w-28" />
           </td>
           <td className="py-2.5 px-1">
@@ -71,12 +75,40 @@ function SkeletonRows() {
   );
 }
 
+// e.g. "12m lalu", "2j 5m lalu", "3h lalu" — how long an item has been sitting in production
+function formatElapsed(iso: string, now: number): string {
+  const diffMs = Math.max(0, now - new Date(iso).getTime());
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) return 'Baru mulai';
+  if (minutes < 60) return `${minutes}m lalu`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}j ${minutes % 60}m lalu`;
+  const days = Math.floor(hours / 24);
+  return `${days}h lalu`;
+}
+
+// e.g. "8 Sep 2026, 14:32" — exact start time, shown on hover
+function formatExactTime(iso: string): string {
+  const d = new Date(iso);
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+  const hh = d.getHours().toString().padStart(2, '0');
+  const mm = d.getMinutes().toString().padStart(2, '0');
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}, ${hh}:${mm}`;
+}
+
 export function InProductionCard({ items = [], loading = false, onComplete, onSendBack, onAdd, onUpdatePrinter }: InProductionCardProps) {
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [sendingBackId, setSendingBackId] = useState<string | null>(null);
   const [printers, setPrinters] = useState<PrinterOption[]>([]);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [updatingPrinterId, setUpdatingPrinterId] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  // Keep "Xm lalu" ticking without needing a full data refetch
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
 
   const fetchPrinters = useCallback(async () => {
     try {
@@ -165,12 +197,13 @@ export function InProductionCard({ items = [], loading = false, onComplete, onSe
       </CardHeader>
       <CardContent className="px-4 pb-4 pt-0">
         <div className="rounded-lg border border-[#e8e8e8] overflow-x-auto -webkit-overflow-scrolling-touch">
-          <table className="w-full min-w-[500px]">
+          <table className="w-full min-w-[580px]">
             <thead>
               <tr className="bg-[#f5f6fa]">
                 <th className="text-left text-xs font-medium text-[#4b5563] py-2 px-3">Product</th>
                 <th className="text-left text-xs font-medium text-[#4b5563] py-2 px-3">Color</th>
                 <th className="text-right text-xs font-medium text-[#4b5563] py-2 px-3">Qty</th>
+                <th className="text-left text-xs font-medium text-[#4b5563] py-2 px-3">Mulai</th>
                 <th className="text-left text-xs font-medium text-[#4b5563] py-2 px-3">Printer</th>
                 <th className="w-[76px] text-center text-xs font-medium text-[#4b5563] py-2 px-1">Actions</th>
               </tr>
@@ -180,7 +213,7 @@ export function InProductionCard({ items = [], loading = false, onComplete, onSe
                 <SkeletonRows />
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-6 text-sm text-[#4b5563]">
+                  <td colSpan={6} className="text-center py-6 text-sm text-[#4b5563]">
                     No items in production
                   </td>
                 </tr>
@@ -214,6 +247,9 @@ export function InProductionCard({ items = [], loading = false, onComplete, onSe
                     </td>
                     <td className="py-2.5 px-3 text-right text-sm text-[#2d3436] font-medium">
                       {item.qty}
+                    </td>
+                    <td className="py-2.5 px-3" title={formatExactTime(item.createdAt)}>
+                      <span className="text-xs text-[#4b5563] whitespace-nowrap">{formatElapsed(item.createdAt, now)}</span>
                     </td>
                     <td className="py-2.5 px-3">
                       {updatingPrinterId === item.id ? (
