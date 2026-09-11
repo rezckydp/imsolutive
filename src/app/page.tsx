@@ -65,6 +65,7 @@ interface DashboardData {
     qty: number;
     assignedTo: string;
     note: string;
+    createdAt: string;
     variant: {
       id: string;
       color: string;
@@ -461,6 +462,7 @@ export default function Home() {
     qty: item.qty,
     assignedTo: item.assignedTo,
     note: item.note || variantNoteMap[item.variantId] || '',
+    createdAt: item.createdAt,
   }));
 
   const allProductionItems: ProductionHistoryItem[] = (dashboardData?.allProductionItems ?? []).map((item) => ({
