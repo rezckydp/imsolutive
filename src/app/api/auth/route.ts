@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { login, createSessionCookie, COOKIE_NAME } from '@/lib/auth';
+import { createSessionCookie, COOKIE_NAME } from '@/lib/auth';
+import { login } from '@/lib/auth-db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,15 +16,15 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const isValid = login(username, password);
-      if (!isValid) {
+      const user = await login(username, password);
+      if (!user) {
         return NextResponse.json(
           { error: 'Username atau password salah' },
           { status: 401 }
         );
       }
 
-      const session = createSessionCookie();
+      const session = await createSessionCookie(user);
 
       const res = NextResponse.json(
         { success: true, message: 'Login berhasil' },
