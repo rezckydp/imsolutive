@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { ScanBarcode, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -10,7 +11,31 @@ interface HeaderProps {
   rightAction?: React.ReactNode;
 }
 
+interface CurrentUser {
+  username: string;
+  name: string;
+  role: 'ADMIN' | 'STAFF';
+}
+
+function getInitials(label: string): string {
+  const parts = label.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
 export function Header({ title, onScanBarcode, rightAction }: HeaderProps) {
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setCurrentUser)
+      .catch(() => {});
+  }, []);
+
+  const displayName = currentUser?.name || currentUser?.username || '';
+
   return (
     <div className="flex items-center justify-between mb-6">
       <h1 className="text-2xl font-bold text-[#2d3436]">{title}</h1>
@@ -33,10 +58,10 @@ export function Header({ title, onScanBarcode, rightAction }: HeaderProps) {
         <div className="flex items-center gap-2.5 pl-3 border-l border-[#e8e8e8]">
           <Avatar className="w-8 h-8">
             <AvatarFallback className="bg-[#4a6741] text-white text-xs font-semibold">
-              SA
+              {displayName ? getInitials(displayName) : '?'}
             </AvatarFallback>
           </Avatar>
-          <span className="text-sm font-medium text-[#2d3436]">Solutive Admin</span>
+          <span className="text-sm font-medium text-[#2d3436]">{displayName || '...'}</span>
         </div>
 
         {/* Right Action (either custom or Scan Barcode button) */}
