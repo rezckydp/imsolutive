@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getCurrentUser } from "@/lib/current-user";
+import { logActivity, snapshotStockOpnameItem } from "@/lib/activity-log";
 
 // POST count/scan an item — accept { variantId, actualQty }
 // Looks up variant's current qty as systemQty, calculates difference, upserts item, recalculates session totals
@@ -7,6 +9,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = getCurrentUser(request);
   try {
     const { id } = await params;
     const body = await request.json();
@@ -81,6 +84,12 @@ export async function POST(
           },
         },
       });
+      await logActivity({
+        userId: user?.id ?? null, username: user?.username ?? 'unknown',
+        action: 'UPDATE', entityType: 'StockOpnameItem', entityId: item.id,
+        entityLabel: item.variant.product.sku,
+        before: snapshotStockOpnameItem(existingItem), after: snapshotStockOpnameItem(item),
+      });
     } else {
       item = await db.stockOpnameItem.create({
         data: {
@@ -95,6 +104,11 @@ export async function POST(
             include: { product: true },
           },
         },
+      });
+      await logActivity({
+        userId: user?.id ?? null, username: user?.username ?? 'unknown',
+        action: 'CREATE', entityType: 'StockOpnameItem', entityId: item.id,
+        entityLabel: item.variant.product.sku, after: snapshotStockOpnameItem(item),
       });
     }
 

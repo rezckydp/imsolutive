@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getCurrentUser } from "@/lib/current-user";
+import { logActivity, snapshotStockOpnameItem } from "@/lib/activity-log";
 
 // DELETE a specific item from a stock opname session, then recalculate session totals
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
+  const user = getCurrentUser(request);
   try {
     const { id, itemId } = await params;
 
@@ -32,6 +35,12 @@ export async function DELETE(
 
     // Delete the item
     await db.stockOpnameItem.delete({ where: { id: itemId } });
+
+    await logActivity({
+      userId: user?.id ?? null, username: user?.username ?? 'unknown',
+      action: 'DELETE', entityType: 'StockOpnameItem', entityId: item.id,
+      entityLabel: `Stock Opname item`, before: snapshotStockOpnameItem(item),
+    });
 
     // Recalculate session totals
     const remainingItems = await db.stockOpnameItem.findMany({

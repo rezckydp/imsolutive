@@ -72,6 +72,30 @@ export function snapshotOrderItem(i: {
   };
 }
 
+export function snapshotStockOpname(s: {
+  id: string; sessionNo: string; type: string; status: string; notes: string;
+  totalItems: number; totalDiff: number; startedAt: Date; completedAt: Date | null;
+  createdAt: Date; updatedAt: Date;
+}) {
+  return {
+    id: s.id, sessionNo: s.sessionNo, type: s.type, status: s.status, notes: s.notes,
+    totalItems: s.totalItems, totalDiff: s.totalDiff, startedAt: s.startedAt,
+    completedAt: s.completedAt, createdAt: s.createdAt, updatedAt: s.updatedAt,
+  };
+}
+
+export function snapshotStockOpnameItem(i: {
+  id: string; opnameId: string; variantId: string; systemQty: number;
+  actualQty: number; difference: number; adjusted: boolean;
+  createdAt: Date; updatedAt: Date;
+}) {
+  return {
+    id: i.id, opnameId: i.opnameId, variantId: i.variantId, systemQty: i.systemQty,
+    actualQty: i.actualQty, difference: i.difference, adjusted: i.adjusted,
+    createdAt: i.createdAt, updatedAt: i.updatedAt,
+  };
+}
+
 // Records one create/edit/delete for the Activity Log. Never throws — a
 // logging failure should never take down the actual mutation it's recording.
 export async function logActivity(params: LogActivityParams): Promise<void> {
