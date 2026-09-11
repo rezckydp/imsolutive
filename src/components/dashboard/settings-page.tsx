@@ -1,8 +1,150 @@
 'use client';
 
-import { Settings, Info } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Settings, Info, Users, Plus, Pencil, Loader2, ShieldCheck, ShieldOff } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { toast } from 'sonner';
+
+interface CurrentUser {
+  id: string;
+  username: string;
+  role: 'ADMIN' | 'STAFF';
+}
+
+interface TeamAccount {
+  id: string;
+  username: string;
+  name: string;
+  role: 'ADMIN' | 'STAFF';
+  isActive: boolean;
+  createdAt: string;
+}
 
 export function SettingsPage() {
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [accounts, setAccounts] = useState<TeamAccount[]>([]);
+  const [loadingAccounts, setLoadingAccounts] = useState(true);
+
+  const [addOpen, setAddOpen] = useState(false);
+  const [addUsername, setAddUsername] = useState('');
+  const [addPassword, setAddPassword] = useState('');
+  const [addName, setAddName] = useState('');
+  const [addRole, setAddRole] = useState<'ADMIN' | 'STAFF'>('STAFF');
+  const [saving, setSaving] = useState(false);
+
+  const [editTarget, setEditTarget] = useState<TeamAccount | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editRole, setEditRole] = useState<'ADMIN' | 'STAFF'>('STAFF');
+  const [editActive, setEditActive] = useState(true);
+  const [editPassword, setEditPassword] = useState('');
+
+  const fetchAccounts = useCallback(async () => {
+    setLoadingAccounts(true);
+    try {
+      const res = await fetch('/api/users');
+      if (res.ok) {
+        setAccounts(await res.json());
+      }
+    } finally {
+      setLoadingAccounts(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((u) => setCurrentUser(u));
+  }, []);
+
+  useEffect(() => {
+    if (currentUser?.role === 'ADMIN') {
+      fetchAccounts();
+    }
+  }, [currentUser, fetchAccounts]);
+
+  const handleAdd = async () => {
+    if (!addUsername || !addPassword) {
+      toast.error('Username dan password harus diisi');
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: addUsername, password: addPassword, name: addName, role: addRole }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Gagal menambah akun');
+      toast.success(`Akun ${data.username} berhasil dibuat`);
+      setAddOpen(false);
+      setAddUsername('');
+      setAddPassword('');
+      setAddName('');
+      setAddRole('STAFF');
+      fetchAccounts();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal menambah akun');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openEdit = (account: TeamAccount) => {
+    setEditTarget(account);
+    setEditName(account.name);
+    setEditRole(account.role);
+    setEditActive(account.isActive);
+    setEditPassword('');
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editTarget) return;
+    setSaving(true);
+    try {
+      const payload: { name?: string; role?: string; isActive?: boolean; password?: string } = {
+        name: editName,
+        role: editRole,
+        isActive: editActive,
+      };
+      if (editPassword) payload.password = editPassword;
+
+      const res = await fetch(`/api/users/${editTarget.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Gagal menyimpan perubahan');
+      toast.success('Akun berhasil diperbarui');
+      setEditTarget(null);
+      fetchAccounts();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal menyimpan perubahan');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -26,6 +168,95 @@ export function SettingsPage() {
           </div>
         </div>
       </div>
+
+      {/* Team Accounts — Admin only */}
+      {currentUser?.role === 'ADMIN' && (
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-[#e8e8e8] flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-[#2d3436] flex items-center gap-2">
+              <Users className="w-4 h-4 text-[#4b5563]" />
+              Team Accounts
+            </h3>
+            <Button
+              size="sm"
+              onClick={() => setAddOpen(true)}
+              className="h-8 rounded-lg bg-[#4a6741] hover:bg-[#3d5535] text-white text-xs gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Tambah Akun
+            </Button>
+          </div>
+          <div className="p-2">
+            {loadingAccounts ? (
+              <div className="flex items-center justify-center py-8 text-[#6b7280]">
+                <Loader2 className="w-5 h-5 animate-spin" />
+              </div>
+            ) : (
+              <table className="w-full">
+                <tbody>
+                  {accounts.map((account) => (
+                    <tr key={account.id} className="border-b border-[#f0f0f0] last:border-0">
+                      <td className="py-3 px-3">
+                        <div className="flex items-center gap-2">
+                          {account.role === 'ADMIN' ? (
+                            <ShieldCheck className="w-4 h-4 text-[#4a6741] flex-shrink-0" />
+                          ) : (
+                            <ShieldOff className="w-4 h-4 text-[#9ca3af] flex-shrink-0" />
+                          )}
+                          <div>
+                            <p className="text-sm font-medium text-[#2d3436]">{account.name || account.username}</p>
+                            <p className="text-[11px] text-[#6b7280]">@{account.username}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-3">
+                        <Badge
+                          variant="outline"
+                          className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${
+                            account.role === 'ADMIN'
+                              ? 'bg-[#4a6741]/10 text-[#4a6741] border-[#4a6741]/30'
+                              : 'bg-[#e8e8e8] text-[#4b5563] border-[#d1d5db]'
+                          }`}
+                        >
+                          {account.role === 'ADMIN' ? 'Admin' : 'Staff'}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-3">
+                        <Badge
+                          variant="outline"
+                          className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${
+                            account.isActive
+                              ? 'bg-[#15803d]/10 text-[#15803d] border-[#15803d]/30'
+                              : 'bg-[#dc2626]/10 text-[#dc2626] border-[#dc2626]/30'
+                          }`}
+                        >
+                          {account.isActive ? 'Aktif' : 'Nonaktif'}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-3 text-right">
+                        <button
+                          onClick={() => openEdit(account)}
+                          title="Edit akun"
+                          className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-[#4b5563] hover:bg-[#f5f6fa] transition-colors cursor-pointer"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {accounts.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="text-center py-6 text-sm text-[#6b7280]">
+                        Belum ada akun tim
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Quick Info */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
@@ -54,6 +285,100 @@ export function SettingsPage() {
           </div>
         </div>
       </div>
+
+      {/* Add Account Dialog */}
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="sm:max-w-[400px] rounded-xl">
+          <DialogHeader>
+            <DialogTitle className="text-[#2d3436]">Tambah Akun Tim</DialogTitle>
+            <DialogDescription>Buat akun baru untuk anggota tim</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-[#2d3436]">Nama</Label>
+              <Input value={addName} onChange={(e) => setAddName(e.target.value)} placeholder="Nama tampilan" className="rounded-lg" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-[#2d3436]">Username</Label>
+              <Input value={addUsername} onChange={(e) => setAddUsername(e.target.value)} placeholder="username login" className="rounded-lg" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-[#2d3436]">Password</Label>
+              <Input type="password" value={addPassword} onChange={(e) => setAddPassword(e.target.value)} placeholder="minimal 6 karakter" className="rounded-lg" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-[#2d3436]">Role</Label>
+              <Select value={addRole} onValueChange={(v) => setAddRole(v as 'ADMIN' | 'STAFF')}>
+                <SelectTrigger className="rounded-lg">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="STAFF">Staff</SelectItem>
+                  <SelectItem value="ADMIN">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setAddOpen(false)} className="rounded-lg border-[#e8e8e8] text-[#4b5563]">
+              Batal
+            </Button>
+            <Button onClick={handleAdd} disabled={saving} className="rounded-lg bg-[#4a6741] hover:bg-[#3d5535] text-white">
+              {saving ? 'Menyimpan...' : 'Buat Akun'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Account Dialog */}
+      <Dialog open={!!editTarget} onOpenChange={() => setEditTarget(null)}>
+        <DialogContent className="sm:max-w-[400px] rounded-xl">
+          <DialogHeader>
+            <DialogTitle className="text-[#2d3436]">Edit Akun</DialogTitle>
+            <DialogDescription>@{editTarget?.username}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-[#2d3436]">Nama</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="rounded-lg" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-[#2d3436]">Role</Label>
+              <Select value={editRole} onValueChange={(v) => setEditRole(v as 'ADMIN' | 'STAFF')}>
+                <SelectTrigger className="rounded-lg">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="STAFF">Staff</SelectItem>
+                  <SelectItem value="ADMIN">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center justify-between py-1">
+              <Label className="text-sm font-medium text-[#2d3436]">Akun Aktif</Label>
+              <Switch checked={editActive} onCheckedChange={setEditActive} />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-[#2d3436]">Reset Password</Label>
+              <Input
+                type="password"
+                value={editPassword}
+                onChange={(e) => setEditPassword(e.target.value)}
+                placeholder="Kosongkan kalau tidak diubah"
+                className="rounded-lg"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setEditTarget(null)} className="rounded-lg border-[#e8e8e8] text-[#4b5563]">
+              Batal
+            </Button>
+            <Button onClick={handleSaveEdit} disabled={saving} className="rounded-lg bg-[#4a6741] hover:bg-[#3d5535] text-white">
+              {saving ? 'Menyimpan...' : 'Simpan'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
