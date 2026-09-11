@@ -75,25 +75,21 @@ function SkeletonRows() {
   );
 }
 
-// e.g. "12m lalu", "2j 5m lalu", "3h lalu" — how long an item has been sitting in production
-function formatElapsed(iso: string, now: number): string {
-  const diffMs = Math.max(0, now - new Date(iso).getTime());
-  const minutes = Math.floor(diffMs / 60000);
-  if (minutes < 1) return 'Baru mulai';
-  if (minutes < 60) return `${minutes}m lalu`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}j ${minutes % 60}m lalu`;
-  const days = Math.floor(hours / 24);
-  return `${days}h lalu`;
+// e.g. "2:15 pm" — clock time it entered production
+function formatClockTime(iso: string): string {
+  const d = new Date(iso);
+  const hours24 = d.getHours();
+  const minutes = d.getMinutes().toString().padStart(2, '0');
+  const ampm = hours24 >= 12 ? 'pm' : 'am';
+  const hours12 = hours24 % 12 || 12;
+  return `${hours12}:${minutes} ${ampm}`;
 }
 
-// e.g. "8 Sep 2026, 14:32" — exact start time, shown on hover
+// e.g. "8 Sep 2026, 2:15 pm" — full date, shown on hover (in case it started a previous day)
 function formatExactTime(iso: string): string {
   const d = new Date(iso);
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-  const hh = d.getHours().toString().padStart(2, '0');
-  const mm = d.getMinutes().toString().padStart(2, '0');
-  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}, ${hh}:${mm}`;
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}, ${formatClockTime(iso)}`;
 }
 
 export function InProductionCard({ items = [], loading = false, onComplete, onSendBack, onAdd, onUpdatePrinter }: InProductionCardProps) {
@@ -102,13 +98,6 @@ export function InProductionCard({ items = [], loading = false, onComplete, onSe
   const [printers, setPrinters] = useState<PrinterOption[]>([]);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [updatingPrinterId, setUpdatingPrinterId] = useState<string | null>(null);
-  const [now, setNow] = useState(() => Date.now());
-
-  // Keep "Xm lalu" ticking without needing a full data refetch
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 60_000);
-    return () => clearInterval(t);
-  }, []);
 
   const fetchPrinters = useCallback(async () => {
     try {
@@ -249,7 +238,7 @@ export function InProductionCard({ items = [], loading = false, onComplete, onSe
                       {item.qty}
                     </td>
                     <td className="py-2.5 px-3" title={formatExactTime(item.createdAt)}>
-                      <span className="text-xs text-[#4b5563] whitespace-nowrap">{formatElapsed(item.createdAt, now)}</span>
+                      <span className="text-xs text-[#4b5563] whitespace-nowrap">{formatClockTime(item.createdAt)}</span>
                     </td>
                     <td className="py-2.5 px-3">
                       {updatingPrinterId === item.id ? (
