@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { syncStockToGroup } from "@/lib/stock-sync";
+import { getCurrentUser } from "@/lib/current-user";
+import { logActivity, snapshotOrder } from "@/lib/activity-log";
 
 // GET single order by ID
 export async function GET(
@@ -44,6 +46,7 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = getCurrentUser(request);
   try {
     const { id } = await params;
     const body = await request.json();
@@ -107,6 +110,15 @@ export async function PUT(
       },
     });
 
+    if (status || orderNo) {
+      await logActivity({
+        userId: user?.id ?? null, username: user?.username ?? 'unknown',
+        action: 'UPDATE', entityType: 'Order', entityId: order.id,
+        entityLabel: order.orderNo,
+        before: snapshotOrder(existing), after: snapshotOrder(order),
+      });
+    }
+
     return NextResponse.json(order);
   } catch (error) {
     console.error("Error updating order:", error);
@@ -119,9 +131,10 @@ export async function PUT(
 
 // DELETE order — with shared stock restore
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = getCurrentUser(request);
   try {
     const { id } = await params;
 
@@ -148,6 +161,14 @@ export async function DELETE(
     }
 
     await db.order.delete({ where: { id } });
+
+    // Note: orderItems cascade-deleted alongside this aren't individually
+    // logged — restoring brings back the Order row, not its items.
+    await logActivity({
+      userId: user?.id ?? null, username: user?.username ?? 'unknown',
+      action: 'DELETE', entityType: 'Order', entityId: existing.id,
+      entityLabel: existing.orderNo, before: snapshotOrder(existing),
+    });
 
     return NextResponse.json({ message: "Order deleted successfully" });
   } catch (error) {

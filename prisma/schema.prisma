@@ -21,6 +21,21 @@ model User {
   updatedAt    DateTime @updatedAt
 }
 
+model ActivityLog {
+  id          String    @id @default(cuid())
+  userId      String?
+  username    String    @default("")
+  action      String    // CREATE, UPDATE, DELETE
+  entityType  String    // "Product", "ProductVariant", "Order", "OrderItem", ...
+  entityId    String
+  entityLabel String    @default("") // human-readable, e.g. SKU or order no
+  beforeData  String?   // JSON snapshot before the change (null for CREATE)
+  afterData   String?   // JSON snapshot after the change (null for DELETE)
+  restoredAt  DateTime?
+  restoredBy  String?   // username who restored it
+  createdAt   DateTime  @default(now())
+}
+
 model Product {
   id        String   @id @default(cuid())
   sku       String   @unique

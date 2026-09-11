@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { syncMasterStockToGroup } from "@/lib/stock-sync";
+import { getCurrentUser } from "@/lib/current-user";
+import { logActivity, snapshotProduct } from "@/lib/activity-log";
 
 // GET all products with variants and group info
 export async function GET(request: NextRequest) {
@@ -82,6 +84,7 @@ export async function GET(request: NextRequest) {
 
 // POST create new product (with optional variants, parts, and parentProductId)
 export async function POST(request: NextRequest) {
+  const user = getCurrentUser(request);
   try {
     const body = await request.json();
     const { sku, name, minStock, estPrintMinutes, variants, parts, parentProductId } = body;
@@ -190,6 +193,12 @@ export async function POST(request: NextRequest) {
           },
         });
 
+        await logActivity({
+          userId: user?.id ?? null, username: user?.username ?? 'unknown',
+          action: 'CREATE', entityType: 'Product', entityId: product.id,
+          entityLabel: product.sku, after: snapshotProduct(product),
+        });
+
         return NextResponse.json(product, { status: 201 });
       }
     }
@@ -227,6 +236,12 @@ export async function POST(request: NextRequest) {
             },
             variants: true,
           },
+        });
+
+        await logActivity({
+          userId: user?.id ?? null, username: user?.username ?? 'unknown',
+          action: 'CREATE', entityType: 'Product', entityId: product.id,
+          entityLabel: product.sku, after: snapshotProduct(product),
         });
 
         return NextResponse.json(product, { status: 201 });
@@ -310,6 +325,12 @@ export async function POST(request: NextRequest) {
           include: { partColors: { orderBy: { color: "asc" } } },
         },
       },
+    });
+
+    await logActivity({
+      userId: user?.id ?? null, username: user?.username ?? 'unknown',
+      action: 'CREATE', entityType: 'Product', entityId: product.id,
+      entityLabel: product.sku, after: snapshotProduct(product),
     });
 
     return NextResponse.json(product, { status: 201 });
