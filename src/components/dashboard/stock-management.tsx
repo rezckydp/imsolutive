@@ -1120,7 +1120,7 @@ export function StockManagement() {
                     return (
                       <div
                         key={variant.id}
-                        className="grid grid-cols-[1fr_1fr_0.6fr] gap-2 px-2 py-1.5 items-center"
+                        className="grid grid-cols-[1fr_1fr_0.6fr] gap-2 px-2 py-1.5 items-center rounded-lg hover:bg-white transition-colors"
                       >
                         <div className="flex items-center gap-2">
                           {hasColor ? (
@@ -1192,7 +1192,7 @@ export function StockManagement() {
                     return (
                       <div
                         key={variant.id}
-                        className="grid grid-cols-[1fr_1fr_0.6fr] gap-2 px-2 py-1.5 items-center"
+                        className="grid grid-cols-[1fr_1fr_0.6fr] gap-2 px-2 py-1.5 items-center rounded-lg hover:bg-white transition-colors"
                       >
                         <div className="flex items-center gap-2">
                           {hasColor ? (
