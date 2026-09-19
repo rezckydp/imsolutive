@@ -15,6 +15,9 @@ import {
   Loader2,
   CheckCircle2,
   ArrowLeft,
+  Printer,
+  MessageCircle,
+  History,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -71,10 +74,96 @@ interface PosSettingsData {
   cashPresets: string;
 }
 
+interface ReceiptOrderItem {
+  id: string;
+  qty: number;
+  unitPrice: number | null;
+  variant: { color: string; type: string; product: { sku: string; name: string } };
+}
+
+interface ReceiptOrder {
+  id: string;
+  orderNo: string;
+  createdAt: string;
+  paymentMethod: string | null;
+  discountAmount: number;
+  subtotalAmount: number | null;
+  totalAmount: number | null;
+  cashReceived: number | null;
+  orderItems: ReceiptOrderItem[];
+}
+
 // ============ HELPERS ============
 
 function formatRupiah(n: number): string {
   return `Rp ${n.toLocaleString('id-ID')}`;
+}
+
+function buildReceiptLines(order: ReceiptOrder, storeName: string): string[] {
+  const lines: string[] = [];
+  lines.push(storeName);
+  lines.push(new Date(order.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }));
+  lines.push(order.orderNo);
+  lines.push('--------------------------------');
+  for (const item of order.orderItems) {
+    const label = getVariantLabel(item.variant.color, item.variant.type);
+    lines.push(`${item.variant.product.sku}${label ? ' - ' + label : ''}`);
+    const unitPrice = item.unitPrice || 0;
+    lines.push(`  ${item.qty} x ${formatRupiah(unitPrice)} = ${formatRupiah(unitPrice * item.qty)}`);
+  }
+  lines.push('--------------------------------');
+  lines.push(`Subtotal: ${formatRupiah(order.subtotalAmount || 0)}`);
+  if (order.discountAmount > 0) lines.push(`Diskon: -${formatRupiah(order.discountAmount)}`);
+  lines.push(`TOTAL: ${formatRupiah(order.totalAmount || 0)}`);
+  lines.push(`Bayar: ${order.paymentMethod || '-'}`);
+  if (order.paymentMethod === 'Cash' && order.cashReceived != null) {
+    lines.push(`Tunai: ${formatRupiah(order.cashReceived)}`);
+    lines.push(`Kembali: ${formatRupiah(order.cashReceived - (order.totalAmount || 0))}`);
+  }
+  lines.push('');
+  lines.push('Terima kasih!');
+  return lines;
+}
+
+function printReceipt(order: ReceiptOrder, settings: PosSettingsData | null) {
+  const width = settings?.paperWidthMm === 80 ? 80 : 58;
+  const storeName = settings?.storeName || 'Solutive';
+  const lines = buildReceiptLines(order, storeName);
+  const escaped = lines.map((l) => l.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')).join('\n');
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${order.orderNo}</title>
+<style>
+  @page { size: ${width}mm auto; margin: 0; }
+  body { width: ${width}mm; margin: 0; padding: 4mm; font-family: 'Courier New', monospace; font-size: ${width === 58 ? '10px' : '11px'}; color: #000; }
+  pre { white-space: pre-wrap; word-break: break-word; margin: 0; }
+</style></head><body><pre>${escaped}</pre></body></html>`;
+
+  const win = window.open('', '_blank', 'width=400,height=600');
+  if (!win) {
+    toast.error('Popup diblokir browser — izinkan popup untuk print struk');
+    return;
+  }
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => win.print(), 250);
+}
+
+function normalizePhone(input: string): string | null {
+  const digits = input.replace(/\D/g, '');
+  if (!digits) return null;
+  if (digits.startsWith('62')) return digits;
+  if (digits.startsWith('0')) return `62${digits.slice(1)}`;
+  return `62${digits}`;
+}
+
+function sendReceiptWhatsApp(order: ReceiptOrder, storeName: string, phone: string) {
+  const normalized = normalizePhone(phone);
+  if (!normalized) {
+    toast.error('Nomor WhatsApp tidak valid');
+    return;
+  }
+  const text = buildReceiptLines(order, storeName).join('\n');
+  window.open(`https://wa.me/${normalized}?text=${encodeURIComponent(text)}`, '_blank');
 }
 
 function parsePresetList(json: string): number[] {
@@ -116,7 +205,9 @@ export default function PosPage() {
   const [cashReceived, setCashReceived] = useState('');
   const [checkingOut, setCheckingOut] = useState(false);
 
-  const [successData, setSuccessData] = useState<{ orderNo: string; total: number; change: number | null } | null>(null);
+  const [successData, setSuccessData] = useState<ReceiptOrder | null>(null);
+  const [waPhone, setWaPhone] = useState('');
+  const [recentTransactions, setRecentTransactions] = useState<ReceiptOrder[]>([]);
 
   const [variantPickerProduct, setVariantPickerProduct] = useState<PosProduct | null>(null);
 
@@ -144,10 +235,19 @@ export default function PosPage() {
     if (res.ok) setSettings(await res.json());
   }, []);
 
+  const fetchRecentTransactions = useCallback(async () => {
+    const res = await fetch('/api/orders?prefix=POS&limit=3');
+    if (res.ok) {
+      const data = await res.json();
+      setRecentTransactions(data.orders || []);
+    }
+  }, []);
+
   useEffect(() => {
     fetchProducts();
     fetchSettings();
-  }, [fetchProducts, fetchSettings]);
+    fetchRecentTransactions();
+  }, [fetchProducts, fetchSettings, fetchRecentTransactions]);
 
   useEffect(() => {
     barcodeRef.current?.focus();
@@ -306,13 +406,15 @@ export default function PosPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Gagal memproses transaksi');
 
-      setSuccessData({ orderNo: data.order.orderNo, total: data.order.totalAmount, change: data.change });
+      setSuccessData(data.order);
+      setWaPhone('');
       setCart([]);
       setDiscountAmount(0);
       setDiscountInput('');
       setPaymentMethod(null);
       setCashReceived('');
       fetchProducts();
+      fetchRecentTransactions();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Gagal memproses transaksi');
     } finally {
@@ -414,6 +516,28 @@ export default function PosPage() {
           <SettingsIcon className="w-5 h-5" />
         </button>
       </div>
+
+      {/* Quick reprint — last 3 transactions */}
+      {recentTransactions.length > 0 && (
+        <div className="bg-white border-b border-[#e8e8e8] px-5 py-2 flex items-center gap-3 overflow-x-auto">
+          <span className="text-[11px] font-medium text-[#6b7280] flex items-center gap-1 flex-shrink-0">
+            <History className="w-3.5 h-3.5" /> Terakhir:
+          </span>
+          {recentTransactions.map((tx) => (
+            <div key={tx.id} className="flex items-center gap-1.5 bg-[#f5f6fa] rounded-full pl-3 pr-1.5 py-1 flex-shrink-0">
+              <span className="text-[11px] font-semibold text-[#2d3436]">{tx.orderNo}</span>
+              <span className="text-[11px] text-[#6b7280]">{formatRupiah(tx.totalAmount || 0)}</span>
+              <button
+                onClick={() => printReceipt(tx, settings)}
+                title="Cetak ulang"
+                className="w-5 h-5 rounded-full bg-white hover:bg-[#e8e8e8] flex items-center justify-center cursor-pointer"
+              >
+                <Printer className="w-3 h-3 text-[#4b5563]" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="flex-1 flex flex-col lg:flex-row gap-4 p-4 min-h-0">
         {/* ============ LEFT: PRODUCT GRID ============ */}
@@ -709,16 +833,42 @@ export default function PosPage() {
             <div className="w-full bg-[#f5f6fa] rounded-lg p-3 space-y-1 text-sm">
               <div className="flex justify-between">
                 <span className="text-[#6b7280]">Total</span>
-                <span className="font-semibold text-[#2d3436]">{successData ? formatRupiah(successData.total) : ''}</span>
+                <span className="font-semibold text-[#2d3436]">{successData ? formatRupiah(successData.totalAmount || 0) : ''}</span>
               </div>
-              {successData?.change != null && (
+              {successData?.paymentMethod === 'Cash' && successData?.cashReceived != null && (
                 <div className="flex justify-between">
                   <span className="text-[#6b7280]">Kembalian</span>
-                  <span className="font-semibold text-[#2d3436]">{formatRupiah(successData.change)}</span>
+                  <span className="font-semibold text-[#2d3436]">
+                    {formatRupiah(successData.cashReceived - (successData.totalAmount || 0))}
+                  </span>
                 </div>
               )}
             </div>
-            <p className="text-[11px] text-[#9ca3af]">Cetak struk & kirim WA tersedia di update berikutnya</p>
+
+            <Button
+              onClick={() => successData && printReceipt(successData, settings)}
+              variant="outline"
+              className="w-full h-10 rounded-lg border-[#e8e8e8] text-[#2d3436] gap-2"
+            >
+              <Printer className="w-4 h-4" /> Print Struk
+            </Button>
+
+            <div className="w-full flex gap-2">
+              <Input
+                value={waPhone}
+                onChange={(e) => setWaPhone(e.target.value)}
+                placeholder="08xxxxxxxxxx (opsional)"
+                className="h-10 text-sm rounded-lg"
+              />
+              <Button
+                onClick={() => successData && sendReceiptWhatsApp(successData, settings?.storeName || 'Solutive', waPhone)}
+                disabled={!waPhone.trim()}
+                variant="outline"
+                className="h-10 rounded-lg border-[#e8e8e8] text-[#15803d] flex-shrink-0 gap-1.5 px-3"
+              >
+                <MessageCircle className="w-4 h-4" /> Kirim
+              </Button>
+            </div>
           </div>
           <Button onClick={() => setSuccessData(null)} className="w-full h-10 bg-[#4a6741] hover:bg-[#3d5535] text-white rounded-lg">
             Transaksi Baru
