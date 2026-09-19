@@ -69,7 +69,7 @@ interface BarcodeScannerProps {
 
 // ============ HELPERS ============
 
-async function lookupBarcode(code: string): Promise<{
+export async function lookupBarcode(code: string): Promise<{
   lookupType: 'variant' | 'product';
   variantId?: string;
   sku: string;
