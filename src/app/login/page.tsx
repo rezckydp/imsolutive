@@ -4,6 +4,15 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Package, Eye, EyeOff, Loader2 } from 'lucide-react';
 
+// Only accept an internal, single-leading-slash path (never "//host/x", which
+// browsers can treat as protocol-relative and redirect off-site).
+function safeRedirectTarget(): string {
+  if (typeof window === 'undefined') return '/';
+  const raw = new URLSearchParams(window.location.search).get('redirect');
+  if (raw && raw.startsWith('/') && !raw.startsWith('//')) return raw;
+  return '/';
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState('');
@@ -30,7 +39,7 @@ export default function LoginPage() {
       });
 
       if (res.ok) {
-        router.push('/');
+        router.push(safeRedirectTarget());
         router.refresh();
       } else {
         const data = await res.json();

@@ -38,9 +38,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next({ request: { headers } });
   }
 
-  // For all other pages, check session and redirect to login if not authenticated
+  // For all other pages, check session and redirect to login if not authenticated —
+  // carrying the originally requested path so login can send them back there
+  // (e.g. someone hitting /pos fresh should land back on /pos, not the dashboard).
   if (!session) {
     const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
