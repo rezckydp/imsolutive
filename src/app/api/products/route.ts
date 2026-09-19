@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
   const user = getCurrentUser(request);
   try {
     const body = await request.json();
-    const { sku, name, minStock, estPrintMinutes, variants, parts, parentProductId } = body;
+    const { sku, name, minStock, estPrintMinutes, price, variants, parts, parentProductId } = body;
 
     if (!sku || !name) {
       return NextResponse.json(
@@ -169,6 +169,7 @@ export async function POST(request: NextRequest) {
             name,
             minStock: parent.minStock, // Inherit master's minStock
             estPrintMinutes: parent.estPrintMinutes, // Inherit master's print time
+            price: parent.price, // Inherit master's sell price
             parentProductId,
             variants: {
               create: syncedVariants.map(
@@ -216,6 +217,7 @@ export async function POST(request: NextRequest) {
             name,
             minStock: parent.minStock,
             estPrintMinutes: parent.estPrintMinutes,
+            price: parent.price,
             parentProductId,
             variants: {
               create: parent.variants.map((v) => ({
@@ -254,6 +256,7 @@ export async function POST(request: NextRequest) {
         name,
         minStock: minStock ?? 10,
         estPrintMinutes: estPrintMinutes != null ? parseInt(estPrintMinutes, 10) : null,
+        price: price != null && price !== '' ? parseInt(price, 10) : null,
         ...(variants &&
           Array.isArray(variants) &&
           variants.length > 0 && {

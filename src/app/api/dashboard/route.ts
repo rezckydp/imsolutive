@@ -62,8 +62,10 @@ export async function GET() {
         },
         orderBy: { createdAt: "desc" },
       }),
-      // Recent orders with items → variant → product
+      // Recent orders with items → variant → product — POS transactions have
+      // their own history view and shouldn't crowd out Picking List/Adjustment here
       db.order.findMany({
+        where: { NOT: { orderNo: { startsWith: "POS-" } } },
         include: {
           orderItems: {
             include: {

@@ -55,7 +55,7 @@ export async function PUT(
   try {
     const { sku } = await params;
     const body = await request.json();
-    const { sku: newSku, name, minStock, estPrintMinutes, variants, parts } = body;
+    const { sku: newSku, name, minStock, estPrintMinutes, price, variants, parts } = body;
 
     // Check product exists
     const existing = await db.product.findUnique({
@@ -95,13 +95,14 @@ export async function PUT(
     const currentSku = trimmedNewSku || sku;
 
     // Update product fields
-    const productFieldsChanged = trimmedNewSku || name !== undefined || minStock !== undefined || estPrintMinutes !== undefined;
+    const productFieldsChanged = trimmedNewSku || name !== undefined || minStock !== undefined || estPrintMinutes !== undefined || price !== undefined;
     const updatedProduct = await db.product.update({
       where: { sku: currentSku },
       data: {
         ...(name !== undefined && { name }),
         ...(minStock !== undefined && { minStock }),
         ...(estPrintMinutes !== undefined && { estPrintMinutes }),
+        ...(price !== undefined && { price: price === '' || price === null ? null : parseInt(price, 10) }),
       },
     });
     if (productFieldsChanged) {
@@ -124,6 +125,12 @@ export async function PUT(
       await db.product.updateMany({
         where: { parentProductId: existing.id },
         data: { estPrintMinutes },
+      });
+    }
+    if (isMaster && price !== undefined && existing.childProducts.length > 0) {
+      await db.product.updateMany({
+        where: { parentProductId: existing.id },
+        data: { price: price === '' || price === null ? null : parseInt(price, 10) },
       });
     }
 

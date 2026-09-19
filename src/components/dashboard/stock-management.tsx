@@ -75,6 +75,7 @@ interface ProductData {
   name: string;
   minStock: number;
   estPrintMinutes?: number | null;
+  price?: number | null;
   parentProductId?: string | null;
   parentProduct?: { id: string; sku: string; name: string } | null;
   childProducts?: Array<{ id: string; sku: string; name: string }>;
@@ -236,6 +237,7 @@ export function StockManagement() {
   const [reparentConfirmOpen, setReparentConfirmOpen] = useState(false);
   const [reparenting, setReparenting] = useState(false);
   const [editEstPrintMinutes, setEditEstPrintMinutes] = useState<string>('');
+  const [editPrice, setEditPrice] = useState<string>('');
   const [editVariants, setEditVariants] = useState<VariantData[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -611,6 +613,7 @@ export function StockManagement() {
     setEditName(product.name);
     setEditMinStock(product.minStock);
     setEditEstPrintMinutes(product.estPrintMinutes != null ? String(product.estPrintMinutes) : '');
+    setEditPrice(product.price != null ? String(product.price) : '');
     setReparentTargetSku(product.parentProduct?.sku || '');
     // Separate variants into color variants and type variants
     const colorVariants: VariantData[] = [];
@@ -740,6 +743,7 @@ export function StockManagement() {
           name: editName,
           minStock: editMinStock,
           estPrintMinutes: editEstPrintMinutes.trim() ? parseInt(editEstPrintMinutes, 10) : null,
+          price: editPrice.trim() ? parseInt(editPrice, 10) : null,
           variants: allVariants,
         }),
       });
@@ -1821,6 +1825,28 @@ export function StockManagement() {
                       />
                       <p className="text-[11px] text-[#6b7280]">Buat estimasi durasi Print Queue</p>
                     </div>
+                  </div>
+                )}
+
+                {/* Harga Jual (POS) — only for standalone/master */}
+                {!isVariant && (
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium text-[#2d3436]">
+                      Harga Jual (POS)
+                      {isMaster && <span className="text-[11px] text-[#4a6741] ml-1.5 font-normal">(sync to variants)</span>}
+                    </Label>
+                    <div className="relative w-48">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#6b7280]">Rp</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={editPrice}
+                        onChange={(e) => setEditPrice(e.target.value)}
+                        placeholder="0"
+                        className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg pl-9"
+                      />
+                    </div>
+                    <p className="text-[11px] text-[#6b7280]">Kosongkan kalau produk ini tidak dijual lewat POS</p>
                   </div>
                 )}
 

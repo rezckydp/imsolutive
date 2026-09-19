@@ -42,6 +42,7 @@ model Product {
   name      String
   minStock  Int      @default(10)
   estPrintMinutes Int?     // estimated print time per pcs (minutes), used for Print Queue duration
+  price     Int?     // Harga jual (POS), dalam Rupiah. Nullable — produk lama belum tentu keisi.
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -104,6 +105,12 @@ model Order {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // POS transaction fields — null/0 for Picking List & Adjustment orders
+  paymentMethod  String? // "Cash" | "QRIS"
+  discountAmount Int     @default(0) // nominal diskon, Rupiah, flat per transaksi
+  subtotalAmount Int?    // jumlah sebelum diskon, Rupiah
+  totalAmount    Int?    // subtotal - discountAmount, Rupiah
+
   orderItems OrderItem[]
 }
 
@@ -114,6 +121,7 @@ model OrderItem {
   qty       Int
   status    String   @default("Not Ready") // Ready, Not Ready, In Queue
   note      String   @default("")         // Custom color note (e.g. "Req. Color: Navy Blue")
+  unitPrice Int?     // POS only — snapshot of Product.price at time of sale (Rupiah)
   createdAt DateTime @default(now())
 
   order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -218,4 +226,16 @@ model StockOpnameItem {
 
   opname  StockOpname     @relation(fields: [opnameId], references: [id], onDelete: Cascade)
   variant ProductVariant  @relation(fields: [variantId], references: [id], onDelete: Cascade)
+}
+
+// Singleton config row for the POS cashier page — one row total, created
+// lazily with defaults on first read if it doesn't exist yet.
+model PosSettings {
+  id                 String   @id @default(cuid())
+  storeName          String   @default("Solutive")
+  paperWidthMm       Int      @default(58) // 58 or 80
+  favoriteProductIds String   @default("") // comma-separated Product.id list
+  discountPresets    String   @default("[10000,20000,50000]") // JSON array, Rupiah
+  cashPresets        String   @default("[50000,100000,150000,200000]") // JSON array, Rupiah
+  updatedAt          DateTime @updatedAt
 }

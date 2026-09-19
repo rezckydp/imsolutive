@@ -1,28 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-// GET /api/orders/next-number?type=picking|adjustment
+// GET /api/orders/next-number?type=picking|adjustment|pos
 // Scans existing order numbers matching the prefix, finds the highest one,
 // and returns the next number formatted with the same digit-padding as
 // whatever's already in use (so it stays consistent with the person's own
 // numbering habits rather than forcing a fixed format).
 export async function GET(request: NextRequest) {
   try {
-    const type = request.nextUrl.searchParams.get("type") === "adjustment" ? "adjustment" : "picking";
-    const prefix = type === "adjustment" ? "ADJ" : "PICK";
+    const typeParam = request.nextUrl.searchParams.get("type");
+    const type = typeParam === "adjustment" ? "adjustment" : typeParam === "pos" ? "pos" : "picking";
+    const prefix = type === "adjustment" ? "ADJ" : type === "pos" ? "POS" : "PICK";
 
     const orders = await db.order.findMany({
       where: { orderNo: { startsWith: prefix } },
       select: { orderNo: true },
     });
 
-    // Match "PICK-000864", "PICK000864", "ADJ014", "ADJ-014", etc — prefix
-    // followed by an optional dash then digits.
+    // Match "PICK-000864", "PICK000864", "ADJ014", "ADJ-014", "POS-000001", etc
+    // — prefix followed by an optional dash then digits.
     const pattern = new RegExp(`^${prefix}-?(\\d+)$`, "i");
 
     let maxNum = 0;
     let digitWidth = type === "adjustment" ? 3 : 6; // sensible defaults if nothing exists yet
-    let usesDash = type === "picking"; // PICK conventionally uses a dash, ADJ conventionally doesn't
+    let usesDash = type !== "adjustment"; // PICK/POS conventionally use a dash, ADJ conventionally doesn't
 
     for (const o of orders) {
       const match = o.orderNo.trim().match(pattern);
