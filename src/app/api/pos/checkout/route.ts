@@ -90,6 +90,7 @@ export async function POST(request: NextRequest) {
         discountAmount: clampedDiscount,
         subtotalAmount,
         totalAmount,
+        cashReceived: paymentMethod === "Cash" && cashReceived != null ? cashReceived : null,
         orderItems: {
           create: items.map((item) => {
             const variant = variantMap.get(item.variantId)!;

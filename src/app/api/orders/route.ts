@@ -12,10 +12,14 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1", 10);
     const limit = parseInt(searchParams.get("limit") || "20", 10);
     const month = searchParams.get("month");
+    const prefix = searchParams.get("prefix"); // e.g. "POS" — filters orderNo by startsWith
 
     const where: Record<string, unknown> = {};
     if (status) {
       where.status = status;
+    }
+    if (prefix) {
+      where.orderNo = { startsWith: prefix };
     }
     if (month) {
       // Filter by month (format: YYYY-MM)

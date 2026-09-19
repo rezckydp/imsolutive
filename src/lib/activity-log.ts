@@ -58,8 +58,15 @@ export function snapshotVariant(v: {
 
 export function snapshotOrder(o: {
   id: string; orderNo: string; status: string; createdAt: Date; updatedAt: Date;
+  paymentMethod?: string | null; discountAmount?: number; subtotalAmount?: number | null;
+  totalAmount?: number | null; cashReceived?: number | null;
 }) {
-  return { id: o.id, orderNo: o.orderNo, status: o.status, createdAt: o.createdAt, updatedAt: o.updatedAt };
+  return {
+    id: o.id, orderNo: o.orderNo, status: o.status, createdAt: o.createdAt, updatedAt: o.updatedAt,
+    paymentMethod: o.paymentMethod ?? null, discountAmount: o.discountAmount ?? 0,
+    subtotalAmount: o.subtotalAmount ?? null, totalAmount: o.totalAmount ?? null,
+    cashReceived: o.cashReceived ?? null,
+  };
 }
 
 export function snapshotOrderItem(i: {

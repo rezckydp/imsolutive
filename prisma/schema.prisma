@@ -110,6 +110,7 @@ model Order {
   discountAmount Int     @default(0) // nominal diskon, Rupiah, flat per transaksi
   subtotalAmount Int?    // jumlah sebelum diskon, Rupiah
   totalAmount    Int?    // subtotal - discountAmount, Rupiah
+  cashReceived   Int?    // Cash only — persisted so reprints can still show kembalian
 
   orderItems OrderItem[]
 }
