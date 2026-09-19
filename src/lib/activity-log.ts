@@ -35,12 +35,12 @@ interface LogActivityParams {
 
 export function snapshotProduct(p: {
   id: string; sku: string; name: string; minStock: number;
-  estPrintMinutes: number | null; parentProductId: string | null;
+  estPrintMinutes: number | null; price: number | null; parentProductId: string | null;
   createdAt: Date; updatedAt: Date;
 }) {
   return {
     id: p.id, sku: p.sku, name: p.name, minStock: p.minStock,
-    estPrintMinutes: p.estPrintMinutes, parentProductId: p.parentProductId,
+    estPrintMinutes: p.estPrintMinutes, price: p.price, parentProductId: p.parentProductId,
     createdAt: p.createdAt, updatedAt: p.updatedAt,
   };
 }
