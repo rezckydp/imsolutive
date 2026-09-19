@@ -34,6 +34,8 @@ import {
 import { toast } from 'sonner';
 import { getVariantLabel } from '@/lib/stock-sync';
 import { lookupBarcode } from '@/components/dashboard/barcode-scanner';
+import { DateRangePicker, type SimpleDateRange } from '@/components/dashboard/date-range-picker';
+import { format } from 'date-fns';
 
 // ============ TYPES ============
 
@@ -91,6 +93,15 @@ interface ReceiptOrder {
   totalAmount: number | null;
   cashReceived: number | null;
   orderItems: ReceiptOrderItem[];
+}
+
+interface HistorySummary {
+  totalOmzet: number;
+  transactionCount: number;
+  cashCount: number;
+  cashTotal: number;
+  qrisCount: number;
+  qrisTotal: number;
 }
 
 // ============ HELPERS ============
@@ -191,6 +202,8 @@ async function fetchProductsList(params: string): Promise<PosProduct[]> {
 // ============ MAIN COMPONENT ============
 
 export default function PosPage() {
+  const [activeTab, setActiveTab] = useState<'kasir' | 'riwayat'>('kasir');
+
   const [products, setProducts] = useState<PosProduct[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [search, setSearch] = useState('');
@@ -219,6 +232,43 @@ export default function PosPage() {
   const [editCashPresets, setEditCashPresets] = useState('');
   const [editFavoriteIds, setEditFavoriteIds] = useState<Set<string>>(new Set());
   const [savingSettings, setSavingSettings] = useState(false);
+
+  const [historyOrders, setHistoryOrders] = useState<ReceiptOrder[]>([]);
+  const [historySummary, setHistorySummary] = useState<HistorySummary | null>(null);
+  const [historyDateRange, setHistoryDateRange] = useState<SimpleDateRange>(null);
+  const [historySearch, setHistorySearch] = useState('');
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [detailOrder, setDetailOrder] = useState<ReceiptOrder | null>(null);
+
+  const fetchHistory = useCallback(async () => {
+    setLoadingHistory(true);
+    try {
+      const params = new URLSearchParams();
+      if (historyDateRange) {
+        params.set('from', format(historyDateRange.from, 'yyyy-MM-dd'));
+        params.set('to', format(historyDateRange.to, 'yyyy-MM-dd'));
+      }
+      const res = await fetch(`/api/pos/history?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        setHistoryOrders(data.orders || []);
+        setHistorySummary(data.summary || null);
+      }
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, [historyDateRange]);
+
+  useEffect(() => {
+    if (activeTab === 'riwayat') fetchHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, historyDateRange]);
+
+  const filteredHistoryOrders = useMemo(() => {
+    const q = historySearch.trim().toUpperCase();
+    if (!q) return historyOrders;
+    return historyOrders.filter((o) => o.orderNo.toUpperCase().includes(q));
+  }, [historyOrders, historySearch]);
 
   const fetchProducts = useCallback(async () => {
     setLoadingProducts(true);
@@ -508,15 +558,37 @@ export default function PosPage() {
           </Link>
           <h1 className="text-lg font-bold text-[#2d3436]">{settings?.storeName || 'Solutive'} — Kasir</h1>
         </div>
-        <button
-          onClick={openSettings}
-          className="p-2 rounded-lg hover:bg-[#f5f6fa] text-[#6b7280] hover:text-[#2d3436] transition-colors cursor-pointer"
-          title="Pengaturan Kasir"
-        >
-          <SettingsIcon className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 bg-[#f5f6fa] p-0.5 rounded-full">
+            <button
+              onClick={() => setActiveTab('kasir')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                activeTab === 'kasir' ? 'bg-white text-[#2d3436] shadow-sm' : 'text-[#6b7280] hover:text-[#2d3436]'
+              }`}
+            >
+              <ShoppingCart className="w-3.5 h-3.5" /> Kasir
+            </button>
+            <button
+              onClick={() => setActiveTab('riwayat')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                activeTab === 'riwayat' ? 'bg-white text-[#2d3436] shadow-sm' : 'text-[#6b7280] hover:text-[#2d3436]'
+              }`}
+            >
+              <History className="w-3.5 h-3.5" /> Riwayat
+            </button>
+          </div>
+          <button
+            onClick={openSettings}
+            className="p-2 rounded-lg hover:bg-[#f5f6fa] text-[#6b7280] hover:text-[#2d3436] transition-colors cursor-pointer"
+            title="Pengaturan Kasir"
+          >
+            <SettingsIcon className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
+      {activeTab === 'kasir' && (
+      <>
       {/* Quick reprint — last 3 transactions */}
       {recentTransactions.length > 0 && (
         <div className="bg-white border-b border-[#e8e8e8] px-5 py-2 flex items-center gap-3 overflow-x-auto">
@@ -790,6 +862,179 @@ export default function PosPage() {
           </div>
         </div>
       </div>
+      </>
+      )}
+
+      {/* ============ RIWAYAT TAB ============ */}
+      {activeTab === 'riwayat' && (
+        <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+          {/* Filters */}
+          <div className="flex flex-wrap items-center gap-2">
+            <DateRangePicker value={historyDateRange} onChange={setHistoryDateRange} allTimeLabel="Semua Waktu" />
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#6b7280]" />
+              <Input
+                value={historySearch}
+                onChange={(e) => setHistorySearch(e.target.value)}
+                placeholder="Cari nomor transaksi..."
+                className="pl-8 h-8 text-xs rounded-lg bg-white border-[#e8e8e8] w-[200px]"
+              />
+            </div>
+          </div>
+
+          {/* Summary */}
+          {historySummary && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="bg-white rounded-xl shadow-sm p-4">
+                <p className="text-[11px] text-[#6b7280]">Total Omzet</p>
+                <p className="text-lg font-bold text-[#4a6741]">{formatRupiah(historySummary.totalOmzet)}</p>
+              </div>
+              <div className="bg-white rounded-xl shadow-sm p-4">
+                <p className="text-[11px] text-[#6b7280]">Jumlah Transaksi</p>
+                <p className="text-lg font-bold text-[#2d3436]">{historySummary.transactionCount}</p>
+              </div>
+              <div className="bg-white rounded-xl shadow-sm p-4">
+                <p className="text-[11px] text-[#6b7280]">Cash</p>
+                <p className="text-lg font-bold text-[#2d3436]">{historySummary.cashCount}x</p>
+                <p className="text-[11px] text-[#6b7280]">{formatRupiah(historySummary.cashTotal)}</p>
+              </div>
+              <div className="bg-white rounded-xl shadow-sm p-4">
+                <p className="text-[11px] text-[#6b7280]">QRIS</p>
+                <p className="text-lg font-bold text-[#2d3436]">{historySummary.qrisCount}x</p>
+                <p className="text-[11px] text-[#6b7280]">{formatRupiah(historySummary.qrisTotal)}</p>
+              </div>
+            </div>
+          )}
+
+          {/* List */}
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[600px]">
+                <thead>
+                  <tr className="bg-[#f5f6fa]">
+                    <th className="text-left text-xs font-medium text-[#4b5563] py-2.5 px-4">No. Transaksi</th>
+                    <th className="text-left text-xs font-medium text-[#4b5563] py-2.5 px-4">Waktu</th>
+                    <th className="text-left text-xs font-medium text-[#4b5563] py-2.5 px-4">Item</th>
+                    <th className="text-left text-xs font-medium text-[#4b5563] py-2.5 px-4">Bayar</th>
+                    <th className="text-right text-xs font-medium text-[#4b5563] py-2.5 px-4">Total</th>
+                    <th className="w-16"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loadingHistory ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-10">
+                        <Loader2 className="w-5 h-5 animate-spin mx-auto text-[#6b7280]" />
+                      </td>
+                    </tr>
+                  ) : filteredHistoryOrders.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-10 text-sm text-[#6b7280]">
+                        Belum ada transaksi POS di periode ini
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredHistoryOrders.map((order) => (
+                      <tr
+                        key={order.id}
+                        className="border-t border-[#f0f0f0] hover:bg-[#fafafa] transition-colors cursor-pointer"
+                        onClick={() => setDetailOrder(order)}
+                      >
+                        <td className="py-2.5 px-4 text-sm font-semibold text-[#2d3436]">{order.orderNo}</td>
+                        <td className="py-2.5 px-4 text-xs text-[#6b7280]">
+                          {new Date(order.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+                        </td>
+                        <td className="py-2.5 px-4 text-xs text-[#6b7280]">{order.orderItems.length} item</td>
+                        <td className="py-2.5 px-4">
+                          <Badge
+                            variant="outline"
+                            className={`text-[11px] px-2 py-0 rounded-full font-semibold ${
+                              order.paymentMethod === 'Cash'
+                                ? 'bg-[#4a6741]/10 text-[#4a6741] border-[#4a6741]/30'
+                                : 'bg-[#2563eb]/10 text-[#2563eb] border-[#2563eb]/30'
+                            }`}
+                          >
+                            {order.paymentMethod}
+                          </Badge>
+                        </td>
+                        <td className="py-2.5 px-4 text-right text-sm font-semibold text-[#2d3436]">
+                          {formatRupiah(order.totalAmount || 0)}
+                        </td>
+                        <td className="py-2.5 px-2 text-right">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              printReceipt(order, settings);
+                            }}
+                            title="Cetak ulang"
+                            className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-[#4b5563] hover:bg-[#f5f6fa] transition-colors cursor-pointer"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============ TRANSACTION DETAIL DIALOG ============ */}
+      <Dialog open={!!detailOrder} onOpenChange={() => setDetailOrder(null)}>
+        <DialogContent className="sm:max-w-[420px] rounded-xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-[#2d3436]">{detailOrder?.orderNo}</DialogTitle>
+            <DialogDescription>
+              {detailOrder && new Date(detailOrder.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto space-y-2 py-2">
+            {detailOrder?.orderItems.map((item) => (
+              <div key={item.id} className="flex items-center justify-between text-sm py-1.5 border-b border-[#f0f0f0] last:border-0">
+                <div className="min-w-0">
+                  <p className="font-medium text-[#2d3436] truncate">{item.variant.product.sku}</p>
+                  <p className="text-[11px] text-[#6b7280]">
+                    {getVariantLabel(item.variant.color, item.variant.type)} · {item.qty} x {formatRupiah(item.unitPrice || 0)}
+                  </p>
+                </div>
+                <span className="font-semibold text-[#2d3436] flex-shrink-0">{formatRupiah((item.unitPrice || 0) * item.qty)}</span>
+              </div>
+            ))}
+          </div>
+          {detailOrder && (
+            <div className="border-t border-[#e8e8e8] pt-3 space-y-1 text-sm">
+              <div className="flex justify-between text-[#6b7280]">
+                <span>Subtotal</span>
+                <span>{formatRupiah(detailOrder.subtotalAmount || 0)}</span>
+              </div>
+              {detailOrder.discountAmount > 0 && (
+                <div className="flex justify-between text-[#d97706]">
+                  <span>Diskon</span>
+                  <span>-{formatRupiah(detailOrder.discountAmount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-base font-bold text-[#2d3436]">
+                <span>Total</span>
+                <span>{formatRupiah(detailOrder.totalAmount || 0)}</span>
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDetailOrder(null)} className="rounded-lg border-[#e8e8e8] text-[#4b5563]">
+              Tutup
+            </Button>
+            <Button
+              onClick={() => detailOrder && printReceipt(detailOrder, settings)}
+              className="rounded-lg bg-[#4a6741] hover:bg-[#3d5535] text-white gap-1.5"
+            >
+              <Printer className="w-3.5 h-3.5" /> Cetak Ulang
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ============ VARIANT PICKER DIALOG ============ */}
       <Dialog open={!!variantPickerProduct} onOpenChange={() => setVariantPickerProduct(null)}>
