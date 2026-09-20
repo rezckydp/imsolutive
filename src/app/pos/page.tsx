@@ -10,7 +10,6 @@ import {
   ScanBarcode,
   Settings as SettingsIcon,
   ShoppingCart,
-  Star,
   AlertTriangle,
   Loader2,
   CheckCircle2,
@@ -31,6 +30,16 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { getVariantLabel } from '@/lib/stock-sync';
 import { lookupBarcode } from '@/components/dashboard/barcode-scanner';
@@ -230,7 +239,6 @@ export default function PosPage() {
   const [editPaperWidth, setEditPaperWidth] = useState<58 | 80>(58);
   const [editDiscountPresets, setEditDiscountPresets] = useState('');
   const [editCashPresets, setEditCashPresets] = useState('');
-  const [editFavoriteIds, setEditFavoriteIds] = useState<Set<string>>(new Set());
   const [savingSettings, setSavingSettings] = useState(false);
 
   const [historyOrders, setHistoryOrders] = useState<ReceiptOrder[]>([]);
@@ -239,6 +247,8 @@ export default function PosPage() {
   const [historySearch, setHistorySearch] = useState('');
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [detailOrder, setDetailOrder] = useState<ReceiptOrder | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ReceiptOrder | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchHistory = useCallback(async () => {
     setLoadingHistory(true);
@@ -305,18 +315,12 @@ export default function PosPage() {
 
   const discountPresets = useMemo(() => (settings ? parsePresetList(settings.discountPresets) : []), [settings]);
   const cashPresets = useMemo(() => (settings ? parsePresetList(settings.cashPresets) : []), [settings]);
-  const favoriteIds = useMemo(
-    () => new Set((settings?.favoriteProductIds || '').split(',').map((s) => s.trim()).filter(Boolean)),
-    [settings]
-  );
 
   const filteredProducts = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return products;
     return products.filter((p) => p.sku.toLowerCase().includes(q) || p.name.toLowerCase().includes(q));
   }, [products, search]);
-
-  const favoriteProducts = useMemo(() => filteredProducts.filter((p) => favoriteIds.has(p.id)), [filteredProducts, favoriteIds]);
 
   const subtotal = useMemo(() => cart.reduce((sum, item) => sum + item.unitPrice * item.qty, 0), [cart]);
   const total = Math.max(0, subtotal - discountAmount);
@@ -472,6 +476,28 @@ export default function PosPage() {
     }
   };
 
+  // ============ DELETE TRANSACTION ============
+
+  const handleDeleteTransaction = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/orders/${deleteTarget.id}`, { method: 'DELETE' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Gagal menghapus transaksi');
+      toast.success(`${deleteTarget.orderNo} dihapus, stok dikembalikan`);
+      setDeleteTarget(null);
+      setDetailOrder(null);
+      fetchHistory();
+      fetchRecentTransactions();
+      fetchProducts();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal menghapus transaksi');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   // ============ KEYBOARD SHORTCUTS ============
 
   useEffect(() => {
@@ -499,17 +525,7 @@ export default function PosPage() {
     setEditPaperWidth(settings.paperWidthMm === 80 ? 80 : 58);
     setEditDiscountPresets(parsePresetList(settings.discountPresets).join(', '));
     setEditCashPresets(parsePresetList(settings.cashPresets).join(', '));
-    setEditFavoriteIds(new Set(favoriteIds));
     setSettingsOpen(true);
-  };
-
-  const toggleFavorite = (productId: string) => {
-    setEditFavoriteIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(productId)) next.delete(productId);
-      else next.add(productId);
-      return next;
-    });
   };
 
   const saveSettings = async () => {
@@ -530,7 +546,6 @@ export default function PosPage() {
         body: JSON.stringify({
           storeName: editStoreName,
           paperWidthMm: editPaperWidth,
-          favoriteProductIds: Array.from(editFavoriteIds),
           discountPresets: discountList,
           cashPresets: cashList,
         }),
@@ -645,24 +660,7 @@ export default function PosPage() {
               </div>
             ) : (
               <>
-                {favoriteProducts.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-2 text-[#d97706]">
-                      <Star className="w-4 h-4 fill-[#d97706]" />
-                      <span className="text-xs font-semibold">Produk Favorit</span>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      {favoriteProducts.map((product) => (
-                        <ProductCard key={product.id} product={product} onClick={() => handleProductClick(product)} large />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                 <div>
-                  {favoriteProducts.length > 0 && (
-                    <p className="text-xs font-semibold text-[#6b7280] mb-2">Semua Produk</p>
-                  )}
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                     {filteredProducts.map((product) => (
                       <ProductCard key={product.id} product={product} onClick={() => handleProductClick(product)} />
@@ -917,7 +915,7 @@ export default function PosPage() {
                     <th className="text-left text-xs font-medium text-[#4b5563] py-2.5 px-4">Item</th>
                     <th className="text-left text-xs font-medium text-[#4b5563] py-2.5 px-4">Bayar</th>
                     <th className="text-right text-xs font-medium text-[#4b5563] py-2.5 px-4">Total</th>
-                    <th className="w-16"></th>
+                    <th className="w-20"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -961,16 +959,28 @@ export default function PosPage() {
                           {formatRupiah(order.totalAmount || 0)}
                         </td>
                         <td className="py-2.5 px-2 text-right">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              printReceipt(order, settings);
-                            }}
-                            title="Cetak ulang"
-                            className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-[#4b5563] hover:bg-[#f5f6fa] transition-colors cursor-pointer"
-                          >
-                            <Printer className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                printReceipt(order, settings);
+                              }}
+                              title="Cetak ulang"
+                              className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-[#4b5563] hover:bg-[#f5f6fa] transition-colors cursor-pointer"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteTarget(order);
+                              }}
+                              title="Hapus transaksi"
+                              className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-[#dc2626] hover:bg-[#dc2626]/10 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -1023,6 +1033,13 @@ export default function PosPage() {
             </div>
           )}
           <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => detailOrder && setDeleteTarget(detailOrder)}
+              className="rounded-lg border-[#dc2626]/30 text-[#dc2626] hover:bg-[#dc2626]/10 gap-1.5"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Hapus
+            </Button>
             <Button variant="outline" onClick={() => setDetailOrder(null)} className="rounded-lg border-[#e8e8e8] text-[#4b5563]">
               Tutup
             </Button>
@@ -1035,6 +1052,34 @@ export default function PosPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ============ DELETE TRANSACTION CONFIRMATION ============ */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+        <AlertDialogContent className="rounded-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Transaksi Ini?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget && (
+                <>
+                  <span className="font-semibold text-[#2d3436]">{deleteTarget.orderNo}</span> senilai{' '}
+                  <span className="font-semibold text-[#2d3436]">{formatRupiah(deleteTarget.totalAmount || 0)}</span> akan
+                  dihapus permanen dan stok yang terjual akan dikembalikan ke inventory.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-lg">Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteTransaction}
+              disabled={deleting}
+              className="rounded-lg bg-[#dc2626] hover:bg-[#b91c1c] text-white"
+            >
+              {deleting ? 'Menghapus...' : 'Hapus Transaksi'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* ============ VARIANT PICKER DIALOG ============ */}
       <Dialog open={!!variantPickerProduct} onOpenChange={() => setVariantPickerProduct(null)}>
@@ -1157,24 +1202,6 @@ export default function PosPage() {
               <Label className="text-sm font-medium text-[#2d3436]">Preset Uang Cash (Rp, pisah koma)</Label>
               <Input value={editCashPresets} onChange={(e) => setEditCashPresets(e.target.value)} placeholder="50000, 100000, 150000" className="rounded-lg" />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-[#2d3436]">Produk Favorit</Label>
-              <p className="text-[11px] text-[#6b7280]">Ditampilkan lebih besar & di atas grid kasir</p>
-              <div className="max-h-40 overflow-y-auto border border-[#e8e8e8] rounded-lg divide-y divide-[#f0f0f0]">
-                {products.map((p) => (
-                  <label key={p.id} className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-[#f5f6fa]">
-                    <input
-                      type="checkbox"
-                      checked={editFavoriteIds.has(p.id)}
-                      onChange={() => toggleFavorite(p.id)}
-                      className="cursor-pointer"
-                    />
-                    <span className="font-medium text-[#2d3436]">{p.sku}</span>
-                    <span className="text-[#6b7280] truncate">{p.name}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setSettingsOpen(false)} className="rounded-lg border-[#e8e8e8] text-[#4b5563]">
@@ -1192,7 +1219,7 @@ export default function PosPage() {
 
 // ============ PRODUCT CARD ============
 
-function ProductCard({ product, onClick, large }: { product: PosProduct; onClick: () => void; large?: boolean }) {
+function ProductCard({ product, onClick }: { product: PosProduct; onClick: () => void }) {
   const totalStock = product.variants.reduce((sum, v) => sum + v.qty, 0);
   const noPrice = product.price == null;
   const outOfStock = totalStock <= 0;
@@ -1200,11 +1227,9 @@ function ProductCard({ product, onClick, large }: { product: PosProduct; onClick
   return (
     <button
       onClick={onClick}
-      className={`text-left rounded-xl border transition-all cursor-pointer ${
-        large ? 'p-4 bg-[#d97706]/5 border-[#d97706]/30' : 'p-3 bg-white border-[#e8e8e8]'
-      } hover:shadow-md ${noPrice ? 'opacity-60' : ''}`}
+      className={`text-left rounded-xl border transition-all cursor-pointer p-3 bg-white border-[#e8e8e8] hover:shadow-md ${noPrice ? 'opacity-60' : ''}`}
     >
-      <p className={`font-semibold text-[#2d3436] truncate ${large ? 'text-base' : 'text-sm'}`}>{product.sku}</p>
+      <p className="font-semibold text-[#2d3436] truncate text-sm">{product.sku}</p>
       <p className="text-[11px] text-[#6b7280] truncate mb-1.5">{product.name}</p>
       {noPrice ? (
         <Badge className="text-[10px] px-1.5 py-0 rounded-full bg-[#dc2626]/10 text-[#dc2626] border-[#dc2626]/30 gap-1" variant="outline">
@@ -1212,7 +1237,7 @@ function ProductCard({ product, onClick, large }: { product: PosProduct; onClick
         </Badge>
       ) : (
         <div className="flex items-center justify-between">
-          <span className={`font-bold text-[#4a6741] ${large ? 'text-lg' : 'text-sm'}`}>{formatRupiah(product.price!)}</span>
+          <span className="font-bold text-[#4a6741] text-sm">{formatRupiah(product.price!)}</span>
           <span className={`text-[11px] font-medium ${outOfStock ? 'text-[#dc2626]' : 'text-[#6b7280]'}`}>
             Stok: {totalStock}
           </span>
