@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "POS Solutive",
+  title: "Solutive - Point of Sales",
   description: "Kasir Solutive — transaksi langsung, struk, dan riwayat penjualan.",
 };
 
