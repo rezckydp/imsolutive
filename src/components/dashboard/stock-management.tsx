@@ -968,14 +968,14 @@ export function StockManagement() {
                   )}
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-semibold text-[#2d3436]">{master.sku}</span>
+                      <span className="text-sm font-semibold text-[#2d3436]">{master.name}</span>
                       {typeBadge && (
                         <Badge className={`text-[11px] px-1.5 py-0 rounded-full font-semibold ${typeBadge.className}`} variant="outline">
                           {typeBadge.label}
                         </Badge>
                       )}
                     </div>
-                    <span className="text-xs text-[#4b5563] truncate block">{master.name}</span>
+                    <span className="text-xs text-[#4b5563] truncate block">{master.sku}</span>
                     {hasVariants && !isExpanded && (
                       <div className="flex -space-x-1 mt-1">
                         {master.variants!.slice(0, 5).map((v) => (
@@ -1044,14 +1044,14 @@ export function StockManagement() {
                           <Link2 className="w-3.5 h-3.5 text-[#2563eb] flex-shrink-0" />
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-medium text-[#2d3436]">{child.sku}</span>
+                              <span className="text-sm font-medium text-[#2d3436]">{child.name}</span>
                               {childTypeBadge && (
                                 <Badge className={`text-[11px] px-1.5 py-0 rounded-full font-semibold ${childTypeBadge.className}`} variant="outline">
                                   {childTypeBadge.label}
                                 </Badge>
                               )}
                             </div>
-                            <span className="text-xs text-[#4b5563] truncate block">{child.name}</span>
+                            <span className="text-xs text-[#4b5563] truncate block">{child.sku}</span>
                             {childHasVariants && !expandedIds.has(child.id) && (
                               <div className="flex -space-x-1 mt-1">
                                 {child.variants!.slice(0, 5).map((v) => (
