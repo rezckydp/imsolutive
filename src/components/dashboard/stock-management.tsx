@@ -1447,7 +1447,7 @@ export function StockManagement() {
                               <Input
                                 value={variant.color}
                                 onChange={(e) => updateVariant(index, 'color', e.target.value)}
-                                placeholder="Black"
+                                placeholder="Nama warna"
                                 className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
                               />
                               <Input
@@ -1583,7 +1583,7 @@ export function StockManagement() {
                           <Input
                             value={variant.color}
                             onChange={(e) => updateVariant(index, 'color', e.target.value)}
-                            placeholder="Black"
+                            placeholder="Nama warna"
                             disabled={newProduct.productType === 'variant'}
                             className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg disabled:opacity-60"
                           />
@@ -1938,7 +1938,7 @@ export function StockManagement() {
                                   <Input
                                     value={variant.color}
                                     onChange={(e) => updateEditVariant(index, 'color', e.target.value)}
-                                    placeholder="Black"
+                                    placeholder="Nama warna"
                                     className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
                                   />
                                   <Input
@@ -2092,7 +2092,7 @@ export function StockManagement() {
                               <Input
                                 value={variant.color}
                                 onChange={(e) => updateEditVariant(index, 'color', e.target.value)}
-                                placeholder="Black"
+                                placeholder="Nama warna"
                                 disabled={!!isVariant}
                                 className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg disabled:opacity-60"
                               />
