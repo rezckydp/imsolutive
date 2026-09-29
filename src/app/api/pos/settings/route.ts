@@ -22,7 +22,17 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { storeName, paperWidthMm, favoriteProductIds, discountPresets, cashPresets } = body;
+    const {
+      storeName,
+      storeAddress,
+      storePhone,
+      receiptFooter,
+      autoPrintReceipt,
+      paperWidthMm,
+      favoriteProductIds,
+      discountPresets,
+      cashPresets,
+    } = body;
 
     if (paperWidthMm !== undefined && paperWidthMm !== 58 && paperWidthMm !== 80) {
       return NextResponse.json({ error: "Lebar kertas harus 58 atau 80" }, { status: 400 });
@@ -33,6 +43,10 @@ export async function PUT(request: NextRequest) {
       where: { id: settings.id },
       data: {
         ...(storeName !== undefined && { storeName }),
+        ...(storeAddress !== undefined && { storeAddress }),
+        ...(storePhone !== undefined && { storePhone }),
+        ...(receiptFooter !== undefined && { receiptFooter }),
+        ...(autoPrintReceipt !== undefined && { autoPrintReceipt: !!autoPrintReceipt }),
         ...(paperWidthMm !== undefined && { paperWidthMm }),
         ...(favoriteProductIds !== undefined && {
           favoriteProductIds: Array.isArray(favoriteProductIds) ? favoriteProductIds.join(",") : favoriteProductIds,

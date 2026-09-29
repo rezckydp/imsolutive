@@ -22,6 +22,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -80,6 +82,10 @@ interface CartItem {
 interface PosSettingsData {
   id: string;
   storeName: string;
+  storeAddress: string;
+  storePhone: string;
+  receiptFooter: string;
+  autoPrintReceipt: boolean;
   paperWidthMm: number;
   favoriteProductIds: string;
   discountPresets: string;
@@ -120,9 +126,11 @@ function formatRupiah(n: number): string {
   return `Rp ${n.toLocaleString('id-ID')}`;
 }
 
-function buildReceiptLines(order: ReceiptOrder, storeName: string): string[] {
+function buildReceiptLines(order: ReceiptOrder, settings: PosSettingsData | null): string[] {
   const lines: string[] = [];
-  lines.push(storeName);
+  lines.push(settings?.storeName || 'Solutive');
+  if (settings?.storeAddress) lines.push(settings.storeAddress);
+  if (settings?.storePhone) lines.push(settings.storePhone);
   lines.push(new Date(order.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }));
   lines.push(order.orderNo);
   lines.push('--------------------------------');
@@ -141,15 +149,17 @@ function buildReceiptLines(order: ReceiptOrder, storeName: string): string[] {
     lines.push(`Tunai: ${formatRupiah(order.cashReceived)}`);
     lines.push(`Kembali: ${formatRupiah(order.cashReceived - (order.totalAmount || 0))}`);
   }
-  lines.push('');
-  lines.push('Terima kasih!');
+  const footer = settings?.receiptFooter ?? 'Terima kasih!';
+  if (footer.trim()) {
+    lines.push('');
+    lines.push(...footer.split('\n'));
+  }
   return lines;
 }
 
 function printReceipt(order: ReceiptOrder, settings: PosSettingsData | null) {
   const width = settings?.paperWidthMm === 80 ? 80 : 58;
-  const storeName = settings?.storeName || 'Solutive';
-  const lines = buildReceiptLines(order, storeName);
+  const lines = buildReceiptLines(order, settings);
   const escaped = lines.map((l) => l.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')).join('\n');
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${order.orderNo}</title>
 <style>
@@ -177,13 +187,13 @@ function normalizePhone(input: string): string | null {
   return `62${digits}`;
 }
 
-function sendReceiptWhatsApp(order: ReceiptOrder, storeName: string, phone: string) {
+function sendReceiptWhatsApp(order: ReceiptOrder, settings: PosSettingsData | null, phone: string) {
   const normalized = normalizePhone(phone);
   if (!normalized) {
     toast.error('Nomor WhatsApp tidak valid');
     return;
   }
-  const text = buildReceiptLines(order, storeName).join('\n');
+  const text = buildReceiptLines(order, settings).join('\n');
   window.open(`https://wa.me/${normalized}?text=${encodeURIComponent(text)}`, '_blank');
 }
 
@@ -238,6 +248,10 @@ export default function PosPage() {
   const [settings, setSettings] = useState<PosSettingsData | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editStoreName, setEditStoreName] = useState('');
+  const [editStoreAddress, setEditStoreAddress] = useState('');
+  const [editStorePhone, setEditStorePhone] = useState('');
+  const [editReceiptFooter, setEditReceiptFooter] = useState('');
+  const [editAutoPrint, setEditAutoPrint] = useState(true);
   const [editPaperWidth, setEditPaperWidth] = useState<58 | 80>(58);
   const [editDiscountPresets, setEditDiscountPresets] = useState('');
   const [editCashPresets, setEditCashPresets] = useState('');
@@ -475,6 +489,10 @@ export default function PosPage() {
       setCashReceived('');
       fetchProducts();
       fetchRecentTransactions();
+      // Print immediately — no extra click needed unless turned off in Settings.
+      if (settings?.autoPrintReceipt ?? true) {
+        printReceipt(data.order, settings);
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Gagal memproses transaksi');
     } finally {
@@ -528,6 +546,10 @@ export default function PosPage() {
   const openSettings = () => {
     if (!settings) return;
     setEditStoreName(settings.storeName);
+    setEditStoreAddress(settings.storeAddress || '');
+    setEditStorePhone(settings.storePhone || '');
+    setEditReceiptFooter(settings.receiptFooter ?? 'Terima kasih!');
+    setEditAutoPrint(settings.autoPrintReceipt ?? true);
     setEditPaperWidth(settings.paperWidthMm === 80 ? 80 : 58);
     setEditDiscountPresets(parsePresetList(settings.discountPresets).join(', '));
     setEditCashPresets(parsePresetList(settings.cashPresets).join(', '));
@@ -551,6 +573,10 @@ export default function PosPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           storeName: editStoreName,
+          storeAddress: editStoreAddress,
+          storePhone: editStorePhone,
+          receiptFooter: editReceiptFooter,
+          autoPrintReceipt: editAutoPrint,
           paperWidthMm: editPaperWidth,
           discountPresets: discountList,
           cashPresets: cashList,
@@ -1157,7 +1183,7 @@ export default function PosPage() {
                 className="h-10 text-sm rounded-lg"
               />
               <Button
-                onClick={() => successData && sendReceiptWhatsApp(successData, settings?.storeName || 'Solutive', waPhone)}
+                onClick={() => successData && sendReceiptWhatsApp(successData, settings, waPhone)}
                 disabled={!waPhone.trim()}
                 variant="outline"
                 className="h-10 rounded-lg border-[#e8e8e8] text-[#15803d] flex-shrink-0 gap-1.5 px-3"
@@ -1183,6 +1209,31 @@ export default function PosPage() {
             <div className="space-y-1.5">
               <Label className="text-sm font-medium text-[#2d3436]">Nama Toko</Label>
               <Input value={editStoreName} onChange={(e) => setEditStoreName(e.target.value)} className="rounded-lg" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-[#2d3436]">Alamat (opsional, tampil di struk)</Label>
+              <Input value={editStoreAddress} onChange={(e) => setEditStoreAddress(e.target.value)} placeholder="Jl. Contoh No. 1, Jakarta" className="rounded-lg" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-[#2d3436]">No. Telepon (opsional, tampil di struk)</Label>
+              <Input value={editStorePhone} onChange={(e) => setEditStorePhone(e.target.value)} placeholder="0812xxxxxxx" className="rounded-lg" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-[#2d3436]">Pesan Penutup Struk</Label>
+              <Textarea
+                value={editReceiptFooter}
+                onChange={(e) => setEditReceiptFooter(e.target.value)}
+                placeholder="Terima kasih! IG: @solutive.id"
+                rows={2}
+                className="rounded-lg"
+              />
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-[#e8e8e8] px-3 py-2.5">
+              <div>
+                <p className="text-sm font-medium text-[#2d3436]">Print Otomatis</p>
+                <p className="text-xs text-[#6b7280]">Langsung print struk begitu transaksi berhasil, tanpa klik konfirmasi lagi</p>
+              </div>
+              <Switch checked={editAutoPrint} onCheckedChange={setEditAutoPrint} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-sm font-medium text-[#2d3436]">Lebar Kertas Struk</Label>
