@@ -13,12 +13,18 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "50", 10);
     const lowStockOnly = searchParams.get("lowStock") === "true";
     const mastersOnly = searchParams.get("mastersOnly") === "true";
+    const boothOnly = searchParams.get("boothOnly") === "true";
 
     const where: Record<string, unknown> = {};
 
     // If mastersOnly, only fetch master/standalone products (no variants of a master)
     if (mastersOnly) {
       where.parentProductId = null;
+    }
+
+    // POS grid: only show SKUs active in the Booth Stock roster
+    if (boothOnly) {
+      where.isBoothEnabled = true;
     }
 
     if (search) {
