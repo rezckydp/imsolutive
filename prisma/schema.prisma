@@ -237,6 +237,10 @@ model StockOpnameItem {
 model PosSettings {
   id                 String   @id @default(cuid())
   storeName          String   @default("Solutive")
+  storeAddress       String   @default("") // optional — printed under store name if filled in
+  storePhone         String   @default("") // optional — printed under address if filled in
+  receiptFooter      String   @default("Terima kasih!") // last line(s) of the receipt, editable
+  autoPrintReceipt   Boolean  @default(true) // skip the in-app "Print" click, fire straight after checkout
   paperWidthMm       Int      @default(58) // 58 or 80
   favoriteProductIds String   @default("") // comma-separated Product.id list
   discountPresets    String   @default("[10000,20000,50000]") // JSON array, Rupiah
