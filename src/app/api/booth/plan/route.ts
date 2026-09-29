@@ -61,7 +61,10 @@ export async function POST() {
         variants: {
           include: {
             printQueueItems: { select: { qty: true } },
-            productionItems: { select: { qty: true } },
+            // Completed rows stay in this table forever (Production History) —
+            // only "In Progress" ones are still physically pending, not yet
+            // added back to stock.qty.
+            productionItems: { where: { status: "In Progress" }, select: { qty: true } },
           },
         },
       },
