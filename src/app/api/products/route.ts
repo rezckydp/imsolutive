@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { syncMasterStockToGroup } from "@/lib/stock-sync";
+import { syncMasterStockToGroup, sortVariantsForDisplay } from "@/lib/stock-sync";
 import { getCurrentUser } from "@/lib/current-user";
 import { logActivity, snapshotProduct } from "@/lib/activity-log";
 
@@ -73,8 +73,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Display order: Black, White, other colors, then type-only rows,
+    // "Req. Color" always last — not the DB's plain alphabetical order.
+    const withSortedVariants = filtered.map((p) => ({
+      ...p,
+      variants: sortVariantsForDisplay(p.variants),
+    }));
+
     return NextResponse.json({
-      products: filtered,
+      products: withSortedVariants,
       total: lowStockOnly ? filtered.length : total,
       page,
       limit,

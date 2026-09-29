@@ -118,6 +118,34 @@ export function getVariantLabel(color: string, type: string): string {
 }
 
 /**
+ * Shared display order for variant lists, used everywhere a product's
+ * colors/types are listed (Stock Management, Booth Stock, POS variant
+ * picker): Black first, White second, other real colors alphabetically
+ * after that, then type-only rows (e.g. "Carbon Series") alphabetically,
+ * with any "Req. Color" row always last — matches how Rezcky actually
+ * thinks about the list rather than plain alphabetical, where White
+ * ends up buried among unrelated colors.
+ */
+export function sortVariantsForDisplay<T extends { color: string; type: string }>(variants: T[]): T[] {
+  const rank = (v: T): number => {
+    const color = v.color.trim().toLowerCase();
+    const type = v.type.trim().toLowerCase();
+    if (!color && type.includes("req")) return 4; // "Req. Color" — always last
+    if (color === "black") return 0;
+    if (color === "white") return 1;
+    if (color) return 2; // any other real color
+    return 3; // type-only, e.g. "Carbon Series"
+  };
+  return [...variants].sort((a, b) => {
+    const diff = rank(a) - rank(b);
+    if (diff !== 0) return diff;
+    const ka = (a.color || a.type).trim().toLowerCase();
+    const kb = (b.color || b.type).trim().toLowerCase();
+    return ka.localeCompare(kb);
+  });
+}
+
+/**
  * Sync stock change across all products in a group.
  * Matches by color AND type to find the corresponding variant in each product.
  *

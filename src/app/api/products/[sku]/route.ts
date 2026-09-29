@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { syncMasterStockToGroup, refreshOrderItemStatuses } from "@/lib/stock-sync";
+import { syncMasterStockToGroup, refreshOrderItemStatuses, sortVariantsForDisplay } from "@/lib/stock-sync";
 import { getCurrentUser } from "@/lib/current-user";
 import { logActivity, snapshotProduct, snapshotVariant } from "@/lib/activity-log";
 
@@ -36,7 +36,7 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(product);
+    return NextResponse.json({ ...product, variants: sortVariantsForDisplay(product.variants) });
   } catch (error) {
     console.error("Error fetching product:", error);
     return NextResponse.json(
@@ -343,7 +343,9 @@ export async function PUT(
       },
     });
 
-    return NextResponse.json(updated);
+    return NextResponse.json(
+      updated ? { ...updated, variants: sortVariantsForDisplay(updated.variants) } : updated
+    );
   } catch (error) {
     console.error("Error updating product:", error);
     return NextResponse.json(
