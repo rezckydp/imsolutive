@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/current-user";
 import { logActivity, snapshotProduct } from "@/lib/activity-log";
+import { sortVariantsForDisplay } from "@/lib/stock-sync";
 
 // GET all booth-enabled Master products with their variants, each carrying
 // computed "queued" (Print Queue + In Production qty) and "kurang" (target -
@@ -29,7 +30,7 @@ export async function GET() {
       id: p.id,
       sku: p.sku,
       name: p.name,
-      variants: p.variants.map((v) => {
+      variants: sortVariantsForDisplay(p.variants.map((v) => {
         const queued =
           v.printQueueItems.reduce((s, i) => s + i.qty, 0) +
           v.productionItems.reduce((s, i) => s + i.qty, 0);
@@ -44,7 +45,7 @@ export async function GET() {
           boothMinStock: v.boothMinStock,
           kurang: target - (v.qty + queued),
         };
-      }),
+      })),
     }));
 
     return NextResponse.json({ roster });
