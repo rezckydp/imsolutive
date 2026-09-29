@@ -14,6 +14,7 @@ import {
   Calendar as CalendarIcon,
   Sparkles,
   GripVertical,
+  Target,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -113,6 +114,11 @@ function TargetStokTab() {
   // Inline target edit
   const [editingTarget, setEditingTarget] = useState<{ variantId: string; value: string } | null>(null);
   const [savingTarget, setSavingTarget] = useState(false);
+
+  // Bulk target fill (same qty for every color/type of one Master SKU)
+  const [bulkTarget, setBulkTarget] = useState<RosterProduct | null>(null);
+  const [bulkTargetValue, setBulkTargetValue] = useState('');
+  const [savingBulkTarget, setSavingBulkTarget] = useState(false);
 
   // Add SKU dialog
   const [addOpen, setAddOpen] = useState(false);
@@ -264,6 +270,36 @@ function TargetStokTab() {
     }
   };
 
+  const openBulkTarget = (product: RosterProduct) => {
+    setBulkTarget(product);
+    setBulkTargetValue('');
+  };
+
+  const applyBulkTarget = async () => {
+    if (!bulkTarget) return;
+    const qty = parseInt(bulkTargetValue, 10);
+    if (isNaN(qty) || qty < 0) {
+      toast.error('Isi angka target dulu');
+      return;
+    }
+    setSavingBulkTarget(true);
+    try {
+      const res = await fetch(`/api/booth/roster/${encodeURIComponent(bulkTarget.sku)}/bulk-target`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ boothMinStock: qty }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success(`Target semua warna ${bulkTarget.sku} di-set ke ${qty}`);
+      setBulkTarget(null);
+      fetchRoster();
+    } catch {
+      toast.error('Gagal set target massal');
+    } finally {
+      setSavingBulkTarget(false);
+    }
+  };
+
   const handleSendToQueue = async (variant: RosterVariant, sku: string) => {
     const qty = Math.abs(variant.kurang);
     if (qty <= 0) return;
@@ -329,13 +365,22 @@ function TargetStokTab() {
                       <span className="text-xs text-[#6b7280] ml-2">{product.sku}</span>
                     </div>
                   </button>
-                  <button
-                    onClick={() => setRemoveTarget(product)}
-                    title="Hapus dari roster Booth"
-                    className="p-1.5 rounded-md text-[#dc2626] hover:bg-[#dc2626]/10 transition-colors cursor-pointer flex-shrink-0"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      onClick={() => openBulkTarget(product)}
+                      title="Set target semua warna sekaligus"
+                      className="p-1.5 rounded-md text-[#4a6741] hover:bg-[#4a6741]/10 transition-colors cursor-pointer"
+                    >
+                      <Target className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setRemoveTarget(product)}
+                      title="Hapus dari roster Booth"
+                      className="p-1.5 rounded-md text-[#dc2626] hover:bg-[#dc2626]/10 transition-colors cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
 
                 {isExpanded && (
@@ -516,6 +561,40 @@ function TargetStokTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk target fill */}
+      <Dialog open={!!bulkTarget} onOpenChange={(open) => !open && setBulkTarget(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Set Target Semua Warna</DialogTitle>
+            <DialogDescription>
+              Isi 1 angka, langsung diterapkan ke semua warna/type di {bulkTarget?.sku} ({bulkTarget?.variants.length ?? 0} baris).
+            </DialogDescription>
+          </DialogHeader>
+          <div>
+            <Label className="text-xs font-medium text-[#6b7280] mb-1 block">Target per warna</Label>
+            <Input
+              type="number"
+              min={0}
+              autoFocus
+              value={bulkTargetValue}
+              onChange={(e) => setBulkTargetValue(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && applyBulkTarget()}
+              className="h-9 bg-white border-[#e8e8e8] rounded-lg"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkTarget(null)}>Batal</Button>
+            <Button
+              onClick={applyBulkTarget}
+              disabled={savingBulkTarget || bulkTargetValue === ''}
+              className="bg-[#4a6741] hover:bg-[#3d5535] text-white"
+            >
+              {savingBulkTarget ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Terapkan ke Semua'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -531,6 +610,8 @@ function KalenderProduksiTab() {
   const [confirmGenerate, setConfirmGenerate] = useState(false);
   const [editingQty, setEditingQty] = useState<{ id: string; value: string } | null>(null);
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [sendTarget, setSendTarget] = useState<PlanCard | null>(null);
+  const [sendQtyInput, setSendQtyInput] = useState('');
   const draggedId = useRef<string | null>(null);
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
 
@@ -612,11 +693,11 @@ function KalenderProduksiTab() {
     try {
       const res = await fetch('/api/booth/plan', { method: 'POST' });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Gagal generate rencana');
+      if (!res.ok) throw new Error(data.error || 'Gagal menghitung kebutuhan');
       setPlans(data.plans || []);
-      toast.success('Rencana produksi digenerate');
+      toast.success('Kebutuhan produksi dihitung ulang');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Gagal generate rencana');
+      toast.error(err instanceof Error ? err.message : 'Gagal menghitung kebutuhan');
     } finally {
       setGenerating(false);
       setConfirmGenerate(false);
@@ -666,15 +747,36 @@ function KalenderProduksiTab() {
     }
   };
 
-  const sendToQueue = async (card: PlanCard) => {
-    setSendingId(card.id);
+  const openSendDialog = (card: PlanCard) => {
+    setSendTarget(card);
+    setSendQtyInput(String(card.qty));
+  };
+
+  const confirmSend = async () => {
+    if (!sendTarget) return;
+    const qty = parseInt(sendQtyInput, 10);
+    if (!qty || qty <= 0) {
+      toast.error('Isi qty yang mau dikirim');
+      return;
+    }
+    setSendingId(sendTarget.id);
     try {
-      const res = await fetch(`/api/booth/plan/${card.id}/send-to-queue`, { method: 'POST' });
-      if (!res.ok) throw new Error();
-      setPlans((prev) => prev.filter((p) => p.id !== card.id));
-      toast.success(`${card.variant.product.sku} — ${card.qty} pcs dikirim ke Print Queue`);
-    } catch {
-      toast.error('Gagal mengirim ke Print Queue');
+      const res = await fetch(`/api/booth/plan/${sendTarget.id}/send-to-queue`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ qty }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Gagal mengirim ke Print Queue');
+      if (data.plan) {
+        setPlans((prev) => prev.map((p) => (p.id === sendTarget.id ? { ...p, qty: data.plan.qty } : p)));
+      } else {
+        setPlans((prev) => prev.filter((p) => p.id !== sendTarget.id));
+      }
+      toast.success(`${sendTarget.variant.product.sku} — ${qty} pcs dikirim ke Print Queue`);
+      setSendTarget(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal mengirim ke Print Queue');
     } finally {
       setSendingId(null);
     }
@@ -723,9 +825,12 @@ function KalenderProduksiTab() {
           className="bg-[#4a6741] hover:bg-[#3d5535] text-white gap-1.5"
         >
           {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-          Generate Rencana
+          Hitung Kebutuhan
         </Button>
       </div>
+      <p className="text-xs text-[#6b7280] -mt-2 mb-4">
+        Total kebutuhan langsung ditaruh jadi 1 card di hari ini — kamu yang atur sendiri kapan & berapa banyak diproduksi tiap hari lewat geser card atau kirim sebagian ke Print Queue.
+      </p>
 
       {loading ? (
         <div className="flex items-center justify-center py-16">
@@ -740,7 +845,7 @@ function KalenderProduksiTab() {
         </div>
       ) : columns.length === 0 ? (
         <div className="bg-white rounded-xl border border-[#e8e8e8] py-16 flex flex-col items-center gap-3">
-          <p className="text-sm text-[#4b5563]">Belum ada rencana — klik Generate Rencana</p>
+          <p className="text-sm text-[#4b5563]">Belum ada rencana — klik Hitung Kebutuhan</p>
         </div>
       ) : (
         <div className="overflow-x-auto pb-2">
@@ -837,7 +942,7 @@ function KalenderProduksiTab() {
                             </button>
                           )}
                           <button
-                            onClick={() => sendToQueue(card)}
+                            onClick={() => openSendDialog(card)}
                             disabled={sendingId === card.id}
                             title="Kirim ke Print Queue"
                             className="p-1 rounded-md bg-[#4a6741]/10 hover:bg-[#4a6741]/20 text-[#4a6741] transition-colors cursor-pointer disabled:opacity-50"
@@ -864,20 +969,58 @@ function KalenderProduksiTab() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-[#d97706]" />
-              Generate ulang rencana?
+              Hitung ulang kebutuhan?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Ini bakal MENIMPA semua card yang ada sekarang (termasuk yang udah kamu geser manual) dengan hasil pembagian baru.
+              Ini bakal MENIMPA semua card yang ada sekarang (termasuk yang udah kamu geser atau kirim sebagian) dengan total kebutuhan terbaru.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Batal</AlertDialogCancel>
             <AlertDialogAction onClick={runGenerate} className="bg-[#d97706] hover:bg-[#b45309] text-white">
-              Ya, Timpa & Generate
+              Ya, Timpa & Hitung Ulang
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!sendTarget} onOpenChange={(open) => !open && setSendTarget(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Kirim ke Print Queue</DialogTitle>
+            <DialogDescription>
+              {sendTarget && (
+                <>
+                  {sendTarget.variant.product.sku} — {getVariantLabel(sendTarget.variant.color, sendTarget.variant.type)}.
+                  Total kebutuhan {sendTarget.qty} pcs. Isi berapa yang mau diproduksi sekarang, sisanya tetap di card ini.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div>
+            <Label className="text-xs font-medium text-[#6b7280] mb-1 block">Qty dikirim sekarang</Label>
+            <Input
+              type="number"
+              min={1}
+              max={sendTarget?.qty}
+              autoFocus
+              value={sendQtyInput}
+              onChange={(e) => setSendQtyInput(e.target.value)}
+              className="h-9 bg-white border-[#e8e8e8] rounded-lg"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSendTarget(null)}>Batal</Button>
+            <Button
+              onClick={confirmSend}
+              disabled={sendingId === sendTarget?.id}
+              className="bg-[#4a6741] hover:bg-[#3d5535] text-white"
+            >
+              {sendingId === sendTarget?.id ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Kirim'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

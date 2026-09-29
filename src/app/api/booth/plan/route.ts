@@ -34,11 +34,14 @@ export async function GET() {
   }
 }
 
-// POST "Generate Rencana" — REPLACES all existing cards with a fresh spread
-// of each roster variant's current shortage (kurang) across today..eventDate
-// (inclusive), front-loading any remainder onto the earliest days. The
-// frontend is responsible for confirming with the user before calling this
-// when a plan already has cards, since this always overwrites everything.
+// POST "Hitung Kebutuhan" — REPLACES all existing cards with one fresh card
+// per roster variant carrying its FULL current shortage (kurang), dropped
+// on today's column. Deliberately does NOT spread this across days — daily
+// print capacity is Rezcky's call, not something this app can guess, so the
+// total sits as one card and he drags/edits/sends-partial-to-queue it
+// himself day by day. The frontend confirms with the user before calling
+// this when a plan already has cards, since this always overwrites
+// everything (including any manual splitting already done).
 export async function POST() {
   try {
     const settings = await db.boothSettings.findFirst();
@@ -47,13 +50,6 @@ export async function POST() {
     }
 
     const today = todayJakartaUtcMidnight();
-    const eventDate = new Date(settings.eventDate);
-    eventDate.setUTCHours(0, 0, 0, 0);
-
-    const dayCount = Math.floor((eventDate.getTime() - today.getTime()) / 86400000) + 1;
-    if (dayCount < 1) {
-      return NextResponse.json({ error: "Tanggal Event sudah lewat" }, { status: 400 });
-    }
 
     const products = await db.product.findMany({
       where: { parentProductId: null, isBoothEnabled: true },
@@ -70,7 +66,7 @@ export async function POST() {
       },
     });
 
-    const shortages: Array<{ variantId: string; kurang: number }> = [];
+    const rows: Array<{ variantId: string; qty: number; scheduledDate: Date }> = [];
     for (const p of products) {
       for (const v of p.variants) {
         const queued =
@@ -78,21 +74,7 @@ export async function POST() {
           v.productionItems.reduce((s, i) => s + i.qty, 0);
         const target = v.boothMinStock ?? 0;
         const kurang = target - (v.qty + queued);
-        if (kurang > 0) shortages.push({ variantId: v.id, kurang });
-      }
-    }
-
-    // Front-load the remainder: the first `remainder` days get one extra pcs.
-    const rows: Array<{ variantId: string; qty: number; scheduledDate: Date }> = [];
-    for (const s of shortages) {
-      const base = Math.floor(s.kurang / dayCount);
-      const remainder = s.kurang % dayCount;
-      for (let day = 0; day < dayCount; day++) {
-        const qty = base + (day < remainder ? 1 : 0);
-        if (qty <= 0) continue;
-        const date = new Date(today);
-        date.setUTCDate(date.getUTCDate() + day);
-        rows.push({ variantId: s.variantId, qty, scheduledDate: date });
+        if (kurang > 0) rows.push({ variantId: v.id, qty: kurang, scheduledDate: today });
       }
     }
 
