@@ -39,6 +39,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { getVariantLabel } from '@/lib/stock-sync';
+import { BoothStock } from '@/components/dashboard/booth-stock';
 
 // ============ TYPES ============
 
@@ -223,6 +224,7 @@ function InlineStockInput({
 // ============ MAIN COMPONENT ============
 
 export function StockManagement() {
+  const [mainTab, setMainTab] = useState<'produk' | 'booth'>('produk');
   const [products, setProducts] = useState<ProductData[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -901,6 +903,30 @@ export function StockManagement() {
         </div>
       </div>
 
+      {/* Main Tab Switcher: Produk vs Booth Stock */}
+      <div className="flex items-center bg-[#f5f6fa] rounded-lg p-0.5 mb-4 w-fit">
+        <button
+          onClick={() => setMainTab('produk')}
+          className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+            mainTab === 'produk' ? 'bg-white text-[#4a6741] shadow-sm' : 'text-[#4b5563] hover:text-[#2d3436]'
+          }`}
+        >
+          Produk
+        </button>
+        <button
+          onClick={() => setMainTab('booth')}
+          className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+            mainTab === 'booth' ? 'bg-white text-[#4a6741] shadow-sm' : 'text-[#4b5563] hover:text-[#2d3436]'
+          }`}
+        >
+          Booth Stock
+        </button>
+      </div>
+
+      {mainTab === 'booth' && <BoothStock />}
+
+      {mainTab === 'produk' && (
+      <>
       {/* Search */}
       <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
         <div className="relative">
@@ -1233,6 +1259,8 @@ export function StockManagement() {
           );
         })}</div>}
       </div>
+      </>
+      )}
 
       {/* ============ ADD PRODUCT DIALOG ============ */}
       <Dialog open={showAddDialog} onOpenChange={(open) => !open && setShowAddDialog(false)}>

@@ -61,6 +61,7 @@ interface PosProduct {
   sku: string;
   name: string;
   price: number | null;
+  isBoothEnabled: boolean;
   variants: PosVariant[];
 }
 
@@ -199,11 +200,12 @@ async function fetchProductsList(params: string): Promise<PosProduct[]> {
   const res = await fetch(`/api/products?${params}`);
   if (!res.ok) return [];
   const data = await res.json();
-  return (data.products || []).map((p: { id: string; sku: string; name: string; price: number | null; variants?: PosVariant[] }) => ({
+  return (data.products || []).map((p: { id: string; sku: string; name: string; price: number | null; isBoothEnabled?: boolean; variants?: PosVariant[] }) => ({
     id: p.id,
     sku: p.sku,
     name: p.name,
     price: p.price,
+    isBoothEnabled: p.isBoothEnabled ?? false,
     variants: p.variants || [],
   }));
 }
@@ -283,7 +285,7 @@ export default function PosPage() {
   const fetchProducts = useCallback(async () => {
     setLoadingProducts(true);
     try {
-      const list = await fetchProductsList('mastersOnly=true&limit=500');
+      const list = await fetchProductsList('mastersOnly=true&boothOnly=true&limit=500');
       setProducts(list);
     } finally {
       setLoadingProducts(false);
@@ -413,6 +415,10 @@ export default function PosPage() {
       const product = matches.find((p) => p.sku.toUpperCase() === result.sku.toUpperCase());
       if (!product) {
         toast.error(`Produk "${result.sku}" tidak ditemukan`);
+        return;
+      }
+      if (!product.isBoothEnabled) {
+        toast.error(`${product.sku} belum aktif di roster Booth Stock`);
         return;
       }
       if (product.price == null) {
