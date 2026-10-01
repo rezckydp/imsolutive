@@ -35,12 +35,12 @@ interface LogActivityParams {
 
 export function snapshotProduct(p: {
   id: string; sku: string; name: string; minStock: number;
-  estPrintMinutes: number | null; price: number | null; parentProductId: string | null;
+  estPrintMinutes: number | null; parentProductId: string | null;
   isBoothEnabled?: boolean; createdAt: Date; updatedAt: Date;
 }) {
   return {
     id: p.id, sku: p.sku, name: p.name, minStock: p.minStock,
-    estPrintMinutes: p.estPrintMinutes, price: p.price, parentProductId: p.parentProductId,
+    estPrintMinutes: p.estPrintMinutes, parentProductId: p.parentProductId,
     isBoothEnabled: p.isBoothEnabled ?? false,
     createdAt: p.createdAt, updatedAt: p.updatedAt,
   };
@@ -48,10 +48,10 @@ export function snapshotProduct(p: {
 
 export function snapshotVariant(v: {
   id: string; productId: string; color: string; colorHex: string; type: string;
-  qty: number; barcode: string | null; boothMinStock?: number | null; createdAt: Date; updatedAt: Date;
+  qty: number; barcode: string | null; price?: number | null; boothMinStock?: number | null; createdAt: Date; updatedAt: Date;
 }) {
   return {
-    id: v.id, productId: v.productId, color: v.color, colorHex: v.colorHex,
+    id: v.id, productId: v.productId, color: v.color, colorHex: v.colorHex, price: v.price ?? null,
     type: v.type, qty: v.qty, barcode: v.barcode, boothMinStock: v.boothMinStock ?? null,
     createdAt: v.createdAt, updatedAt: v.updatedAt,
   };

@@ -42,7 +42,6 @@ model Product {
   name      String
   minStock  Int      @default(10)
   estPrintMinutes Int?     // estimated print time per pcs (minutes), used for Print Queue duration
-  price     Int?     // Harga jual (POS), dalam Rupiah. Nullable — produk lama belum tentu keisi.
   isBoothEnabled Boolean @default(false) // aktif di roster Booth Stock — gerbang tampil di grid POS
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -64,6 +63,7 @@ model ProductVariant {
   type      String   @default("")
   qty       Int      @default(0)
   barcode   String?
+  price     Int?     // Harga jual (POS), per kombinasi Variasi×Warna — PINDAH dari Product.price (lihat variant-matrix-spec.md). Nullable — belum tentu keisi.
   boothMinStock Int? // target qty booth PER WARNA (bukan per Product) — nempel walau isBoothEnabled di-nonaktifkan
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
