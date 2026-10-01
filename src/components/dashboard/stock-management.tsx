@@ -46,6 +46,7 @@ import {
   type MatrixBuilderHandle,
   type MatrixRow,
 } from '@/components/dashboard/variant-matrix-builder';
+import { MergeMatrixDialog } from '@/components/dashboard/merge-matrix-dialog';
 
 // ============ TYPES ============
 
@@ -251,6 +252,7 @@ export function StockManagement() {
 
   // Add Product state
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
   const [newProduct, setNewProduct] = useState<NewProductData>({
     sku: '',
     name: '',
@@ -762,6 +764,14 @@ export function StockManagement() {
             onChange={handleImportExcel}
           />
           <Button
+            variant="outline"
+            onClick={() => setMergeDialogOpen(true)}
+            className="text-sm font-medium rounded-lg flex items-center gap-2 h-10 px-4 border-[#e8e8e8] hover:bg-[#f5f6fa] cursor-pointer"
+          >
+            <Layers className="w-4 h-4" />
+            Gabung ke Matrix
+          </Button>
+          <Button
             onClick={openAddDialog}
             className="bg-[#4a6741] hover:bg-[#3d5535] text-white text-sm font-semibold rounded-lg flex items-center gap-2 h-10 px-4 shadow-sm cursor-pointer"
           >
@@ -770,6 +780,12 @@ export function StockManagement() {
           </Button>
         </div>
       </div>
+
+      <MergeMatrixDialog
+        open={mergeDialogOpen}
+        onClose={() => setMergeDialogOpen(false)}
+        onMerged={fetchProducts}
+      />
 
       {/* Main Tab Switcher: Produk vs Booth Stock */}
       <div className="flex items-center bg-[#f5f6fa] rounded-lg p-0.5 mb-4 w-fit">
