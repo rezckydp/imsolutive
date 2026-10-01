@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Plus,
   Search,
@@ -40,6 +40,12 @@ import {
 } from '@/components/ui/select';
 import { getVariantLabel } from '@/lib/stock-sync';
 import { BoothStock } from '@/components/dashboard/booth-stock';
+import {
+  VariantMatrixBuilder,
+  buildVariantMatrixPayload,
+  type MatrixBuilderHandle,
+  type MatrixRow,
+} from '@/components/dashboard/variant-matrix-builder';
 
 // ============ TYPES ============
 
@@ -78,6 +84,7 @@ interface ProductData {
   name: string;
   minStock: number;
   estPrintMinutes?: number | null;
+  variasi1Name?: string;
   parentProductId?: string | null;
   parentProduct?: { id: string; sku: string; name: string } | null;
   childProducts?: Array<{ id: string; sku: string; name: string }>;
@@ -240,12 +247,7 @@ export function StockManagement() {
   const [reparentConfirmOpen, setReparentConfirmOpen] = useState(false);
   const [reparenting, setReparenting] = useState(false);
   const [editEstPrintMinutes, setEditEstPrintMinutes] = useState<string>('');
-  const [editVariants, setEditVariants] = useState<VariantData[]>([]);
   const [saving, setSaving] = useState(false);
-
-  // Edit — Type variants state
-  const [editVariantTab, setEditVariantTab] = useState<'color' | 'type'>('color');
-  const [editTypeVariants, setEditTypeVariants] = useState<Array<TypeVariantData>>([]);
 
   // Add Product state
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -259,8 +261,8 @@ export function StockManagement() {
   });
   const [creating, setCreating] = useState(false);
 
-  // Add Product — Type variants state
-  const [variantTab, setVariantTab] = useState<'color' | 'type'>('color');
+  // Add Product — Type variants seed data (merged into the matrix builder's
+  // initial rows — see addMatrixInitialRows below)
   const [typeVariants, setTypeVariants] = useState<Array<TypeVariantData>>([]);
 
   // Delete confirm state
@@ -297,6 +299,55 @@ export function StockManagement() {
 
   // Master products for dropdown (only masters/standalone with no parent)
   const masterProducts = products.filter((p) => !p.parentProductId);
+
+  // ============ VARIANT MATRIX BUILDER WIRING ============
+  const addMatrixRef = useRef<MatrixBuilderHandle>(null);
+  const editMatrixRef = useRef<MatrixBuilderHandle>(null);
+
+  // Seed rows for the Add dialog's matrix builder from newProduct.variants /
+  // typeVariants (already populated correctly by openAddDialog/handleParentSelect
+  // below) — a brand new standalone product seeds empty so the builder shows
+  // its "add a color" empty state instead of one phantom blank row.
+  const addMatrixInitialRows = useMemo<MatrixRow[]>(() => {
+    const colorRows: MatrixRow[] = newProduct.variants
+      .filter((v) => v.color.trim() || v.type?.trim())
+      .map((v) => ({
+        color: v.color,
+        colorHex: v.colorHex,
+        variasi1: v.type || '',
+        price: '',
+        qty: v.qty,
+        barcode: v.barcode,
+      }));
+    const typeRows: MatrixRow[] = typeVariants
+      .filter((tv) => tv.type.trim())
+      .map((tv) => ({
+        color: '',
+        colorHex: '#2d3436',
+        variasi1: tv.type,
+        price: '',
+        qty: tv.qty,
+        barcode: tv.barcode,
+      }));
+    return [...colorRows, ...typeRows];
+  }, [newProduct.variants, typeVariants]);
+
+  const addMatrixInitialVariasi1Name = newProduct.parentProductId
+    ? masterProducts.find((p) => p.id === newProduct.parentProductId)?.variasi1Name || ''
+    : '';
+
+  const editMatrixInitialRows = useMemo<MatrixRow[]>(() => {
+    if (!editProduct) return [];
+    return (editProduct.variants || []).map((v) => ({
+      id: v.id,
+      color: v.color,
+      colorHex: v.colorHex,
+      variasi1: v.type || '',
+      price: v.price != null ? String(v.price) : '',
+      qty: v.qty,
+      barcode: v.barcode || '',
+    }));
+  }, [editProduct]);
 
   // Fetch products
   const fetchProducts = useCallback(async () => {
@@ -401,7 +452,6 @@ export function StockManagement() {
       productType: 'standalone',
       parentProductId: '',
     });
-    setVariantTab('color');
     setTypeVariants([]);
     setShowAddDialog(true);
   };
@@ -456,53 +506,6 @@ export function StockManagement() {
     }
   };
 
-  const addVariant = () => {
-    setNewProduct({
-      ...newProduct,
-      variants: [...newProduct.variants, { color: '', colorHex: '#000000', qty: 0, barcode: '' }],
-    });
-  };
-
-  const removeVariant = (index: number) => {
-    // Allow removal if there are other variants (color or type)
-    const totalVariants = newProduct.variants.length + typeVariants.length;
-    if (totalVariants <= 1) return;
-    if (newProduct.variants.length <= 1 && typeVariants.length === 0) return;
-    setNewProduct({
-      ...newProduct,
-      variants: newProduct.variants.filter((_, i) => i !== index),
-    });
-  };
-
-  const updateVariant = (index: number, field: keyof VariantData, value: string | number) => {
-    const variants = newProduct.variants.map((v, i) =>
-      i === index ? { ...v, [field]: value } : v
-    );
-    setNewProduct({ ...newProduct, variants });
-  };
-
-  const handlePresetColorAdd = (index: number, name: string, hex: string) => {
-    const variants = newProduct.variants.map((v, i) =>
-      i === index ? { ...v, color: name, colorHex: hex } : v
-    );
-    setNewProduct({ ...newProduct, variants });
-  };
-
-  // Type variant helpers (Add dialog)
-  const addTypeVariant = () => {
-    setTypeVariants([...typeVariants, { type: '', qty: 0, barcode: '' }]);
-  };
-
-  const removeTypeVariant = (index: number) => {
-    setTypeVariants(typeVariants.filter((_, i) => i !== index));
-  };
-
-  const updateTypeVariant = (index: number, field: keyof TypeVariantData, value: string | number) => {
-    setTypeVariants(typeVariants.map((v, i) =>
-      i === index ? { ...v, [field]: value } : v
-    ));
-  };
-
   const handleCreateProduct = async () => {
     if (!newProduct.sku.trim() || !newProduct.name.trim()) {
       alert('SKU dan Nama Produk wajib diisi.');
@@ -511,13 +514,10 @@ export function StockManagement() {
 
     setCreating(true);
     try {
-      const validColorVariants = newProduct.variants.filter((v) => v.color.trim());
-      const validTypeVariants = typeVariants.filter((v) => v.type.trim());
-      const allVariants = newProduct.productType === 'standalone'
-        ? [...validColorVariants, ...validTypeVariants]
-        : validColorVariants;
+      const rows = addMatrixRef.current?.getRows() ?? [];
+      const variasi1Name = addMatrixRef.current?.getVariasi1Name() ?? '';
 
-      if (newProduct.productType === 'standalone' && allVariants.length === 0) {
+      if (newProduct.productType === 'standalone' && rows.length === 0) {
         alert('Produk harus memiliki minimal 1 varian (warna atau type).');
         setCreating(false);
         return;
@@ -527,46 +527,15 @@ export function StockManagement() {
         sku: newProduct.sku.trim(),
         name: newProduct.name.trim(),
         minStock: newProduct.minStock,
+        variasi1Name,
       };
 
       if (newProduct.productType === 'variant' && newProduct.parentProductId) {
         payload.parentProductId = newProduct.parentProductId;
-        if (validColorVariants.length > 0) {
-          payload.variants = validColorVariants.map((v) => ({
-            color: v.color,
-            colorHex: v.colorHex,
-            qty: 0, // Server will sync from master
-            barcode: v.barcode || null,
-            type: v.type || '',
-            price: v.price?.trim() ? parseInt(v.price, 10) : null, // NOT synced from master — set independently
-          }));
-        }
-      } else {
-        if (allVariants.length > 0) {
-          payload.variants = allVariants.map((v) => {
-            if ('color' in v) {
-              // Color variant
-              return {
-                color: v.color,
-                colorHex: v.colorHex,
-                qty: v.qty,
-                barcode: v.barcode || null,
-                type: (v as VariantData).type || '',
-                price: v.price?.trim() ? parseInt(v.price, 10) : null,
-              };
-            } else {
-              // Type variant
-              return {
-                color: '',
-                colorHex: '#2d3436',
-                type: (v as TypeVariantData).type,
-                qty: v.qty,
-                barcode: v.barcode || null,
-                price: v.price?.trim() ? parseInt(v.price, 10) : null,
-              };
-            }
-          });
-        }
+      }
+      if (rows.length > 0) {
+        // No original ids on a brand-new product — every row is a create.
+        payload.variants = buildVariantMatrixPayload([], rows);
       }
 
       const res = await fetch('/api/products', {
@@ -619,129 +588,22 @@ export function StockManagement() {
     setEditMinStock(product.minStock);
     setEditEstPrintMinutes(product.estPrintMinutes != null ? String(product.estPrintMinutes) : '');
     setReparentTargetSku(product.parentProduct?.sku || '');
-    // Separate variants into color variants and type variants
-    const colorVariants: VariantData[] = [];
-    const typeVariantsData: TypeVariantData[] = [];
-    (product.variants || []).forEach((v) => {
-      const hasColor = v.color && v.color.trim() !== '';
-      const hasType = v.type && v.type.trim() !== '';
-      if (hasType && !hasColor) {
-        typeVariantsData.push({
-          id: v.id,
-          type: v.type || '',
-          qty: v.qty,
-          barcode: v.barcode || '',
-          price: v.price != null ? String(v.price) : '',
-        });
-      } else {
-        colorVariants.push({
-          id: v.id,
-          color: v.color,
-          colorHex: v.colorHex,
-          qty: v.qty,
-          barcode: v.barcode || '',
-          type: v.type || '',
-          price: v.price != null ? String(v.price) : '',
-        });
-      }
-    });
-    setEditVariants(colorVariants.length > 0 ? colorVariants : [{ color: '', colorHex: '#000000', qty: 0, barcode: '' }]);
-    setEditTypeVariants(typeVariantsData);
-    setEditVariantTab('color');
+    // Variant rows themselves are derived straight from product.variants via
+    // editMatrixInitialRows — no separate state to populate here anymore.
     setEditProduct(product);
   };
 
   const isVariant = editProduct?.parentProductId;
   const isMaster = editProduct && !editProduct?.parentProductId && (editProduct?.childProducts?.length ?? 0) > 0;
 
-  const addEditVariant = () => {
-    if (isVariant) return; // Variants can't add new colors
-    setEditVariants([...editVariants, { color: '', colorHex: '#000000', qty: 0, barcode: '' }]);
-  };
-
-  const removeEditVariant = (index: number) => {
-    if (isVariant) return; // Variants can't remove colors
-    // Allow removal if there are other variants (color or type)
-    const totalVariants = editVariants.filter((v) => !v._delete).length + editTypeVariants.filter((v) => !v._delete).length;
-    if (totalVariants <= 1) return;
-    if (editVariants.filter((v) => !v._delete).length <= 1 && editTypeVariants.filter((v) => !v._delete).length === 0) return;
-    const variant = editVariants[index];
-    if (variant.id) {
-      setEditVariants(editVariants.map((v, i) =>
-        i === index ? { ...v, _delete: true } : v
-      ));
-    } else {
-      setEditVariants(editVariants.filter((_, i) => i !== index));
-    }
-  };
-
-  const updateEditVariant = (index: number, field: keyof VariantData, value: string | number) => {
-    // Variants cannot edit qty (synced from master) or add/remove colors
-    if (isVariant && field === 'qty') return;
-    setEditVariants(editVariants.map((v, i) =>
-      i === index ? { ...v, [field]: value } : v
-    ));
-  };
-
-  const handlePresetColorEdit = (index: number, name: string, hex: string) => {
-    if (isVariant) return;
-    setEditVariants(editVariants.map((v, i) =>
-      i === index ? { ...v, color: name, colorHex: hex } : v
-    ));
-  };
-
-  // Edit — Type variant helpers
-  const addEditTypeVariant = () => {
-    if (isVariant) return;
-    setEditTypeVariants([...editTypeVariants, { type: '', qty: 0, barcode: '' }]);
-  };
-
-  const removeEditTypeVariant = (index: number) => {
-    if (isVariant) return;
-    const variant = editTypeVariants[index];
-    if (variant.id) {
-      setEditTypeVariants(editTypeVariants.map((v, i) =>
-        i === index ? { ...v, _delete: true } : v
-      ));
-    } else {
-      setEditTypeVariants(editTypeVariants.filter((_, i) => i !== index));
-    }
-  };
-
-  const updateEditTypeVariant = (index: number, field: keyof TypeVariantData, value: string | number) => {
-    if (isVariant && field === 'qty') return;
-    setEditTypeVariants(editTypeVariants.map((v, i) =>
-      i === index ? { ...v, [field]: value } : v
-    ));
-  };
-
   const handleSave = async () => {
     if (!editProduct) return;
     setSaving(true);
     try {
-      // Combine color variants and type variants
-      const allVariants = [
-        ...editVariants.map((v) => ({
-          id: v.id,
-          color: v.color,
-          colorHex: v.colorHex,
-          qty: v.qty,
-          barcode: v.barcode || '',
-          type: v.type || '',
-          price: v.price?.trim() ? parseInt(v.price, 10) : null,
-          _delete: v._delete,
-        })),
-        ...editTypeVariants.map((v) => ({
-          id: v.id,
-          color: '',
-          colorHex: '#2d3436',
-          qty: v.qty,
-          barcode: v.barcode || '',
-          type: v.type,
-          price: v.price?.trim() ? parseInt(v.price, 10) : null,
-          _delete: v._delete,
-        })),
-      ];
+      const rows = editMatrixRef.current?.getRows() ?? [];
+      const variasi1Name = editMatrixRef.current?.getVariasi1Name() ?? '';
+      const originalIds = (editProduct.variants || []).map((v) => v.id);
+      const variantsPayload = buildVariantMatrixPayload(originalIds, rows);
 
       const res = await fetch(`/api/products/${editProduct.sku}`, {
         method: 'PUT',
@@ -751,7 +613,8 @@ export function StockManagement() {
           name: editName,
           minStock: editMinStock,
           estPrintMinutes: editEstPrintMinutes.trim() ? parseInt(editEstPrintMinutes, 10) : null,
-          variants: allVariants,
+          variasi1Name,
+          variants: variantsPayload,
         }),
       });
 
@@ -1361,7 +1224,9 @@ export function StockManagement() {
 
             {/* SKU */}
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-[#2d3436]">Product SKU *</Label>
+              <Label className="text-sm font-medium text-[#2d3436]">
+                {newProduct.productType === 'standalone' ? 'Master SKU *' : 'SKU Varian *'}
+              </Label>
               <Input
                 value={newProduct.sku}
                 onChange={(e) => setNewProduct({ ...newProduct, sku: e.target.value })}
@@ -1395,281 +1260,17 @@ export function StockManagement() {
               </div>
             )}
 
-            {/* Variants — Tabbed: Color / Type */}
+            {/* Variant Matrix — Variasi 1 (optional) × Warna */}
             <div className="space-y-3">
-              {/* Tab buttons — only for standalone */}
-              {newProduct.productType === 'standalone' ? (
-                <>
-                  <div className="flex border-b border-[#e8e8e8]">
-                    <button
-                      type="button"
-                      onClick={() => setVariantTab('color')}
-                      className={`px-4 py-2 text-sm font-medium transition-colors cursor-pointer border-b-2 -mb-px ${
-                        variantTab === 'color'
-                          ? 'border-[#4a6741] text-[#4a6741]'
-                          : 'border-transparent text-[#6b7280] hover:text-[#4b5563]'
-                      }`}
-                    >
-                      Varian Warna
-                      <span className="text-[11px] text-[#6b7280] ml-1.5 font-normal">
-                        ({newProduct.variants.filter((v) => v.color.trim()).length})
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setVariantTab('type')}
-                      className={`px-4 py-2 text-sm font-medium transition-colors cursor-pointer border-b-2 -mb-px ${
-                        variantTab === 'type'
-                          ? 'border-[#4a6741] text-[#4a6741]'
-                          : 'border-transparent text-[#6b7280] hover:text-[#4b5563]'
-                      }`}
-                    >
-                      Varian Type
-                      <span className="text-[11px] text-[#6b7280] ml-1.5 font-normal">
-                        ({typeVariants.filter((v) => v.type.trim()).length})
-                      </span>
-                    </button>
-                  </div>
-
-                  {/* Color Variants Tab */}
-                  {variantTab === 'color' && (
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <Label className="text-sm font-medium text-[#2d3436]">Color Variants</Label>
-                        <button
-                          onClick={addVariant}
-                          className="text-xs text-[#4a6741] font-semibold hover:underline flex items-center gap-1 cursor-pointer"
-                        >
-                          <Plus className="w-3 h-3" />
-                          Add Color Variant
-                        </button>
-                      </div>
-                      <div className="rounded-lg border border-[#e8e8e8] overflow-hidden">
-                        <div className="grid grid-cols-[auto_100px_70px_90px_1fr_32px] gap-2 px-3 py-1.5 bg-[#f0f0f0] items-end">
-                          <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Color</span>
-                          <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Name</span>
-                          <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Qty</span>
-                          <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Harga</span>
-                          <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Barcode</span>
-                          <span />
-                        </div>
-                        <div className="divide-y divide-[#f0f0f0]">
-                          {newProduct.variants.map((variant, index) => (
-                            <div
-                              key={index}
-                              className="grid grid-cols-[auto_100px_70px_90px_1fr_32px] gap-2 px-3 py-2 items-end"
-                            >
-                              <div className="flex items-center gap-1.5">
-                                <div
-                                  className="w-6 h-6 rounded border border-[#e8e8e8] flex-shrink-0 shadow-sm"
-                                  style={{ backgroundColor: variant.colorHex }}
-                                />
-                                <select
-                                  value={variant.colorHex}
-                                  onChange={(e) => {
-                                    const preset = dbColors.find(c => c.hex === e.target.value);
-                                    if (preset) handlePresetColorAdd(index, preset.name, preset.hex);
-                                  }}
-                                  className="h-8 text-[11px] bg-[#f5f6fa] border border-[#e8e8e8] rounded-lg px-1.5 pr-5 cursor-pointer text-[#2d3436]"
-                                >
-                                  <option value="">Pilih</option>
-                                  {dbColors.map((c) => (
-                                    <option key={c.hex} value={c.hex}>{c.name}</option>
-                                  ))}
-                                </select>
-                              </div>
-                              <Input
-                                value={variant.color}
-                                onChange={(e) => updateVariant(index, 'color', e.target.value)}
-                                placeholder="Nama warna"
-                                className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
-                              />
-                              <Input
-                                type="number"
-                                min={0}
-                                value={variant.qty}
-                                onChange={(e) => updateVariant(index, 'qty', parseInt(e.target.value) || 0)}
-                                className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
-                              />
-                              <Input
-                                type="number"
-                                min={0}
-                                value={variant.price ?? ''}
-                                onChange={(e) => updateVariant(index, 'price', e.target.value)}
-                                placeholder="Rp"
-                                className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
-                              />
-                              <Input
-                                value={variant.barcode}
-                                onChange={(e) => updateVariant(index, 'barcode', e.target.value)}
-                                placeholder="Scan or enter"
-                                className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
-                              />
-                              <div className="flex items-center justify-center">
-                                {(newProduct.variants.length > 1 || typeVariants.length > 0) ? (
-                                  <button
-                                    onClick={() => removeVariant(index)}
-                                    className="w-6 h-6 flex items-center justify-center rounded text-[#dc2626] hover:bg-[#dc2626]/10 transition-colors cursor-pointer"
-                                    title="Remove variant"
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                ) : (
-                                  <span />
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Type Variants Tab */}
-                  {variantTab === 'type' && (
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <Label className="text-sm font-medium text-[#2d3436]">Type Variants</Label>
-                        <button
-                          onClick={addTypeVariant}
-                          className="text-xs text-[#4a6741] font-semibold hover:underline flex items-center gap-1 cursor-pointer"
-                        >
-                          <Plus className="w-3 h-3" />
-                          Add Type Variant
-                        </button>
-                      </div>
-                      <div className="rounded-lg border border-[#e8e8e8] overflow-hidden">
-                        <div className="grid grid-cols-[1fr_70px_90px_1fr_32px] gap-2 px-3 py-1.5 bg-[#f0f0f0] items-end">
-                          <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Type Name</span>
-                          <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Qty</span>
-                          <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Harga</span>
-                          <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Barcode</span>
-                          <span />
-                        </div>
-                        <div className="divide-y divide-[#f0f0f0]">
-                          {typeVariants.length === 0 && (
-                            <div className="px-3 py-6 text-center text-xs text-[#6b7280]">
-                              Belum ada varian type. Klik "Add Type Variant" untuk menambahkan.
-                            </div>
-                          )}
-                          {typeVariants.map((tv, index) => (
-                            <div
-                              key={index}
-                              className="grid grid-cols-[1fr_70px_90px_1fr_32px] gap-2 px-3 py-2 items-end"
-                            >
-                              <Input
-                                value={tv.type}
-                                onChange={(e) => updateTypeVariant(index, 'type', e.target.value)}
-                                placeholder="e.g. XL, 10kg, Premium"
-                                className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
-                              />
-                              <Input
-                                type="number"
-                                min={0}
-                                value={tv.qty}
-                                onChange={(e) => updateTypeVariant(index, 'qty', parseInt(e.target.value) || 0)}
-                                className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
-                              />
-                              <Input
-                                type="number"
-                                min={0}
-                                value={tv.price ?? ''}
-                                onChange={(e) => updateTypeVariant(index, 'price', e.target.value)}
-                                placeholder="Rp"
-                                className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
-                              />
-                              <Input
-                                value={tv.barcode}
-                                onChange={(e) => updateTypeVariant(index, 'barcode', e.target.value)}
-                                placeholder="Scan or enter"
-                                className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
-                              />
-                              <div className="flex items-center justify-center">
-                                <button
-                                  onClick={() => removeTypeVariant(index)}
-                                  className="w-6 h-6 flex items-center justify-center rounded text-[#dc2626] hover:bg-[#dc2626]/10 transition-colors cursor-pointer"
-                                  title="Remove type variant"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                /* Variant type — color variants only (synced) */
-                <>
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm font-medium text-[#2d3436]">
-                      Color Variants
-                      <span className="text-[11px] text-[#2563eb] ml-1.5 font-normal">(synced)</span>
-                    </Label>
-                  </div>
-                  <div className="rounded-lg border border-[#e8e8e8] overflow-hidden">
-                    <div className="grid grid-cols-[auto_100px_70px_90px_1fr_32px] gap-2 px-3 py-1.5 bg-[#f0f0f0] items-end">
-                      <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Color</span>
-                      <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Name</span>
-                      <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">
-                        Qty<span className="text-[#2563eb] ml-0.5">*</span>
-                      </span>
-                      <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Harga</span>
-                      <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Barcode</span>
-                      <span />
-                    </div>
-                    <div className="divide-y divide-[#f0f0f0]">
-                      {newProduct.variants.map((variant, index) => (
-                        <div
-                          key={index}
-                          className="grid grid-cols-[auto_100px_70px_90px_1fr_32px] gap-2 px-3 py-2 items-end"
-                        >
-                          <div className="flex items-center gap-1.5">
-                            <div
-                              className="w-6 h-6 rounded border border-[#e8e8e8] flex-shrink-0 shadow-sm"
-                              style={{ backgroundColor: variant.colorHex }}
-                            />
-                          </div>
-                          <Input
-                            value={variant.color}
-                            onChange={(e) => updateVariant(index, 'color', e.target.value)}
-                            placeholder="Nama warna"
-                            disabled={newProduct.productType === 'variant'}
-                            className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg disabled:opacity-60"
-                          />
-                          <Input
-                            type="number"
-                            min={0}
-                            value={variant.qty}
-                            onChange={(e) => updateVariant(index, 'qty', parseInt(e.target.value) || 0)}
-                            disabled={newProduct.productType === 'variant'}
-                            className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg disabled:opacity-60"
-                          />
-                          <Input
-                            type="number"
-                            min={0}
-                            value={variant.price ?? ''}
-                            onChange={(e) => updateVariant(index, 'price', e.target.value)}
-                            placeholder="Rp"
-                            className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
-                          />
-                          <Input
-                            value={variant.barcode}
-                            onChange={(e) => updateVariant(index, 'barcode', e.target.value)}
-                            placeholder="Barcode"
-                            className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
-                          />
-                          <div className="flex items-center justify-center">
-                            <span />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
+              <VariantMatrixBuilder
+                key={`add-${newProduct.productType}-${newProduct.parentProductId || 'none'}`}
+                ref={addMatrixRef}
+                masterSku={newProduct.sku || 'PRODUK'}
+                initialRows={addMatrixInitialRows}
+                initialVariasi1Name={addMatrixInitialVariasi1Name}
+                dbColors={dbColors}
+                childMode={newProduct.productType === 'variant'}
+              />
             </div>
           </div>
 
@@ -1829,7 +1430,7 @@ export function StockManagement() {
               <div className="space-y-4">
                 {/* SKU */}
                 <div className="space-y-1.5">
-                  <Label className="text-sm font-medium text-[#2d3436]">SKU *</Label>
+                  <Label className="text-sm font-medium text-[#2d3436]">{isMaster ? 'Master SKU *' : 'SKU Varian *'}</Label>
                   <Input
                     value={editSku}
                     onChange={(e) => setEditSku(e.target.value)}
@@ -1888,304 +1489,19 @@ export function StockManagement() {
                   </div>
                 )}
 
-                {/* Variants — Tabbed: Color / Type. Harga Jual (POS) sekarang per baris
-                    kombinasi di tabel di bawah, bukan 1 harga untuk seluruh produk — lihat
-                    variant-matrix-spec.md (D13 vs D15 boleh beda harga). */}
+                {/* Variant Matrix — Variasi 1 (optional) × Warna. Harga sekarang per baris
+                    kombinasi, bukan 1 harga untuk seluruh produk (variant-matrix-spec.md). */}
                 <div className="space-y-3">
-                  {!isVariant ? (
-                    <>
-                      <div className="flex border-b border-[#e8e8e8]">
-                        <button
-                          type="button"
-                          onClick={() => setEditVariantTab('color')}
-                          className={`px-4 py-2 text-sm font-medium transition-colors cursor-pointer border-b-2 -mb-px ${
-                            editVariantTab === 'color'
-                              ? 'border-[#4a6741] text-[#4a6741]'
-                              : 'border-transparent text-[#6b7280] hover:text-[#4b5563]'
-                          }`}
-                        >
-                          Varian Warna
-                          <span className="text-[11px] text-[#6b7280] ml-1.5 font-normal">
-                            ({editVariants.filter((v) => !v._delete).length})
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditVariantTab('type')}
-                          className={`px-4 py-2 text-sm font-medium transition-colors cursor-pointer border-b-2 -mb-px ${
-                            editVariantTab === 'type'
-                              ? 'border-[#4a6741] text-[#4a6741]'
-                              : 'border-transparent text-[#6b7280] hover:text-[#4b5563]'
-                          }`}
-                        >
-                          Varian Type
-                          <span className="text-[11px] text-[#6b7280] ml-1.5 font-normal">
-                            ({editTypeVariants.filter((v) => !v._delete).length})
-                          </span>
-                        </button>
-                      </div>
-
-                      {/* Color Variants Tab */}
-                      {editVariantTab === 'color' && (
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <Label className="text-sm font-medium text-[#2d3436]">Color Variants</Label>
-                            <button
-                              onClick={addEditVariant}
-                              className="text-xs text-[#4a6741] font-semibold hover:underline flex items-center gap-1 cursor-pointer"
-                            >
-                              <Plus className="w-3 h-3" />
-                              Add Color Variant
-                            </button>
-                          </div>
-                          <div className="rounded-lg border border-[#e8e8e8] overflow-hidden">
-                            <div className="grid grid-cols-[auto_100px_70px_90px_1fr_32px] gap-2 px-3 py-1.5 bg-[#f0f0f0] items-end">
-                              <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Color</span>
-                              <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Name</span>
-                              <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">
-                                Stock{isMaster && <span className="text-[#4a6741] ml-0.5">^</span>}
-                              </span>
-                              <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Harga</span>
-                              <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Barcode</span>
-                              <span />
-                            </div>
-                            <div className="divide-y divide-[#f0f0f0]">
-                            {editVariants.map((variant, index) => {
-                              if (variant._delete) return null;
-                              return (
-                                <div
-                                  key={variant.id || `new-${index}`}
-                                  className="grid grid-cols-[auto_100px_70px_90px_1fr_32px] gap-2 px-3 py-2 items-end"
-                                >
-                                  <div className="flex items-center gap-1.5">
-                                    <div
-                                      className="w-6 h-6 rounded border border-[#e8e8e8] flex-shrink-0 shadow-sm"
-                                      style={{ backgroundColor: variant.colorHex }}
-                                    />
-                                    <select
-                                      value={variant.colorHex}
-                                      onChange={(e) => {
-                                        const preset = dbColors.find(c => c.hex === e.target.value);
-                                        if (preset) handlePresetColorEdit(index, preset.name, preset.hex);
-                                      }}
-                                      className="h-8 text-[11px] bg-[#f5f6fa] border border-[#e8e8e8] rounded-lg px-1.5 pr-5 cursor-pointer text-[#2d3436]"
-                                    >
-                                      <option value="">Pilih</option>
-                                      {dbColors.map((c) => (
-                                        <option key={c.hex} value={c.hex}>{c.name}</option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                  <Input
-                                    value={variant.color}
-                                    onChange={(e) => updateEditVariant(index, 'color', e.target.value)}
-                                    placeholder="Nama warna"
-                                    className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
-                                  />
-                                  <Input
-                                    type="number"
-                                    min={0}
-                                    value={variant.qty}
-                                    onChange={(e) => updateEditVariant(index, 'qty', parseInt(e.target.value) || 0)}
-                                    className={`h-8 text-xs bg-white border-[#e8e8e8] rounded-lg ${variant.qty === 0 ? 'text-[#dc2626] font-bold' : ''}`}
-                                  />
-                                  <Input
-                                    type="number"
-                                    min={0}
-                                    value={variant.price ?? ''}
-                                    onChange={(e) => updateEditVariant(index, 'price', e.target.value)}
-                                    placeholder="Rp"
-                                    className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
-                                  />
-                                  <Input
-                                    value={variant.barcode}
-                                    onChange={(e) => updateEditVariant(index, 'barcode', e.target.value)}
-                                    placeholder="Scan or enter"
-                                    className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
-                                  />
-                                  <div className="flex items-center justify-center">
-                                    {(editVariants.filter((v) => !v._delete).length > 1 || editTypeVariants.filter((v) => !v._delete).length > 0) ? (
-                                      <button
-                                        onClick={() => removeEditVariant(index)}
-                                        className="w-6 h-6 flex items-center justify-center rounded text-[#dc2626] hover:bg-[#dc2626]/10 transition-colors cursor-pointer"
-                                        title="Remove variant"
-                                      >
-                                        <Trash2 className="w-3 h-3" />
-                                      </button>
-                                    ) : (
-                                      <span />
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Type Variants Tab */}
-                      {editVariantTab === 'type' && (
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <Label className="text-sm font-medium text-[#2d3436]">Type Variants</Label>
-                            <button
-                              onClick={addEditTypeVariant}
-                              className="text-xs text-[#4a6741] font-semibold hover:underline flex items-center gap-1 cursor-pointer"
-                            >
-                              <Plus className="w-3 h-3" />
-                              Add Type Variant
-                            </button>
-                          </div>
-                          <div className="rounded-lg border border-[#e8e8e8] overflow-hidden">
-                            <div className="grid grid-cols-[1fr_70px_90px_1fr_32px] gap-2 px-3 py-1.5 bg-[#f0f0f0] items-end">
-                              <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Type Name</span>
-                              <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Stock</span>
-                              <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Harga</span>
-                              <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Barcode</span>
-                              <span />
-                            </div>
-                            <div className="divide-y divide-[#f0f0f0]">
-                              {editTypeVariants.filter((v) => !v._delete).length === 0 && (
-                                <div className="px-3 py-6 text-center text-xs text-[#6b7280]">
-                                  Belum ada varian type. Klik "Add Type Variant" untuk menambahkan.
-                                </div>
-                              )}
-                              {editTypeVariants.map((tv, index) => {
-                                if (tv._delete) return null;
-                                return (
-                                  <div
-                                    key={tv.id || `new-type-${index}`}
-                                    className="grid grid-cols-[1fr_70px_90px_1fr_32px] gap-2 px-3 py-2 items-end"
-                                  >
-                                    <Input
-                                      value={tv.type}
-                                      onChange={(e) => updateEditTypeVariant(index, 'type', e.target.value)}
-                                      placeholder="e.g. XL, 10kg, Premium"
-                                      className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
-                                    />
-                                    <Input
-                                      type="number"
-                                      min={0}
-                                      value={tv.qty}
-                                      onChange={(e) => updateEditTypeVariant(index, 'qty', parseInt(e.target.value) || 0)}
-                                      className={`h-8 text-xs bg-white border-[#e8e8e8] rounded-lg ${tv.qty === 0 ? 'text-[#dc2626] font-bold' : ''}`}
-                                    />
-                                    <Input
-                                      type="number"
-                                      min={0}
-                                      value={tv.price ?? ''}
-                                      onChange={(e) => updateEditTypeVariant(index, 'price', e.target.value)}
-                                      placeholder="Rp"
-                                      className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
-                                    />
-                                    <Input
-                                      value={tv.barcode}
-                                      onChange={(e) => updateEditTypeVariant(index, 'barcode', e.target.value)}
-                                      placeholder="Scan or enter"
-                                      className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
-                                    />
-                                    <div className="flex items-center justify-center">
-                                      {editTypeVariants.filter((v) => !v._delete).length > 1 || !tv.id ? (
-                                        <button
-                                          onClick={() => removeEditTypeVariant(index)}
-                                          className="w-6 h-6 flex items-center justify-center rounded text-[#dc2626] hover:bg-[#dc2626]/10 transition-colors cursor-pointer"
-                                          title="Remove type variant"
-                                        >
-                                          <Trash2 className="w-3 h-3" />
-                                        </button>
-                                      ) : (
-                                        <button
-                                          onClick={() => removeEditTypeVariant(index)}
-                                          className="w-6 h-6 flex items-center justify-center rounded text-[#dc2626] hover:bg-[#dc2626]/10 transition-colors cursor-pointer"
-                                          title="Remove type variant"
-                                        >
-                                          <Trash2 className="w-3 h-3" />
-                                        </button>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    /* Variant (child) — color variants only (synced) */
-                    <>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Label className="text-sm font-medium text-[#2d3436]">Color Variants</Label>
-                          <span className="text-[11px] text-[#6b7280] bg-[#f5f6fa] px-2 py-0.5 rounded-full">
-                            {editVariants.filter((v) => !v._delete).length}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="rounded-lg border border-[#e8e8e8] overflow-hidden">
-                        <div className="grid grid-cols-[auto_100px_70px_90px_1fr_32px] gap-2 px-3 py-1.5 bg-[#f0f0f0] items-end">
-                          <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Color</span>
-                          <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Name</span>
-                          <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">
-                            Stock<span className="text-[#2563eb] ml-0.5">*</span>
-                          </span>
-                          <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Harga</span>
-                          <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Barcode</span>
-                          <span />
-                        </div>
-                        <div className="divide-y divide-[#f0f0f0]">
-                        {editVariants.map((variant, index) => {
-                          if (variant._delete) return null;
-                          return (
-                            <div
-                              key={variant.id || `new-${index}`}
-                              className="grid grid-cols-[auto_100px_70px_90px_1fr_32px] gap-2 px-3 py-2 items-end"
-                            >
-                              <div className="flex items-center gap-1.5">
-                                <div
-                                  className="w-6 h-6 rounded border border-[#e8e8e8] flex-shrink-0 shadow-sm"
-                                  style={{ backgroundColor: variant.colorHex }}
-                                />
-                              </div>
-                              <Input
-                                value={variant.color}
-                                onChange={(e) => updateEditVariant(index, 'color', e.target.value)}
-                                placeholder="Nama warna"
-                                disabled={!!isVariant}
-                                className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg disabled:opacity-60"
-                              />
-                              <Input
-                                type="number"
-                                min={0}
-                                value={variant.qty}
-                                onChange={(e) => updateEditVariant(index, 'qty', parseInt(e.target.value) || 0)}
-                                disabled={!!isVariant}
-                                className={`h-8 text-xs bg-white border-[#e8e8e8] rounded-lg disabled:opacity-60 ${!isVariant && variant.qty === 0 ? 'text-[#dc2626] font-bold' : ''}`}
-                              />
-                              <Input
-                                type="number"
-                                min={0}
-                                value={variant.price ?? ''}
-                                onChange={(e) => updateEditVariant(index, 'price', e.target.value)}
-                                placeholder="Rp"
-                                className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
-                              />
-                              <Input
-                                value={variant.barcode}
-                                onChange={(e) => updateEditVariant(index, 'barcode', e.target.value)}
-                                placeholder="Scan or enter"
-                                className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
-                              />
-                              <div className="flex items-center justify-center">
-                                <span />
-                              </div>
-                            </div>
-                          );
-                        })}
-                        </div>
-                      </div>
-                    </>
+                  {editProduct && (
+                    <VariantMatrixBuilder
+                      key={editProduct.id}
+                      ref={editMatrixRef}
+                      masterSku={editProduct.sku}
+                      initialRows={editMatrixInitialRows}
+                      initialVariasi1Name={editProduct.variasi1Name || ''}
+                      dbColors={dbColors}
+                      childMode={!!isVariant}
+                    />
                   )}
                 </div>
               </div>

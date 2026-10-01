@@ -36,12 +36,12 @@ interface LogActivityParams {
 export function snapshotProduct(p: {
   id: string; sku: string; name: string; minStock: number;
   estPrintMinutes: number | null; parentProductId: string | null;
-  isBoothEnabled?: boolean; createdAt: Date; updatedAt: Date;
+  isBoothEnabled?: boolean; variasi1Name?: string; createdAt: Date; updatedAt: Date;
 }) {
   return {
     id: p.id, sku: p.sku, name: p.name, minStock: p.minStock,
     estPrintMinutes: p.estPrintMinutes, parentProductId: p.parentProductId,
-    isBoothEnabled: p.isBoothEnabled ?? false,
+    isBoothEnabled: p.isBoothEnabled ?? false, variasi1Name: p.variasi1Name ?? "",
     createdAt: p.createdAt, updatedAt: p.updatedAt,
   };
 }

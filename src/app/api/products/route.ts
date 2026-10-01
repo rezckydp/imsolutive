@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
   const user = getCurrentUser(request);
   try {
     const body = await request.json();
-    const { sku, name, minStock, estPrintMinutes, variants, parts, parentProductId } = body;
+    const { sku, name, minStock, estPrintMinutes, variasi1Name, variants, parts, parentProductId } = body;
 
     if (!sku || !name) {
       return NextResponse.json(
@@ -182,6 +182,7 @@ export async function POST(request: NextRequest) {
             name,
             minStock: parent.minStock, // Inherit master's minStock
             estPrintMinutes: parent.estPrintMinutes, // Inherit master's print time
+            variasi1Name: parent.variasi1Name, // Inherit the label (not editable from a child SKU)
             parentProductId,
             variants: {
               // Price is NOT inherited from master — each Variasi×Warna
@@ -232,6 +233,7 @@ export async function POST(request: NextRequest) {
             name,
             minStock: parent.minStock,
             estPrintMinutes: parent.estPrintMinutes,
+            variasi1Name: parent.variasi1Name,
             parentProductId,
             variants: {
               // Price is NOT inherited from master — set manually per combination.
@@ -271,6 +273,7 @@ export async function POST(request: NextRequest) {
         name,
         minStock: minStock ?? 10,
         estPrintMinutes: estPrintMinutes != null ? parseInt(estPrintMinutes, 10) : null,
+        variasi1Name: variasi1Name || "",
         ...(variants &&
           Array.isArray(variants) &&
           variants.length > 0 && {

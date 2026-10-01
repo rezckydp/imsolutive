@@ -43,6 +43,7 @@ model Product {
   minStock  Int      @default(10)
   estPrintMinutes Int?     // estimated print time per pcs (minutes), used for Print Queue duration
   isBoothEnabled Boolean @default(false) // aktif di roster Booth Stock — gerbang tampil di grid POS
+  variasi1Name String @default("") // label Variasi 1 kustom (mis. "Ukuran") — "" kalau produk ini cuma punya Warna
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
