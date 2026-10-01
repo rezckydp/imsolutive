@@ -55,7 +55,7 @@ export async function PUT(
   try {
     const { sku } = await params;
     const body = await request.json();
-    const { sku: newSku, name, minStock, estPrintMinutes, price, variants, parts } = body;
+    const { sku: newSku, name, minStock, estPrintMinutes, variants, parts } = body;
 
     // Check product exists
     const existing = await db.product.findUnique({
@@ -95,14 +95,13 @@ export async function PUT(
     const currentSku = trimmedNewSku || sku;
 
     // Update product fields
-    const productFieldsChanged = trimmedNewSku || name !== undefined || minStock !== undefined || estPrintMinutes !== undefined || price !== undefined;
+    const productFieldsChanged = trimmedNewSku || name !== undefined || minStock !== undefined || estPrintMinutes !== undefined;
     const updatedProduct = await db.product.update({
       where: { sku: currentSku },
       data: {
         ...(name !== undefined && { name }),
         ...(minStock !== undefined && { minStock }),
         ...(estPrintMinutes !== undefined && { estPrintMinutes }),
-        ...(price !== undefined && { price: price === '' || price === null ? null : parseInt(price, 10) }),
       },
     });
     if (productFieldsChanged) {
@@ -127,12 +126,8 @@ export async function PUT(
         data: { estPrintMinutes },
       });
     }
-    if (isMaster && price !== undefined && existing.childProducts.length > 0) {
-      await db.product.updateMany({
-        where: { parentProductId: existing.id },
-        data: { price: price === '' || price === null ? null : parseInt(price, 10) },
-      });
-    }
+    // price is NOT synced Master -> children here — it now lives per
+    // ProductVariant combination and is always set independently (variant-matrix-spec.md).
 
     // Handle variants if provided
     if (variants && Array.isArray(variants)) {
@@ -166,6 +161,7 @@ export async function PUT(
               ...(v.type !== undefined && { type: v.type }),
               ...(v.qty !== undefined && { qty: v.qty }),
               ...(v.barcode !== undefined && { barcode: v.barcode || null }),
+              ...(v.price !== undefined && { price: v.price === "" || v.price === null ? null : parseInt(String(v.price), 10) }),
             },
           });
           if (oldVariant) {
@@ -200,6 +196,7 @@ export async function PUT(
               type: v.type || "",
               qty: v.qty ?? 0,
               barcode: v.barcode || null,
+              price: v.price != null && v.price !== "" ? parseInt(String(v.price), 10) : null,
             },
           });
           await logActivity({

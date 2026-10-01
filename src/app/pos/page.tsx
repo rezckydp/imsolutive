@@ -56,13 +56,13 @@ interface PosVariant {
   colorHex: string;
   type: string;
   qty: number;
+  price: number | null;
 }
 
 interface PosProduct {
   id: string;
   sku: string;
   name: string;
-  price: number | null;
   isBoothEnabled: boolean;
   variants: PosVariant[];
 }
@@ -210,14 +210,22 @@ async function fetchProductsList(params: string): Promise<PosProduct[]> {
   const res = await fetch(`/api/products?${params}`);
   if (!res.ok) return [];
   const data = await res.json();
-  return (data.products || []).map((p: { id: string; sku: string; name: string; price: number | null; isBoothEnabled?: boolean; variants?: PosVariant[] }) => ({
+  return (data.products || []).map((p: { id: string; sku: string; name: string; isBoothEnabled?: boolean; variants?: PosVariant[] }) => ({
     id: p.id,
     sku: p.sku,
     name: p.name,
-    price: p.price,
     isBoothEnabled: p.isBoothEnabled ?? false,
     variants: p.variants || [],
   }));
+}
+
+// A product's displayed price on the grid card — variants can now each have
+// their own price (variant-matrix-spec.md), so a product with priced
+// variants that differ shows a range/"mulai dari" instead of one number.
+function priceRangeOf(product: PosProduct): { min: number; max: number } | null {
+  const prices = product.variants.map((v) => v.price).filter((p): p is number => p != null);
+  if (prices.length === 0) return null;
+  return { min: Math.min(...prices), max: Math.max(...prices) };
 }
 
 // ============ MAIN COMPONENT ============
@@ -347,8 +355,8 @@ export default function PosPage() {
   // ============ CART ============
 
   const addToCart = useCallback((product: PosProduct, variant: PosVariant) => {
-    if (product.price == null) {
-      toast.error(`${product.sku} belum punya harga jual — isi dulu di Stock Management`);
+    if (variant.price == null) {
+      toast.error(`${product.sku} — ${getVariantLabel(variant.color, variant.type)} belum punya harga jual — isi dulu di Stock Management`);
       return;
     }
     setCart((prev) => {
@@ -365,7 +373,7 @@ export default function PosPage() {
           color: variant.color,
           colorHex: variant.colorHex,
           type: variant.type,
-          unitPrice: product.price!,
+          unitPrice: variant.price!,
           qty: 1,
           stockQty: variant.qty,
         },
@@ -374,12 +382,12 @@ export default function PosPage() {
   }, []);
 
   const handleProductClick = (product: PosProduct) => {
-    if (product.price == null) {
-      toast.error(`${product.sku} belum punya harga jual — isi dulu di Stock Management`);
-      return;
-    }
     if (!product.variants || product.variants.length === 0) {
       toast.error(`${product.sku} belum punya varian`);
+      return;
+    }
+    if (product.variants.every((v) => v.price == null)) {
+      toast.error(`${product.sku} belum punya harga jual — isi dulu di Stock Management`);
       return;
     }
     if (product.variants.length === 1) {
@@ -433,10 +441,6 @@ export default function PosPage() {
       }
       if (!product.isBoothEnabled) {
         toast.error(`${product.sku} belum aktif di roster Booth Stock`);
-        return;
-      }
-      if (product.price == null) {
-        toast.error(`${product.sku} belum punya harga jual — isi dulu di Stock Management`);
         return;
       }
 
@@ -1121,22 +1125,33 @@ export default function PosPage() {
             <DialogDescription>{variantPickerProduct?.name} — pilih varian</DialogDescription>
           </DialogHeader>
           <div className="space-y-1.5 max-h-[50vh] overflow-y-auto">
-            {variantPickerProduct?.variants.map((variant) => (
-              <button
-                key={variant.id}
-                onClick={() => {
-                  addToCart(variantPickerProduct, variant);
-                  setVariantPickerProduct(null);
-                }}
-                className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-[#f5f6fa] transition-colors cursor-pointer text-left"
-              >
-                <span className="w-5 h-5 rounded-full border border-[#e8e8e8] flex-shrink-0" style={{ backgroundColor: variant.colorHex }} />
-                <span className="text-sm text-[#2d3436] flex-1">{getVariantLabel(variant.color, variant.type)}</span>
-                <span className={`text-xs font-medium ${variant.qty === 0 ? 'text-[#dc2626]' : 'text-[#6b7280]'}`}>
-                  Stok: {variant.qty}
-                </span>
-              </button>
-            ))}
+            {variantPickerProduct?.variants.map((variant) => {
+              const noPrice = variant.price == null;
+              return (
+                <button
+                  key={variant.id}
+                  disabled={noPrice}
+                  onClick={() => {
+                    addToCart(variantPickerProduct, variant);
+                    setVariantPickerProduct(null);
+                  }}
+                  className={`w-full flex items-center gap-3 p-2.5 rounded-lg transition-colors text-left ${
+                    noPrice ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#f5f6fa] cursor-pointer'
+                  }`}
+                >
+                  <span className="w-5 h-5 rounded-full border border-[#e8e8e8] flex-shrink-0" style={{ backgroundColor: variant.colorHex }} />
+                  <span className="text-sm text-[#2d3436] flex-1">{getVariantLabel(variant.color, variant.type)}</span>
+                  {noPrice ? (
+                    <span className="text-[11px] font-medium text-[#dc2626]">Belum ada harga</span>
+                  ) : (
+                    <span className="text-xs font-semibold text-[#4a6741]">{formatRupiah(variant.price!)}</span>
+                  )}
+                  <span className={`text-xs font-medium ${variant.qty === 0 ? 'text-[#dc2626]' : 'text-[#6b7280]'}`}>
+                    Stok: {variant.qty}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </DialogContent>
       </Dialog>
@@ -1278,7 +1293,8 @@ export default function PosPage() {
 
 function ProductCard({ product, onClick }: { product: PosProduct; onClick: () => void }) {
   const totalStock = product.variants.reduce((sum, v) => sum + v.qty, 0);
-  const noPrice = product.price == null;
+  const range = priceRangeOf(product);
+  const noPrice = range == null;
   const outOfStock = totalStock <= 0;
 
   return (
@@ -1294,7 +1310,9 @@ function ProductCard({ product, onClick }: { product: PosProduct; onClick: () =>
         </Badge>
       ) : (
         <div className="flex items-center justify-between">
-          <span className="font-bold text-[#4a6741] text-sm">{formatRupiah(product.price!)}</span>
+          <span className="font-bold text-[#4a6741] text-sm">
+            {range.min === range.max ? formatRupiah(range.min) : `${formatRupiah(range.min)} - ${formatRupiah(range.max)}`}
+          </span>
           <span className={`text-[11px] font-medium ${outOfStock ? 'text-[#dc2626]' : 'text-[#6b7280]'}`}>
             Stok: {totalStock}
           </span>

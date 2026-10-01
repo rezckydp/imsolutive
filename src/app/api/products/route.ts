@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
   const user = getCurrentUser(request);
   try {
     const body = await request.json();
-    const { sku, name, minStock, estPrintMinutes, price, variants, parts, parentProductId } = body;
+    const { sku, name, minStock, estPrintMinutes, variants, parts, parentProductId } = body;
 
     if (!sku || !name) {
       return NextResponse.json(
@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
 
         // Auto-sync stock from master for each variant
         const syncedVariants = variants.map(
-          (v: { color?: string; type?: string; colorHex?: string; qty?: number; barcode?: string }) => {
+          (v: { color?: string; type?: string; colorHex?: string; qty?: number; barcode?: string; price?: number | string | null }) => {
             const masterVariant = parent.variants.find(
               (mv) => mv.color.toLowerCase() === (v.color || "").toLowerCase() && mv.type.toLowerCase() === (v.type || "").toLowerCase()
             );
@@ -182,16 +182,18 @@ export async function POST(request: NextRequest) {
             name,
             minStock: parent.minStock, // Inherit master's minStock
             estPrintMinutes: parent.estPrintMinutes, // Inherit master's print time
-            price: parent.price, // Inherit master's sell price
             parentProductId,
             variants: {
+              // Price is NOT inherited from master — each Variasi×Warna
+              // combination gets its own price, set manually (variant-matrix-spec.md).
               create: syncedVariants.map(
-                (v: { color?: string; type?: string; colorHex?: string; qty?: number; barcode?: string }) => ({
+                (v: { color?: string; type?: string; colorHex?: string; qty?: number; barcode?: string; price?: number | string | null }) => ({
                   color: v.color || "",
                   colorHex: v.colorHex || "#2d3436",
                   type: v.type || "",
                   qty: v.qty ?? 0,
                   barcode: v.barcode || null,
+                  price: v.price != null && v.price !== "" ? parseInt(String(v.price), 10) : null,
                 })
               ),
             },
@@ -230,9 +232,9 @@ export async function POST(request: NextRequest) {
             name,
             minStock: parent.minStock,
             estPrintMinutes: parent.estPrintMinutes,
-            price: parent.price,
             parentProductId,
             variants: {
+              // Price is NOT inherited from master — set manually per combination.
               create: parent.variants.map((v) => ({
                 color: v.color || "",
                 colorHex: v.colorHex,
@@ -269,18 +271,18 @@ export async function POST(request: NextRequest) {
         name,
         minStock: minStock ?? 10,
         estPrintMinutes: estPrintMinutes != null ? parseInt(estPrintMinutes, 10) : null,
-        price: price != null && price !== '' ? parseInt(price, 10) : null,
         ...(variants &&
           Array.isArray(variants) &&
           variants.length > 0 && {
             variants: {
               create: variants.map(
-                (v: { color?: string; type?: string; colorHex?: string; qty?: number; barcode?: string }) => ({
+                (v: { color?: string; type?: string; colorHex?: string; qty?: number; barcode?: string; price?: number | string | null }) => ({
                   color: v.color || "",
                   colorHex: v.colorHex || "#2d3436",
                   type: v.type || "",
                   qty: v.qty ?? 0,
                   barcode: v.barcode || null,
+                  price: v.price != null && v.price !== "" ? parseInt(String(v.price), 10) : null,
                 })
               ),
             },

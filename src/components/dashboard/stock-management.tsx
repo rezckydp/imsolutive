@@ -50,6 +50,7 @@ interface VariantData {
   qty: number;
   barcode: string;
   type?: string;
+  price?: string;
   _delete?: boolean;
 }
 
@@ -58,6 +59,7 @@ interface TypeVariantData {
   type: string;
   qty: number;
   barcode: string;
+  price?: string;
   _delete?: boolean;
 }
 
@@ -76,11 +78,10 @@ interface ProductData {
   name: string;
   minStock: number;
   estPrintMinutes?: number | null;
-  price?: number | null;
   parentProductId?: string | null;
   parentProduct?: { id: string; sku: string; name: string } | null;
   childProducts?: Array<{ id: string; sku: string; name: string }>;
-  variants?: Array<{ id: string; color: string; colorHex: string; qty: number; barcode: string; type?: string }>;
+  variants?: Array<{ id: string; color: string; colorHex: string; qty: number; barcode: string; type?: string; price?: number | null }>;
   _expanded?: boolean;
 }
 
@@ -239,7 +240,6 @@ export function StockManagement() {
   const [reparentConfirmOpen, setReparentConfirmOpen] = useState(false);
   const [reparenting, setReparenting] = useState(false);
   const [editEstPrintMinutes, setEditEstPrintMinutes] = useState<string>('');
-  const [editPrice, setEditPrice] = useState<string>('');
   const [editVariants, setEditVariants] = useState<VariantData[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -538,6 +538,7 @@ export function StockManagement() {
             qty: 0, // Server will sync from master
             barcode: v.barcode || null,
             type: v.type || '',
+            price: v.price?.trim() ? parseInt(v.price, 10) : null, // NOT synced from master — set independently
           }));
         }
       } else {
@@ -551,6 +552,7 @@ export function StockManagement() {
                 qty: v.qty,
                 barcode: v.barcode || null,
                 type: (v as VariantData).type || '',
+                price: v.price?.trim() ? parseInt(v.price, 10) : null,
               };
             } else {
               // Type variant
@@ -560,6 +562,7 @@ export function StockManagement() {
                 type: (v as TypeVariantData).type,
                 qty: v.qty,
                 barcode: v.barcode || null,
+                price: v.price?.trim() ? parseInt(v.price, 10) : null,
               };
             }
           });
@@ -615,7 +618,6 @@ export function StockManagement() {
     setEditName(product.name);
     setEditMinStock(product.minStock);
     setEditEstPrintMinutes(product.estPrintMinutes != null ? String(product.estPrintMinutes) : '');
-    setEditPrice(product.price != null ? String(product.price) : '');
     setReparentTargetSku(product.parentProduct?.sku || '');
     // Separate variants into color variants and type variants
     const colorVariants: VariantData[] = [];
@@ -629,6 +631,7 @@ export function StockManagement() {
           type: v.type || '',
           qty: v.qty,
           barcode: v.barcode || '',
+          price: v.price != null ? String(v.price) : '',
         });
       } else {
         colorVariants.push({
@@ -638,6 +641,7 @@ export function StockManagement() {
           qty: v.qty,
           barcode: v.barcode || '',
           type: v.type || '',
+          price: v.price != null ? String(v.price) : '',
         });
       }
     });
@@ -724,6 +728,7 @@ export function StockManagement() {
           qty: v.qty,
           barcode: v.barcode || '',
           type: v.type || '',
+          price: v.price?.trim() ? parseInt(v.price, 10) : null,
           _delete: v._delete,
         })),
         ...editTypeVariants.map((v) => ({
@@ -733,6 +738,7 @@ export function StockManagement() {
           qty: v.qty,
           barcode: v.barcode || '',
           type: v.type,
+          price: v.price?.trim() ? parseInt(v.price, 10) : null,
           _delete: v._delete,
         })),
       ];
@@ -745,7 +751,6 @@ export function StockManagement() {
           name: editName,
           minStock: editMinStock,
           estPrintMinutes: editEstPrintMinutes.trim() ? parseInt(editEstPrintMinutes, 10) : null,
-          price: editPrice.trim() ? parseInt(editPrice, 10) : null,
           variants: allVariants,
         }),
       });
@@ -1440,10 +1445,11 @@ export function StockManagement() {
                         </button>
                       </div>
                       <div className="rounded-lg border border-[#e8e8e8] overflow-hidden">
-                        <div className="grid grid-cols-[auto_100px_70px_1fr_32px] gap-2 px-3 py-1.5 bg-[#f0f0f0] items-end">
+                        <div className="grid grid-cols-[auto_100px_70px_90px_1fr_32px] gap-2 px-3 py-1.5 bg-[#f0f0f0] items-end">
                           <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Color</span>
                           <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Name</span>
                           <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Qty</span>
+                          <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Harga</span>
                           <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Barcode</span>
                           <span />
                         </div>
@@ -1451,7 +1457,7 @@ export function StockManagement() {
                           {newProduct.variants.map((variant, index) => (
                             <div
                               key={index}
-                              className="grid grid-cols-[auto_100px_70px_1fr_32px] gap-2 px-3 py-2 items-end"
+                              className="grid grid-cols-[auto_100px_70px_90px_1fr_32px] gap-2 px-3 py-2 items-end"
                             >
                               <div className="flex items-center gap-1.5">
                                 <div
@@ -1483,6 +1489,14 @@ export function StockManagement() {
                                 min={0}
                                 value={variant.qty}
                                 onChange={(e) => updateVariant(index, 'qty', parseInt(e.target.value) || 0)}
+                                className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
+                              />
+                              <Input
+                                type="number"
+                                min={0}
+                                value={variant.price ?? ''}
+                                onChange={(e) => updateVariant(index, 'price', e.target.value)}
+                                placeholder="Rp"
                                 className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
                               />
                               <Input
@@ -1525,9 +1539,10 @@ export function StockManagement() {
                         </button>
                       </div>
                       <div className="rounded-lg border border-[#e8e8e8] overflow-hidden">
-                        <div className="grid grid-cols-[1fr_70px_1fr_32px] gap-2 px-3 py-1.5 bg-[#f0f0f0] items-end">
+                        <div className="grid grid-cols-[1fr_70px_90px_1fr_32px] gap-2 px-3 py-1.5 bg-[#f0f0f0] items-end">
                           <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Type Name</span>
                           <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Qty</span>
+                          <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Harga</span>
                           <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Barcode</span>
                           <span />
                         </div>
@@ -1540,7 +1555,7 @@ export function StockManagement() {
                           {typeVariants.map((tv, index) => (
                             <div
                               key={index}
-                              className="grid grid-cols-[1fr_70px_1fr_32px] gap-2 px-3 py-2 items-end"
+                              className="grid grid-cols-[1fr_70px_90px_1fr_32px] gap-2 px-3 py-2 items-end"
                             >
                               <Input
                                 value={tv.type}
@@ -1553,6 +1568,14 @@ export function StockManagement() {
                                 min={0}
                                 value={tv.qty}
                                 onChange={(e) => updateTypeVariant(index, 'qty', parseInt(e.target.value) || 0)}
+                                className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
+                              />
+                              <Input
+                                type="number"
+                                min={0}
+                                value={tv.price ?? ''}
+                                onChange={(e) => updateTypeVariant(index, 'price', e.target.value)}
+                                placeholder="Rp"
                                 className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
                               />
                               <Input
@@ -1587,12 +1610,13 @@ export function StockManagement() {
                     </Label>
                   </div>
                   <div className="rounded-lg border border-[#e8e8e8] overflow-hidden">
-                    <div className="grid grid-cols-[auto_100px_70px_1fr_32px] gap-2 px-3 py-1.5 bg-[#f0f0f0] items-end">
+                    <div className="grid grid-cols-[auto_100px_70px_90px_1fr_32px] gap-2 px-3 py-1.5 bg-[#f0f0f0] items-end">
                       <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Color</span>
                       <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Name</span>
                       <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">
                         Qty<span className="text-[#2563eb] ml-0.5">*</span>
                       </span>
+                      <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Harga</span>
                       <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Barcode</span>
                       <span />
                     </div>
@@ -1600,7 +1624,7 @@ export function StockManagement() {
                       {newProduct.variants.map((variant, index) => (
                         <div
                           key={index}
-                          className="grid grid-cols-[auto_100px_70px_1fr_32px] gap-2 px-3 py-2 items-end"
+                          className="grid grid-cols-[auto_100px_70px_90px_1fr_32px] gap-2 px-3 py-2 items-end"
                         >
                           <div className="flex items-center gap-1.5">
                             <div
@@ -1622,6 +1646,14 @@ export function StockManagement() {
                             onChange={(e) => updateVariant(index, 'qty', parseInt(e.target.value) || 0)}
                             disabled={newProduct.productType === 'variant'}
                             className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg disabled:opacity-60"
+                          />
+                          <Input
+                            type="number"
+                            min={0}
+                            value={variant.price ?? ''}
+                            onChange={(e) => updateVariant(index, 'price', e.target.value)}
+                            placeholder="Rp"
+                            className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
                           />
                           <Input
                             value={variant.barcode}
@@ -1856,29 +1888,9 @@ export function StockManagement() {
                   </div>
                 )}
 
-                {/* Harga Jual (POS) — only for standalone/master */}
-                {!isVariant && (
-                  <div className="space-y-1.5">
-                    <Label className="text-sm font-medium text-[#2d3436]">
-                      Harga Jual (POS)
-                      {isMaster && <span className="text-[11px] text-[#4a6741] ml-1.5 font-normal">(sync to variants)</span>}
-                    </Label>
-                    <div className="relative w-48">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#6b7280]">Rp</span>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={editPrice}
-                        onChange={(e) => setEditPrice(e.target.value)}
-                        placeholder="0"
-                        className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg pl-9"
-                      />
-                    </div>
-                    <p className="text-[11px] text-[#6b7280]">Kosongkan kalau produk ini tidak dijual lewat POS</p>
-                  </div>
-                )}
-
-                {/* Variants — Tabbed: Color / Type */}
+                {/* Variants — Tabbed: Color / Type. Harga Jual (POS) sekarang per baris
+                    kombinasi di tabel di bawah, bukan 1 harga untuk seluruh produk — lihat
+                    variant-matrix-spec.md (D13 vs D15 boleh beda harga). */}
                 <div className="space-y-3">
                   {!isVariant ? (
                     <>
@@ -1927,12 +1939,13 @@ export function StockManagement() {
                             </button>
                           </div>
                           <div className="rounded-lg border border-[#e8e8e8] overflow-hidden">
-                            <div className="grid grid-cols-[auto_100px_70px_1fr_32px] gap-2 px-3 py-1.5 bg-[#f0f0f0] items-end">
+                            <div className="grid grid-cols-[auto_100px_70px_90px_1fr_32px] gap-2 px-3 py-1.5 bg-[#f0f0f0] items-end">
                               <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Color</span>
                               <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Name</span>
                               <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">
                                 Stock{isMaster && <span className="text-[#4a6741] ml-0.5">^</span>}
                               </span>
+                              <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Harga</span>
                               <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Barcode</span>
                               <span />
                             </div>
@@ -1942,7 +1955,7 @@ export function StockManagement() {
                               return (
                                 <div
                                   key={variant.id || `new-${index}`}
-                                  className="grid grid-cols-[auto_100px_70px_1fr_32px] gap-2 px-3 py-2 items-end"
+                                  className="grid grid-cols-[auto_100px_70px_90px_1fr_32px] gap-2 px-3 py-2 items-end"
                                 >
                                   <div className="flex items-center gap-1.5">
                                     <div
@@ -1975,6 +1988,14 @@ export function StockManagement() {
                                     value={variant.qty}
                                     onChange={(e) => updateEditVariant(index, 'qty', parseInt(e.target.value) || 0)}
                                     className={`h-8 text-xs bg-white border-[#e8e8e8] rounded-lg ${variant.qty === 0 ? 'text-[#dc2626] font-bold' : ''}`}
+                                  />
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    value={variant.price ?? ''}
+                                    onChange={(e) => updateEditVariant(index, 'price', e.target.value)}
+                                    placeholder="Rp"
+                                    className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
                                   />
                                   <Input
                                     value={variant.barcode}
@@ -2017,9 +2038,10 @@ export function StockManagement() {
                             </button>
                           </div>
                           <div className="rounded-lg border border-[#e8e8e8] overflow-hidden">
-                            <div className="grid grid-cols-[1fr_70px_1fr_32px] gap-2 px-3 py-1.5 bg-[#f0f0f0] items-end">
+                            <div className="grid grid-cols-[1fr_70px_90px_1fr_32px] gap-2 px-3 py-1.5 bg-[#f0f0f0] items-end">
                               <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Type Name</span>
                               <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Stock</span>
+                              <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Harga</span>
                               <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Barcode</span>
                               <span />
                             </div>
@@ -2034,7 +2056,7 @@ export function StockManagement() {
                                 return (
                                   <div
                                     key={tv.id || `new-type-${index}`}
-                                    className="grid grid-cols-[1fr_70px_1fr_32px] gap-2 px-3 py-2 items-end"
+                                    className="grid grid-cols-[1fr_70px_90px_1fr_32px] gap-2 px-3 py-2 items-end"
                                   >
                                     <Input
                                       value={tv.type}
@@ -2048,6 +2070,14 @@ export function StockManagement() {
                                       value={tv.qty}
                                       onChange={(e) => updateEditTypeVariant(index, 'qty', parseInt(e.target.value) || 0)}
                                       className={`h-8 text-xs bg-white border-[#e8e8e8] rounded-lg ${tv.qty === 0 ? 'text-[#dc2626] font-bold' : ''}`}
+                                    />
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      value={tv.price ?? ''}
+                                      onChange={(e) => updateEditTypeVariant(index, 'price', e.target.value)}
+                                      placeholder="Rp"
+                                      className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
                                     />
                                     <Input
                                       value={tv.barcode}
@@ -2094,12 +2124,13 @@ export function StockManagement() {
                         </div>
                       </div>
                       <div className="rounded-lg border border-[#e8e8e8] overflow-hidden">
-                        <div className="grid grid-cols-[auto_100px_70px_1fr_32px] gap-2 px-3 py-1.5 bg-[#f0f0f0] items-end">
+                        <div className="grid grid-cols-[auto_100px_70px_90px_1fr_32px] gap-2 px-3 py-1.5 bg-[#f0f0f0] items-end">
                           <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Color</span>
                           <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Name</span>
                           <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">
                             Stock<span className="text-[#2563eb] ml-0.5">*</span>
                           </span>
+                          <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Harga</span>
                           <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Barcode</span>
                           <span />
                         </div>
@@ -2109,7 +2140,7 @@ export function StockManagement() {
                           return (
                             <div
                               key={variant.id || `new-${index}`}
-                              className="grid grid-cols-[auto_100px_70px_1fr_32px] gap-2 px-3 py-2 items-end"
+                              className="grid grid-cols-[auto_100px_70px_90px_1fr_32px] gap-2 px-3 py-2 items-end"
                             >
                               <div className="flex items-center gap-1.5">
                                 <div
@@ -2131,6 +2162,14 @@ export function StockManagement() {
                                 onChange={(e) => updateEditVariant(index, 'qty', parseInt(e.target.value) || 0)}
                                 disabled={!!isVariant}
                                 className={`h-8 text-xs bg-white border-[#e8e8e8] rounded-lg disabled:opacity-60 ${!isVariant && variant.qty === 0 ? 'text-[#dc2626] font-bold' : ''}`}
+                              />
+                              <Input
+                                type="number"
+                                min={0}
+                                value={variant.price ?? ''}
+                                onChange={(e) => updateEditVariant(index, 'price', e.target.value)}
+                                placeholder="Rp"
+                                className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
                               />
                               <Input
                                 value={variant.barcode}

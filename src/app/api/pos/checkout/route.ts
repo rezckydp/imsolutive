@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
       if (!item.qty || item.qty < 1) {
         return NextResponse.json({ error: "Qty setiap item harus minimal 1" }, { status: 400 });
       }
-      if (variant.product.price == null) {
+      if (variant.price == null) {
         return NextResponse.json(
           { error: `${variant.product.sku} belum punya harga jual — isi dulu di Stock Management` },
           { status: 400 }
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     }
 
     const subtotalAmount = items.reduce((sum, item) => {
-      const price = variantMap.get(item.variantId)!.product.price!;
+      const price = variantMap.get(item.variantId)!.price!;
       return sum + price * item.qty;
     }, 0);
     const clampedDiscount = Math.max(0, Math.min(discountAmount || 0, subtotalAmount));
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
               variantId: item.variantId,
               qty: item.qty,
               status: "Ready",
-              unitPrice: variant.product.price!,
+              unitPrice: variant.price!,
             };
           }),
         },
