@@ -532,18 +532,18 @@ export function BarcodeScanner({
         <DialogHeader className="px-4 pt-4 pb-0 flex-shrink-0 max-md:px-3 max-md:pt-3">
           <div className="flex items-center justify-between max-md:gap-2">
             <div className="flex items-center gap-2 min-w-0">
-              <ScanBarcode className="w-5 h-5 text-[#4a6741] flex-shrink-0" />
-              <DialogTitle className="text-[#2d3436] text-base max-md:text-sm truncate">
+              <ScanBarcode className="w-5 h-5 text-[var(--brand)] flex-shrink-0" />
+              <DialogTitle className="text-[var(--t-heading)] text-base max-md:text-sm truncate">
                 {mode === 'order' ? 'Input Pesanan' : 'Input Produksi'}
               </DialogTitle>
             </div>
-            <div className="flex items-center gap-1 bg-[#f5f6fa] rounded-lg p-0.5 flex-shrink-0">
+            <div className="flex items-center gap-1 bg-[var(--surface)] rounded-lg p-0.5 flex-shrink-0">
               <button
                 onClick={() => setMode('order')}
                 className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${
                   mode === 'order'
-                    ? 'bg-white text-[#4a6741] shadow-sm'
-                    : 'text-[#4b5563] hover:text-[#2d3436]'
+                    ? 'bg-[var(--card)] text-[var(--brand)] shadow-sm'
+                    : 'text-[var(--t-body)] hover:text-[var(--t-heading)]'
                 }`}
               >
                 <ShoppingCart className="w-3.5 h-3.5" />
@@ -553,8 +553,8 @@ export function BarcodeScanner({
                 onClick={() => setMode('production')}
                 className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${
                   mode === 'production'
-                    ? 'bg-white text-[#2563eb] shadow-sm'
-                    : 'text-[#4b5563] hover:text-[#2d3436]'
+                    ? 'bg-[var(--card)] text-[var(--info)] shadow-sm'
+                    : 'text-[var(--t-body)] hover:text-[var(--t-heading)]'
                 }`}
               >
                 <Factory className="w-3.5 h-3.5" />
@@ -562,7 +562,7 @@ export function BarcodeScanner({
               </button>
             </div>
           </div>
-          <DialogDescription className="text-[#4b5563] mt-1 text-xs">
+          <DialogDescription className="text-[var(--t-body)] mt-1 text-xs">
             {mode === 'order'
               ? 'Ketik atau scan barcode untuk input pesanan baru'
               : 'Ketik atau scan barcode untuk input stok produksi'}
@@ -574,11 +574,11 @@ export function BarcodeScanner({
           {mode === 'order' && (
             <div className="mt-3 flex-shrink-0 space-y-2">
               {/* Picking List / Adjustment toggle */}
-              <div className="flex gap-1 bg-[#f5f6fa] p-0.5 rounded-lg w-fit">
+              <div className="flex gap-1 bg-[var(--surface)] p-0.5 rounded-lg w-fit">
                 <button
                   onClick={() => handleNumberTypeChange('picking')}
                   className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-                    numberType === 'picking' ? 'bg-white text-[#2d3436] shadow-sm' : 'text-[#6b7280] hover:text-[#2d3436]'
+                    numberType === 'picking' ? 'bg-[var(--card)] text-[var(--t-heading)] shadow-sm' : 'text-[var(--t-muted)] hover:text-[var(--t-heading)]'
                   }`}
                 >
                   Picking List
@@ -586,41 +586,41 @@ export function BarcodeScanner({
                 <button
                   onClick={() => handleNumberTypeChange('adjustment')}
                   className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-                    numberType === 'adjustment' ? 'bg-white text-[#d97706] shadow-sm' : 'text-[#6b7280] hover:text-[#2d3436]'
+                    numberType === 'adjustment' ? 'bg-[var(--card)] text-[var(--warning)] shadow-sm' : 'text-[var(--t-muted)] hover:text-[var(--t-heading)]'
                   }`}
                 >
                   Adjustment
                 </button>
               </div>
               <div>
-                <label className="text-[11px] font-medium text-[#4b5563] flex items-center gap-1.5 mb-1">
+                <label className="text-[11px] font-medium text-[var(--t-body)] flex items-center gap-1.5 mb-1">
                   <FileText className="w-3.5 h-3.5" />
                   No. {numberType === 'adjustment' ? 'Adjustment' : 'Picking List'}
-                  {fetchingNumber && <Loader2 className="w-3 h-3 animate-spin text-[#6b7280]" />}
+                  {fetchingNumber && <Loader2 className="w-3 h-3 animate-spin text-[var(--t-muted)]" />}
                 </label>
                 <Input
                   value={pickingListNo}
                   onChange={(e) => setPickingListNo(e.target.value)}
                   placeholder={numberType === 'adjustment' ? 'e.g. ADJ016' : 'e.g. PICK-000775'}
                   disabled={orderSubMode === 'pdf' && pdfStage === 'review'}
-                  className="h-9 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg disabled:opacity-70"
+                  className="h-9 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg disabled:opacity-70"
                 />
-                <p className="text-[11px] text-[#6b7280] mt-1">
+                <p className="text-[11px] text-[var(--t-muted)] mt-1">
                   Auto-terisi nomor berikutnya — bisa diedit manual kalau perlu
                 </p>
                 {orderSubMode === 'pdf' && pdfStage === 'review' && pickingListNo && (
-                  <p className="text-[11px] text-[#15803d] flex items-center gap-1 mt-1">
+                  <p className="text-[11px] text-[var(--success)] flex items-center gap-1 mt-1">
                     <CheckCircle2 className="w-3 h-3" /> Terdeteksi otomatis dari PDF — bisa diedit kalau salah baca
                   </p>
                 )}
               </div>
 
               {/* Manual/PDF sub-mode toggle */}
-              <div className="flex gap-1 bg-[#f5f6fa] p-0.5 rounded-lg w-fit">
+              <div className="flex gap-1 bg-[var(--surface)] p-0.5 rounded-lg w-fit">
                 <button
                   onClick={() => setOrderSubMode('manual')}
                   className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-                    orderSubMode === 'manual' ? 'bg-white text-[#2d3436] shadow-sm' : 'text-[#6b7280] hover:text-[#2d3436]'
+                    orderSubMode === 'manual' ? 'bg-[var(--card)] text-[var(--t-heading)] shadow-sm' : 'text-[var(--t-muted)] hover:text-[var(--t-heading)]'
                   }`}
                 >
                   <ScanBarcode className="w-3.5 h-3.5" />
@@ -629,7 +629,7 @@ export function BarcodeScanner({
                 <button
                   onClick={() => setOrderSubMode('pdf')}
                   className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-                    orderSubMode === 'pdf' ? 'bg-white text-[#2d3436] shadow-sm' : 'text-[#6b7280] hover:text-[#2d3436]'
+                    orderSubMode === 'pdf' ? 'bg-[var(--card)] text-[var(--t-heading)] shadow-sm' : 'text-[var(--t-muted)] hover:text-[var(--t-heading)]'
                   }`}
                 >
                   <Upload className="w-3.5 h-3.5" />
@@ -643,7 +643,7 @@ export function BarcodeScanner({
           {!(mode === 'order' && orderSubMode === 'pdf') && (
             <div className="mt-3 flex gap-2 flex-shrink-0">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6b7280]" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--t-muted)]" />
                 <Input
                   ref={inputRef}
                   value={manualCode}
@@ -652,13 +652,13 @@ export function BarcodeScanner({
                   placeholder="Ketik barcode atau SKU..."
                   disabled={lookingUp}
                   autoFocus
-                  className="pl-9 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg h-11"
+                  className="pl-9 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg h-11"
                 />
               </div>
               <Button
                 onClick={handleManualLookup}
                 disabled={lookingUp || !manualCode.trim()}
-                className="bg-[#4a6741] hover:bg-[#3d5535] text-white h-11 px-5 rounded-lg flex-shrink-0 disabled:opacity-50"
+                className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white h-11 px-5 rounded-lg flex-shrink-0 disabled:opacity-50"
               >
                 {lookingUp ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
               </Button>
@@ -683,38 +683,38 @@ export function BarcodeScanner({
               {pdfStage === 'idle' && (
                 <button
                   onClick={() => pdfInputRef.current?.click()}
-                  className="w-full border-2 border-dashed border-[#e8e8e8] hover:border-[#4a6741] rounded-xl py-8 flex flex-col items-center gap-2 text-[#6b7280] hover:text-[#4a6741] transition-colors cursor-pointer"
+                  className="w-full border-2 border-dashed border-[var(--bd)] hover:border-[var(--brand)] rounded-xl py-8 flex flex-col items-center gap-2 text-[var(--t-muted)] hover:text-[var(--brand)] transition-colors cursor-pointer"
                 >
                   <Upload className="w-6 h-6" />
                   <span className="text-sm font-medium">Klik untuk upload PDF Picking List</span>
-                  <span className="text-[11px] text-[#9ca3af]">Format .pdf dari Desty / omnichannel lainnya</span>
+                  <span className="text-[11px] text-[var(--t-subtle)]">Format .pdf dari Desty / omnichannel lainnya</span>
                 </button>
               )}
 
               {pdfStage === 'uploading' && (
-                <div className="w-full border border-[#e8e8e8] rounded-xl py-8 flex flex-col items-center gap-2">
-                  <Loader2 className="w-5 h-5 text-[#4a6741] animate-spin" />
-                  <span className="text-sm text-[#4b5563]">Membaca {pdfFileName}...</span>
-                  <span className="text-[11px] text-[#9ca3af]">Mencocokkan SKU ke database</span>
+                <div className="w-full border border-[var(--bd)] rounded-xl py-8 flex flex-col items-center gap-2">
+                  <Loader2 className="w-5 h-5 text-[var(--brand)] animate-spin" />
+                  <span className="text-sm text-[var(--t-body)]">Membaca {pdfFileName}...</span>
+                  <span className="text-[11px] text-[var(--t-subtle)]">Mencocokkan SKU ke database</span>
                 </div>
               )}
 
               {pdfStage === 'review' && (
-                <div className="flex items-center justify-between bg-[#f5f6fa] rounded-lg px-3 py-2">
-                  <span className="text-xs text-[#4b5563] flex items-center gap-1.5 truncate">
+                <div className="flex items-center justify-between bg-[var(--surface)] rounded-lg px-3 py-2">
+                  <span className="text-xs text-[var(--t-body)] flex items-center gap-1.5 truncate">
                     <FileText className="w-3.5 h-3.5 flex-shrink-0" /> {pdfFileName}
                   </span>
-                  <button onClick={resetPdfUpload} className="text-[11px] text-[#4a6741] font-medium hover:underline cursor-pointer flex-shrink-0">
+                  <button onClick={resetPdfUpload} className="text-[11px] text-[var(--brand)] font-medium hover:underline cursor-pointer flex-shrink-0">
                     Ganti file
                   </button>
                 </div>
               )}
 
               {pdfError && (
-                <div className="mt-2 p-2.5 rounded-lg bg-[#dc2626]/5 border border-[#dc2626]/20 flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 text-[#dc2626] flex-shrink-0 mt-0.5" />
-                  <span className="text-xs text-[#dc2626] flex-1">{pdfError}</span>
-                  <button onClick={() => setPdfError('')} className="text-[#dc2626]/60 hover:text-[#dc2626] cursor-pointer flex-shrink-0">
+                <div className="mt-2 p-2.5 rounded-lg bg-[var(--danger)]/5 border border-[var(--danger)]/20 flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-[var(--danger)] flex-shrink-0 mt-0.5" />
+                  <span className="text-xs text-[var(--danger)] flex-1">{pdfError}</span>
+                  <button onClick={() => setPdfError('')} className="text-[var(--danger)]/60 hover:text-[var(--danger)] cursor-pointer flex-shrink-0">
                     <X className="w-3 h-3" />
                   </button>
                 </div>
@@ -722,11 +722,11 @@ export function BarcodeScanner({
 
               {pdfStage === 'review' && items.length > 0 && (
                 <div className="mt-2 flex items-center gap-3 text-[11px]">
-                  <span className="flex items-center gap-1 text-[#15803d] font-medium">
+                  <span className="flex items-center gap-1 text-[var(--success)] font-medium">
                     <CheckCircle2 className="w-3 h-3" /> {items.filter((i) => i.variantId).length} SKU cocok
                   </span>
                   {items.some((i) => !i.variantId) && (
-                    <span className="flex items-center gap-1 text-[#d97706] font-medium">
+                    <span className="flex items-center gap-1 text-[var(--warning)] font-medium">
                       <AlertTriangle className="w-3 h-3" /> {items.filter((i) => !i.variantId).length} perlu dicek manual
                     </span>
                   )}
@@ -737,10 +737,10 @@ export function BarcodeScanner({
 
           {/* Lookup Error */}
           {lookupError && (
-            <div className="mt-2 p-2.5 rounded-lg bg-[#dc2626]/5 border border-[#dc2626]/20 flex items-start gap-2 flex-shrink-0">
-              <X className="w-4 h-4 text-[#dc2626] flex-shrink-0 mt-0.5" />
-              <span className="text-xs text-[#dc2626] flex-1">{lookupError}</span>
-              <button onClick={() => setLookupError('')} className="text-[#dc2626]/60 hover:text-[#dc2626] cursor-pointer flex-shrink-0">
+            <div className="mt-2 p-2.5 rounded-lg bg-[var(--danger)]/5 border border-[var(--danger)]/20 flex items-start gap-2 flex-shrink-0">
+              <X className="w-4 h-4 text-[var(--danger)] flex-shrink-0 mt-0.5" />
+              <span className="text-xs text-[var(--danger)] flex-1">{lookupError}</span>
+              <button onClick={() => setLookupError('')} className="text-[var(--danger)]/60 hover:text-[var(--danger)] cursor-pointer flex-shrink-0">
                 <X className="w-3 h-3" />
               </button>
             </div>
@@ -751,55 +751,55 @@ export function BarcodeScanner({
             <div className="mt-3 flex-1 min-h-0 flex flex-col">
               <div className="flex items-center justify-between mb-2 flex-shrink-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-[#2d3436]">
+                  <span className="text-xs font-medium text-[var(--t-heading)]">
                     Item
-                    <span className="text-[#6b7280] ml-1">({validItemCount}/{items.length})</span>
+                    <span className="text-[var(--t-muted)] ml-1">({validItemCount}/{items.length})</span>
                   </span>
                   {totalQty > 0 && (
-                    <Badge className="bg-[#4a6741]/10 text-[#4a6741] border-[#4a6741]/30 text-[11px] px-1.5 py-0 rounded-full font-semibold" variant="outline">
+                    <Badge className="bg-[var(--brand)]/10 text-[var(--brand)] border-[var(--brand)]/30 text-[11px] px-1.5 py-0 rounded-full font-semibold" variant="outline">
                       Total: {totalQty}
                     </Badge>
                   )}
                 </div>
                 <button
                   onClick={clearAll}
-                  className="text-[11px] text-[#dc2626] hover:underline flex items-center gap-1 cursor-pointer"
+                  className="text-[11px] text-[var(--danger)] hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   <Trash2 className="w-3 h-3" />
                   Hapus Semua
                 </button>
               </div>
 
-              <div className="flex-1 min-h-0 overflow-y-auto rounded-lg border border-[#e8e8e8] -webkit-overflow-scrolling-touch">
+              <div className="flex-1 min-h-0 overflow-y-auto rounded-lg border border-[var(--bd)] -webkit-overflow-scrolling-touch">
                 <div className="p-2 space-y-2">
                   {items.map((item) => (
                     <div
                       key={item.id}
                       className={`p-2.5 md:p-3 rounded-lg border transition-colors ${
                         item.variantId
-                          ? 'border-[#e8e8e8] bg-white'
-                          : 'border-[#d97706]/30 bg-[#d97706]/5'
+                          ? 'border-[var(--bd)] bg-[var(--card)]'
+                          : 'border-[var(--warning)]/30 bg-[var(--warning)]/5'
                       }`}
                     >
                       {/* Top row */}
                       <div className="flex items-start justify-between gap-2 mb-1.5">
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <span className="text-[11px] md:text-xs font-semibold text-[#2d3436] bg-[#f0f0f0] px-1.5 py-0.5 rounded">
+                            <span className="text-[11px] md:text-xs font-semibold text-[var(--t-heading)] bg-[var(--surface-2)] px-1.5 py-0.5 rounded">
                               {item.sku}
                             </span>
                             {item.variantId && (
-                              <CheckCircle2 className="w-3 h-3 text-[#15803d] flex-shrink-0" />
+                              <CheckCircle2 className="w-3 h-3 text-[var(--success)] flex-shrink-0" />
                             )}
                             {!item.variantId && (
-                              <span className="text-[11px] text-[#d97706] font-medium">Pilih warna</span>
+                              <span className="text-[11px] text-[var(--warning)] font-medium">Pilih warna</span>
                             )}
                           </div>
-                          <p className="text-[11px] text-[#6b7280] mt-0.5 truncate">{item.productName}</p>
+                          <p className="text-[11px] text-[var(--t-muted)] mt-0.5 truncate">{item.productName}</p>
                         </div>
                         <button
                           onClick={() => removeItem(item.id)}
-                          className="p-1 rounded hover:bg-[#dc2626]/10 text-[#6b7280] hover:text-[#dc2626] transition-colors cursor-pointer flex-shrink-0"
+                          className="p-1 rounded hover:bg-[var(--danger)]/10 text-[var(--t-muted)] hover:text-[var(--danger)] transition-colors cursor-pointer flex-shrink-0"
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
@@ -809,7 +809,7 @@ export function BarcodeScanner({
                       {item.variantOptions && !item.variantId && (
                         <div className="mb-1.5">
                           <Select onValueChange={(val) => handleVariantSelect(item.id, val)}>
-                            <SelectTrigger className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg">
+                            <SelectTrigger className="h-8 text-xs bg-[var(--card)] border-[var(--bd)] rounded-lg">
                               <SelectValue placeholder="Pilih warna..." />
                             </SelectTrigger>
                             <SelectContent>
@@ -817,12 +817,12 @@ export function BarcodeScanner({
                                 <SelectItem key={v.id} value={v.id}>
                                   <div className="flex items-center gap-2">
                                     <span
-                                      className="w-3 h-3 rounded-full border border-[#e8e8e8] flex-shrink-0"
+                                      className="w-3 h-3 rounded-full border border-[var(--bd)] flex-shrink-0"
                                       style={{ backgroundColor: v.colorHex }}
                                     />
                                     <span>{v.color}</span>
-                                    <span className="text-[11px] text-[#6b7280]">(stock: {v.qty})</span>
-                            {v.type && <span className="text-[11px] text-[#6b7280] ml-1">{v.type}</span>}
+                                    <span className="text-[11px] text-[var(--t-muted)]">(stock: {v.qty})</span>
+                            {v.type && <span className="text-[11px] text-[var(--t-muted)] ml-1">{v.type}</span>}
                                   </div>
                                 </SelectItem>
                               ))}
@@ -836,31 +836,31 @@ export function BarcodeScanner({
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <span
-                              className="w-5 h-5 rounded-full border border-[#e8e8e8] shadow-sm flex-shrink-0"
+                              className="w-5 h-5 rounded-full border border-[var(--bd)] shadow-sm flex-shrink-0"
                               style={{ backgroundColor: item.colorHex }}
                             />
-                            <span className="text-xs text-[#4b5563]">{item.color}{item.type ? ` - ${item.type}` : ''}</span>
+                            <span className="text-xs text-[var(--t-body)]">{item.color}{item.type ? ` - ${item.type}` : ''}</span>
                           </div>
 
                           <div className="flex items-center gap-1.5">
                             <button
                               onClick={() => updateItemQty(item.id, -1)}
-                              className="w-7 h-7 rounded-md bg-[#f5f6fa] hover:bg-[#e8e8e8] flex items-center justify-center cursor-pointer transition-colors active:bg-[#dfe6e9]"
+                              className="w-7 h-7 rounded-md bg-[var(--surface)] hover:bg-[var(--bd)] flex items-center justify-center cursor-pointer transition-colors active:bg-[var(--bd-blue)]"
                             >
-                              <Minus className="w-3 h-3 text-[#4b5563]" />
+                              <Minus className="w-3 h-3 text-[var(--t-body)]" />
                             </button>
                             <input
                               type="number"
                               min={1}
                               value={item.qty}
                               onChange={(e) => setItemQty(item.id, parseInt(e.target.value) || 1)}
-                              className="w-12 h-7 text-center text-xs font-semibold bg-[#f5f6fa] border border-[#e8e8e8] rounded-md focus:outline-none focus:ring-1 focus:ring-[#4a6741]/30"
+                              className="w-12 h-7 text-center text-xs font-semibold bg-[var(--surface)] border border-[var(--bd)] rounded-md focus:outline-none focus:ring-1 focus:ring-[var(--brand)]/30"
                             />
                             <button
                               onClick={() => updateItemQty(item.id, 1)}
-                              className="w-7 h-7 rounded-md bg-[#f5f6fa] hover:bg-[#e8e8e8] flex items-center justify-center cursor-pointer transition-colors active:bg-[#dfe6e9]"
+                              className="w-7 h-7 rounded-md bg-[var(--surface)] hover:bg-[var(--bd)] flex items-center justify-center cursor-pointer transition-colors active:bg-[var(--bd-blue)]"
                             >
-                              <Plus className="w-3 h-3 text-[#4b5563]" />
+                              <Plus className="w-3 h-3 text-[var(--t-body)]" />
                             </button>
                           </div>
                         </div>
@@ -874,7 +874,7 @@ export function BarcodeScanner({
                             value={item.note}
                             onChange={(e) => updateItemNote(item.id, e.target.value)}
                             placeholder="Tulis warna yang diminta customer..."
-                            className="w-full h-7 text-xs bg-[#d97706]/5 border border-[#d97706]/20 rounded-md px-2 text-[#92400e] placeholder:text-[#d97706]/50 focus:outline-none focus:ring-1 focus:ring-[#d97706]/30"
+                            className="w-full h-7 text-xs bg-[var(--warning)]/5 border border-[var(--warning)]/20 rounded-md px-2 text-[var(--warning-darker)] placeholder:text-[var(--warning)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--warning)]/30"
                           />
                         </div>
                       )}
@@ -887,7 +887,7 @@ export function BarcodeScanner({
               {mode === 'production' && validItemCount > 0 && (
                 <div className="mt-2 flex-shrink-0">
                   <Select value={selectedPrinter} onValueChange={setSelectedPrinter}>
-                    <SelectTrigger className="h-9 text-xs bg-[#f5f6fa] border-[#e8e8e8] rounded-lg">
+                    <SelectTrigger className="h-9 text-xs bg-[var(--surface)] border-[var(--bd)] rounded-lg">
                       <SelectValue placeholder="Pilih printer (opsional)..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -896,7 +896,7 @@ export function BarcodeScanner({
                         .map((p) => (
                           <SelectItem key={p.id} value={p.name}>
                             <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-[#15803d] flex-shrink-0" />
+                              <span className="w-2 h-2 rounded-full bg-[var(--success)] flex-shrink-0" />
                               {p.name}
                             </div>
                           </SelectItem>
@@ -913,8 +913,8 @@ export function BarcodeScanner({
                   disabled={submitting || validItemCount === 0 || (mode === 'order' && !pickingListNo.trim())}
                   className={`w-full h-11 rounded-lg font-semibold text-sm disabled:opacity-50 ${
                     mode === 'order'
-                      ? 'bg-[#4a6741] hover:bg-[#3d5535] text-white'
-                      : 'bg-[#2563eb] hover:bg-[#2980b9] text-white'
+                      ? 'bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white'
+                      : 'bg-[var(--info)] hover:bg-[var(--info-dark-alt)] text-white'
                   }`}
                 >
                   {submitting ? (
@@ -937,11 +937,11 @@ export function BarcodeScanner({
           {/* Empty state */}
           {items.length === 0 && !lookingUp && !(mode === 'order' && orderSubMode === 'pdf') && (
             <div className="mt-6 flex flex-col items-center justify-center py-8 md:py-12 text-center flex-shrink-0">
-              <div className="w-16 h-16 rounded-full bg-[#f5f6fa] flex items-center justify-center mb-3">
-                <ScanBarcode className="w-7 h-7 text-[#6b7280]" />
+              <div className="w-16 h-16 rounded-full bg-[var(--surface)] flex items-center justify-center mb-3">
+                <ScanBarcode className="w-7 h-7 text-[var(--t-muted)]" />
               </div>
-              <p className="text-sm text-[#4b5563] font-medium">Belum ada item</p>
-              <p className="text-xs text-[#6b7280] mt-1">
+              <p className="text-sm text-[var(--t-body)] font-medium">Belum ada item</p>
+              <p className="text-xs text-[var(--t-muted)] mt-1">
                 Ketik barcode/SKU di atas atau scan pakai alat barcode scanner
               </p>
             </div>

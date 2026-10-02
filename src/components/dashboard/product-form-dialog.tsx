@@ -231,10 +231,10 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg rounded-xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
         <DialogHeader className="px-6 pt-6">
-          <DialogTitle className="text-[#2d3436]">
+          <DialogTitle className="text-[var(--t-heading)]">
             {isEditing ? 'Edit Product' : 'Add New Product'}
           </DialogTitle>
-          <DialogDescription className="text-[#4b5563]">
+          <DialogDescription className="text-[var(--t-body)]">
             {isEditing
               ? 'Update the product details and variants below.'
               : 'Fill in the product details and add at least one color variant.'}
@@ -244,72 +244,72 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
         <div className="space-y-4 pt-2 overflow-y-auto flex-1 px-6 pb-2" style={{ scrollbarWidth: 'thin', scrollbarColor: '#d1d5db transparent' }}>
           {/* SKU */}
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium text-[#2d3436]">
-              SKU <span className="text-[#dc2626]">*</span>
+            <Label className="text-sm font-medium text-[var(--t-heading)]">
+              SKU <span className="text-[var(--danger)]">*</span>
             </Label>
             <Input
               value={form.sku}
               onChange={(e) => updateField('sku', e.target.value)}
               placeholder="e.g. UCS001, GD002"
               disabled={isEditing}
-              className="h-10 text-sm bg-[#f0f0f0] border-none focus-visible:ring-1 focus-visible:ring-[#4a6741]/30 disabled:opacity-60"
+              className="h-10 text-sm bg-[var(--surface-2)] border-none focus-visible:ring-1 focus-visible:ring-[var(--brand)]/30 disabled:opacity-60"
             />
             {isEditing && (
-              <p className="text-[11px] text-[#4b5563]">SKU cannot be changed after creation</p>
+              <p className="text-[11px] text-[var(--t-body)]">SKU cannot be changed after creation</p>
             )}
           </div>
 
           {/* Product Name */}
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium text-[#2d3436]">
-              Product Name <span className="text-[#dc2626]">*</span>
+            <Label className="text-sm font-medium text-[var(--t-heading)]">
+              Product Name <span className="text-[var(--danger)]">*</span>
             </Label>
             <Input
               value={form.name}
               onChange={(e) => updateField('name', e.target.value)}
               placeholder="e.g. Classic T-Shirt"
-              className="h-10 text-sm bg-[#f0f0f0] border-none focus-visible:ring-1 focus-visible:ring-[#4a6741]/30"
+              className="h-10 text-sm bg-[var(--surface-2)] border-none focus-visible:ring-1 focus-visible:ring-[var(--brand)]/30"
             />
           </div>
 
           {/* Min Stock + Est. Print Minutes */}
           <div className="flex gap-4">
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-[#2d3436]">Min Stock Level</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Min Stock Level</Label>
               <Input
                 type="number"
                 min="0"
                 value={form.minStock}
                 onChange={(e) => updateField('minStock', e.target.value)}
-                className="h-10 text-sm bg-[#f0f0f0] border-none focus-visible:ring-1 focus-visible:ring-[#4a6741]/30 w-32"
+                className="h-10 text-sm bg-[var(--surface-2)] border-none focus-visible:ring-1 focus-visible:ring-[var(--brand)]/30 w-32"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-[#2d3436]">Est. Print (menit/pcs)</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Est. Print (menit/pcs)</Label>
               <Input
                 type="number"
                 min="0"
                 value={form.estPrintMinutes}
                 onChange={(e) => updateField('estPrintMinutes', e.target.value)}
                 placeholder="e.g. 45"
-                className="h-10 text-sm bg-[#f0f0f0] border-none focus-visible:ring-1 focus-visible:ring-[#4a6741]/30 w-32"
+                className="h-10 text-sm bg-[var(--surface-2)] border-none focus-visible:ring-1 focus-visible:ring-[var(--brand)]/30 w-32"
               />
-              <p className="text-[11px] text-[#6b7280]">Buat estimasi durasi Print Queue</p>
+              <p className="text-[11px] text-[var(--t-muted)]">Buat estimasi durasi Print Queue</p>
             </div>
           </div>
 
           {/* Variants Section */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium text-[#2d3436]">
-                Color Variants <span className="text-[#dc2626]">*</span>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">
+                Color Variants <span className="text-[var(--danger)]">*</span>
               </Label>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 onClick={addVariant}
-                className="text-xs text-[#4a6741] hover:text-[#3d5535] hover:bg-[#4a6741]/10 h-7 px-2"
+                className="text-xs text-[var(--brand)] hover:text-[var(--brand-dark)] hover:bg-[var(--brand)]/10 h-7 px-2"
               >
                 <Plus className="w-3 h-3 mr-1" />
                 Add Variant
@@ -320,16 +320,16 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
                 {displayVariants.map((variant, idx) => {
                   const actualIdx = form.variants.indexOf(variant);
                   return (
-                    <div key={actualIdx} className="bg-[#f8f9fb] rounded-lg p-3 space-y-2.5 border border-[#e8e8e8]">
+                    <div key={actualIdx} className="bg-[var(--surface-tint-3)] rounded-lg p-3 space-y-2.5 border border-[var(--bd)]">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-[#4b5563]">
+                        <span className="text-xs font-semibold text-[var(--t-body)]">
                           Variant {idx + 1}
                         </span>
                         {displayVariants.length > 1 && (
                           <button
                             type="button"
                             onClick={() => removeVariant(actualIdx)}
-                            className="p-0.5 rounded hover:bg-[#dc2626]/10 text-[#6b7280] hover:text-[#dc2626] transition-colors cursor-pointer"
+                            className="p-0.5 rounded hover:bg-[var(--danger)]/10 text-[var(--t-muted)] hover:text-[var(--danger)] transition-colors cursor-pointer"
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -338,7 +338,7 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
 
                       {/* Color Picker */}
                       <div className="space-y-1.5">
-                        <Label className="text-[11px] text-[#4b5563] uppercase tracking-wider">Color</Label>
+                        <Label className="text-[11px] text-[var(--t-body)] uppercase tracking-wider">Color</Label>
                         <div className="flex flex-wrap gap-1.5 mb-1.5">
                           {colorPresets.map((preset) => (
                             <button
@@ -347,8 +347,8 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
                               onClick={() => handleVariantColorSelect(actualIdx, preset)}
                               className={`w-5 h-5 rounded-full border-2 transition-all cursor-pointer hover:scale-110 ${
                                 variant.colorHex === preset.hex && variant.color === preset.name
-                                  ? 'border-[#4a6741] ring-1 ring-[#4a6741]/30 scale-110'
-                                  : 'border-[#e0e0e0]'
+                                  ? 'border-[var(--brand)] ring-1 ring-[var(--brand)]/30 scale-110'
+                                  : 'border-[var(--bd-3)]'
                               }`}
                               style={{ backgroundColor: preset.hex }}
                               title={preset.name}
@@ -360,17 +360,17 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
                             value={variant.color}
                             onChange={(e) => updateVariant(actualIdx, 'color', e.target.value)}
                             placeholder="Color name"
-                            className="h-8 text-xs bg-white border-[#e8e8e8] focus-visible:ring-1 focus-visible:ring-[#4a6741]/30"
+                            className="h-8 text-xs bg-[var(--card)] border-[var(--bd)] focus-visible:ring-1 focus-visible:ring-[var(--brand)]/30"
                           />
                           <div className="relative">
                             <Input
                               value={variant.colorHex}
                               onChange={(e) => updateVariant(actualIdx, 'colorHex', e.target.value)}
                               placeholder="#000000"
-                              className="h-8 w-[80px] text-xs bg-white border-[#e8e8e8] focus-visible:ring-1 focus-visible:ring-[#4a6741]/30 pl-7"
+                              className="h-8 w-[80px] text-xs bg-[var(--card)] border-[var(--bd)] focus-visible:ring-1 focus-visible:ring-[var(--brand)]/30 pl-7"
                             />
                             <div
-                              className="absolute left-1.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full border border-[#e8e8e8]"
+                              className="absolute left-1.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full border border-[var(--bd)]"
                               style={{ backgroundColor: variant.colorHex }}
                             />
                           </div>
@@ -379,36 +379,36 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
 
                       {/* Type */}
                       <div className="space-y-1.5">
-                        <Label className="text-[11px] text-[#4b5563] uppercase tracking-wider">Type <span className="font-normal text-[#6b7280]">(opt)</span></Label>
+                        <Label className="text-[11px] text-[var(--t-body)] uppercase tracking-wider">Type <span className="font-normal text-[var(--t-muted)]">(opt)</span></Label>
                         <Input
                           value={variant.type}
                           onChange={(e) => updateVariant(actualIdx, 'type', e.target.value)}
                           placeholder="e.g. XL, Cotton"
-                          className="h-8 text-xs bg-white border-[#e8e8e8] focus-visible:ring-1 focus-visible:ring-[#4a6741]/30"
+                          className="h-8 text-xs bg-[var(--card)] border-[var(--bd)] focus-visible:ring-1 focus-visible:ring-[var(--brand)]/30"
                         />
                       </div>
 
                       {/* Qty and Barcode */}
                       <div className="grid grid-cols-2 gap-2">
                         <div className="space-y-1">
-                          <Label className="text-[11px] text-[#4b5563] uppercase tracking-wider">Quantity</Label>
+                          <Label className="text-[11px] text-[var(--t-body)] uppercase tracking-wider">Quantity</Label>
                           <Input
                             type="number"
                             min="0"
                             value={variant.qty}
                             onChange={(e) => updateVariant(actualIdx, 'qty', e.target.value)}
-                            className="h-8 text-xs bg-white border-[#e8e8e8] focus-visible:ring-1 focus-visible:ring-[#4a6741]/30"
+                            className="h-8 text-xs bg-[var(--card)] border-[var(--bd)] focus-visible:ring-1 focus-visible:ring-[var(--brand)]/30"
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-[11px] text-[#4b5563] uppercase tracking-wider">
-                            Barcode <span className="font-normal text-[#6b7280]">(opt)</span>
+                          <Label className="text-[11px] text-[var(--t-body)] uppercase tracking-wider">
+                            Barcode <span className="font-normal text-[var(--t-muted)]">(opt)</span>
                           </Label>
                           <Input
                             value={variant.barcode}
                             onChange={(e) => updateVariant(actualIdx, 'barcode', e.target.value)}
                             placeholder="Barcode"
-                            className="h-8 text-xs bg-white border-[#e8e8e8] focus-visible:ring-1 focus-visible:ring-[#4a6741]/30"
+                            className="h-8 text-xs bg-[var(--card)] border-[var(--bd)] focus-visible:ring-1 focus-visible:ring-[var(--brand)]/30"
                           />
                         </div>
                       </div>
@@ -420,8 +420,8 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
 
           {/* Error */}
           {error && (
-            <div className="bg-[#fef2f2] border border-[#fecaca] rounded-lg p-3">
-              <p className="text-sm text-[#dc2626]">{error}</p>
+            <div className="bg-[var(--danger-bg)] border border-[var(--danger-bg-2)] rounded-lg p-3">
+              <p className="text-sm text-[var(--danger)]">{error}</p>
             </div>
           )}
         </div>
@@ -437,7 +437,7 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
           </Button>
           <Button
             onClick={handleSubmit}
-            className="bg-[#4a6741] hover:bg-[#3d5535] text-white rounded-full px-5"
+            className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white rounded-full px-5"
             disabled={saving}
           >
             {saving ? 'Saving...' : isEditing ? 'Update Product' : 'Add Product'}

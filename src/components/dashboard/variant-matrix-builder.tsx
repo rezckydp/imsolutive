@@ -202,17 +202,17 @@ export const VariantMatrixBuilder = forwardRef<MatrixBuilderHandle, Props>(funct
   const renderRow = (row: MatrixRow) => (
     <div
       key={`${row.variasi1}::${row.color}`}
-      className="grid grid-cols-[auto_1fr_90px_90px_1fr] gap-2 px-3 py-2 items-center border-t border-[#f0f0f0] first:border-t-0"
+      className="grid grid-cols-[auto_1fr_90px_90px_1fr] gap-2 px-3 py-2 items-center border-t border-[var(--surface-2)] first:border-t-0"
     >
-      <span className="w-5 h-5 rounded-full border border-[#e8e8e8] flex-shrink-0" style={{ backgroundColor: row.colorHex }} />
-      <span className="text-sm text-[#2d3436] truncate">{row.color}</span>
+      <span className="w-5 h-5 rounded-full border border-[var(--bd)] flex-shrink-0" style={{ backgroundColor: row.colorHex }} />
+      <span className="text-sm text-[var(--t-heading)] truncate">{row.color}</span>
       <Input
         type="number"
         min={0}
         value={row.price}
         onChange={(e) => updateRow(row.variasi1, row.color, 'price', e.target.value)}
         placeholder="Rp"
-        className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
+        className="h-8 text-xs bg-[var(--card)] border-[var(--bd)] rounded-lg"
       />
       <Input
         type="number"
@@ -221,13 +221,13 @@ export const VariantMatrixBuilder = forwardRef<MatrixBuilderHandle, Props>(funct
         value={row.qty}
         onChange={(e) => updateRow(row.variasi1, row.color, 'qty', parseInt(e.target.value) || 0)}
         title={childMode ? 'Stok sync dari Master' : undefined}
-        className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg disabled:opacity-60"
+        className="h-8 text-xs bg-[var(--card)] border-[var(--bd)] rounded-lg disabled:opacity-60"
       />
       <Input
         value={row.barcode}
         onChange={(e) => updateRow(row.variasi1, row.color, 'barcode', e.target.value)}
         placeholder="Barcode/SKU"
-        className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg"
+        className="h-8 text-xs bg-[var(--card)] border-[var(--bd)] rounded-lg"
       />
     </div>
   );
@@ -240,26 +240,26 @@ export const VariantMatrixBuilder = forwardRef<MatrixBuilderHandle, Props>(funct
         <button
           type="button"
           onClick={addVariasi1Block}
-          className="w-full border border-dashed border-[#d1d5db] rounded-lg py-2.5 text-xs font-medium text-[#6b7280] hover:border-[#4a6741] hover:text-[#4a6741] transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+          className="w-full border border-dashed border-[var(--bd-2)] rounded-lg py-2.5 text-xs font-medium text-[var(--t-muted)] hover:border-[var(--brand)] hover:text-[var(--brand)] transition-colors cursor-pointer flex items-center justify-center gap-1.5"
         >
           <Plus className="w-3.5 h-3.5" />
           Tambah Variasi (mis. Ukuran, Bundle)
         </button>
         )
       ) : childMode ? (
-        <div className="rounded-lg border border-[#e8e8e8] p-3">
-          <p className="text-xs text-[#6b7280]">
-            Variasi: <span className="font-semibold text-[#2d3436]">{variasi1Name}</span>{' '}
-            <span className="text-[11px] text-[#2563eb]">(sync dari Master)</span>
+        <div className="rounded-lg border border-[var(--bd)] p-3">
+          <p className="text-xs text-[var(--t-muted)]">
+            Variasi: <span className="font-semibold text-[var(--t-heading)]">{variasi1Name}</span>{' '}
+            <span className="text-[11px] text-[var(--info)]">(sync dari Master)</span>
           </p>
         </div>
       ) : (
-        <div className="relative rounded-lg border border-[#e8e8e8] p-3 space-y-2">
+        <div className="relative rounded-lg border border-[var(--bd)] p-3 space-y-2">
           <button
             type="button"
             onClick={removeVariasi1Block}
             title="Hapus Variasi ini"
-            className="absolute top-2 right-2 p-1 rounded text-[#9ca3af] hover:text-[#dc2626] hover:bg-[#dc2626]/10 cursor-pointer"
+            className="absolute top-2 right-2 p-1 rounded text-[var(--t-subtle)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 cursor-pointer"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -267,11 +267,11 @@ export const VariantMatrixBuilder = forwardRef<MatrixBuilderHandle, Props>(funct
             value={variasi1Name}
             onChange={(e) => setVariasi1Name(e.target.value)}
             placeholder="Nama Variasi (mis. Ukuran)"
-            className="h-8 text-sm bg-white border-[#e8e8e8] rounded-lg w-56"
+            className="h-8 text-sm bg-[var(--card)] border-[var(--bd)] rounded-lg w-56"
           />
           <div className="flex flex-wrap items-center gap-1.5">
             {variasi1Options.map((opt) => (
-              <Badge key={opt} className="text-xs px-2 py-1 rounded-full bg-[#f5f6fa] text-[#2d3436] border-[#e8e8e8] gap-1" variant="outline">
+              <Badge key={opt} className="text-xs px-2 py-1 rounded-full bg-[var(--surface)] text-[var(--t-heading)] border-[var(--bd)] gap-1" variant="outline">
                 {opt}
                 <button type="button" onClick={() => removeVariasi1Option(opt)} className="cursor-pointer">
                   <X className="w-3 h-3" />
@@ -288,12 +288,12 @@ export const VariantMatrixBuilder = forwardRef<MatrixBuilderHandle, Props>(funct
                 }
               }}
               placeholder="Opsi baru"
-              className="h-7 w-28 text-xs bg-white border-[#e8e8e8] rounded-lg"
+              className="h-7 w-28 text-xs bg-[var(--card)] border-[var(--bd)] rounded-lg"
             />
             <button
               type="button"
               onClick={addVariasi1Option}
-              className="text-xs text-[#4a6741] font-semibold hover:underline cursor-pointer whitespace-nowrap"
+              className="text-xs text-[var(--brand)] font-semibold hover:underline cursor-pointer whitespace-nowrap"
             >
               + Tambah Opsi
             </button>
@@ -303,12 +303,12 @@ export const VariantMatrixBuilder = forwardRef<MatrixBuilderHandle, Props>(funct
 
       {/* Variasi 2 — Warna (always present) */}
       <div className="space-y-1.5">
-        <Label className="text-sm font-medium text-[#2d3436]">
-          Warna {childMode && <span className="text-[11px] text-[#2563eb] font-normal">(sync dari Master)</span>}
+        <Label className="text-sm font-medium text-[var(--t-heading)]">
+          Warna {childMode && <span className="text-[11px] text-[var(--info)] font-normal">(sync dari Master)</span>}
         </Label>
         <div className="flex flex-wrap items-center gap-1.5">
           {colors.map((c) => (
-            <Badge key={c.name} className="text-xs px-2 py-1 rounded-full bg-[#f5f6fa] text-[#2d3436] border-[#e8e8e8] gap-1.5" variant="outline">
+            <Badge key={c.name} className="text-xs px-2 py-1 rounded-full bg-[var(--surface)] text-[var(--t-heading)] border-[var(--bd)] gap-1.5" variant="outline">
               <span className="w-2.5 h-2.5 rounded-full border border-gray-300" style={{ backgroundColor: c.hex }} />
               {c.name}
               {!childMode && (
@@ -325,7 +325,7 @@ export const VariantMatrixBuilder = forwardRef<MatrixBuilderHandle, Props>(funct
                 const preset = dbColors.find((c) => c.hex === e.target.value);
                 if (preset) addColor(preset.name, preset.hex);
               }}
-              className="h-7 text-xs bg-white border border-[#e8e8e8] rounded-full px-2.5 cursor-pointer text-[#4a6741] font-semibold"
+              className="h-7 text-xs bg-[var(--card)] border border-[var(--bd)] rounded-full px-2.5 cursor-pointer text-[var(--brand)] font-semibold"
             >
               <option value="">+ Tambah Warna</option>
               {availableColors.map((c) => (
@@ -337,44 +337,44 @@ export const VariantMatrixBuilder = forwardRef<MatrixBuilderHandle, Props>(funct
       </div>
 
       {/* Apply To All */}
-      <div className="flex flex-wrap items-end gap-2 bg-[#f5f6fa] rounded-lg p-2.5">
+      <div className="flex flex-wrap items-end gap-2 bg-[var(--surface)] rounded-lg p-2.5">
         <div className="space-y-1">
-          <Label className="text-[10px] text-[#6b7280] uppercase">Price</Label>
-          <Input type="number" min={0} value={applyPrice} onChange={(e) => setApplyPrice(e.target.value)} placeholder="Rp" className="h-8 w-24 text-xs bg-white border-[#e8e8e8] rounded-lg" />
+          <Label className="text-[10px] text-[var(--t-muted)] uppercase">Price</Label>
+          <Input type="number" min={0} value={applyPrice} onChange={(e) => setApplyPrice(e.target.value)} placeholder="Rp" className="h-8 w-24 text-xs bg-[var(--card)] border-[var(--bd)] rounded-lg" />
         </div>
         {!childMode && (
           <div className="space-y-1">
-            <Label className="text-[10px] text-[#6b7280] uppercase">Stock</Label>
-            <Input type="number" min={0} value={applyStock} onChange={(e) => setApplyStock(e.target.value)} className="h-8 w-20 text-xs bg-white border-[#e8e8e8] rounded-lg" />
+            <Label className="text-[10px] text-[var(--t-muted)] uppercase">Stock</Label>
+            <Input type="number" min={0} value={applyStock} onChange={(e) => setApplyStock(e.target.value)} className="h-8 w-20 text-xs bg-[var(--card)] border-[var(--bd)] rounded-lg" />
           </div>
         )}
         <div className="space-y-1 flex-1 min-w-[120px]">
-          <Label className="text-[10px] text-[#6b7280] uppercase">SKU/Barcode</Label>
-          <Input value={applyBarcode} onChange={(e) => setApplyBarcode(e.target.value)} className="h-8 text-xs bg-white border-[#e8e8e8] rounded-lg" />
+          <Label className="text-[10px] text-[var(--t-muted)] uppercase">SKU/Barcode</Label>
+          <Input value={applyBarcode} onChange={(e) => setApplyBarcode(e.target.value)} className="h-8 text-xs bg-[var(--card)] border-[var(--bd)] rounded-lg" />
         </div>
-        <Button type="button" onClick={applyToAll} className="h-8 bg-[#4a6741] hover:bg-[#3d5535] text-white text-xs">
+        <Button type="button" onClick={applyToAll} className="h-8 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white text-xs">
           Apply To All
         </Button>
       </div>
 
       {/* Grid — grouped by Variasi 1 option if present */}
       {rows.length === 0 ? (
-        <p className="text-xs text-[#6b7280] text-center py-6">Tambah minimal 1 warna dulu.</p>
+        <p className="text-xs text-[var(--t-muted)] text-center py-6">Tambah minimal 1 warna dulu.</p>
       ) : (
         <div className="space-y-3">
           {(hasVariasi1 ? variasi1Options : ['']).map((group) => (
-            <div key={group || '_none'} className="rounded-lg border border-[#e8e8e8] overflow-hidden">
+            <div key={group || '_none'} className="rounded-lg border border-[var(--bd)] overflow-hidden">
               {hasVariasi1 && (
-                <div className="px-3 py-1.5 bg-[#4a6741]/5 text-xs font-semibold text-[#4a6741]">
+                <div className="px-3 py-1.5 bg-[var(--brand)]/5 text-xs font-semibold text-[var(--brand)]">
                   {variasi1Name}: {group}
                 </div>
               )}
-              <div className="grid grid-cols-[auto_1fr_90px_90px_1fr] gap-2 px-3 py-1.5 bg-[#f0f0f0] items-end">
+              <div className="grid grid-cols-[auto_1fr_90px_90px_1fr] gap-2 px-3 py-1.5 bg-[var(--surface-2)] items-end">
                 <span />
-                <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Warna</span>
-                <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Harga</span>
-                <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Stock</span>
-                <span className="text-[11px] font-medium text-[#6b7280] uppercase tracking-wide">Barcode/SKU</span>
+                <span className="text-[11px] font-medium text-[var(--t-muted)] uppercase tracking-wide">Warna</span>
+                <span className="text-[11px] font-medium text-[var(--t-muted)] uppercase tracking-wide">Harga</span>
+                <span className="text-[11px] font-medium text-[var(--t-muted)] uppercase tracking-wide">Stock</span>
+                <span className="text-[11px] font-medium text-[var(--t-muted)] uppercase tracking-wide">Barcode/SKU</span>
               </div>
               {rows.filter((r) => r.variasi1 === group).map(renderRow)}
             </div>

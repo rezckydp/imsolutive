@@ -146,8 +146,8 @@ export function MergeMatrixDialog({ open, onClose, onMerged }: Props) {
       <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
         <DialogContent className="sm:max-w-lg rounded-xl max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-[#2d3436]">
-              <Layers className="w-5 h-5 text-[#4a6741]" />
+            <DialogTitle className="flex items-center gap-2 text-[var(--t-heading)]">
+              <Layers className="w-5 h-5 text-[var(--brand)]" />
               Gabung ke Produk Matrix
             </DialogTitle>
             <DialogDescription>
@@ -160,90 +160,90 @@ export function MergeMatrixDialog({ open, onClose, onMerged }: Props) {
           {step === 'select' ? (
             <div className="flex-1 overflow-y-auto space-y-3">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9ca3af]" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--t-subtle)]" />
                 <Input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Cari SKU atau nama produk..."
-                  className="pl-9 h-9 bg-white border-[#e8e8e8] rounded-lg"
+                  className="pl-9 h-9 bg-[var(--card)] border-[var(--bd)] rounded-lg"
                 />
               </div>
-              <div className="max-h-80 overflow-y-auto rounded-lg border border-[#e8e8e8] divide-y divide-[#f0f0f0]">
+              <div className="max-h-80 overflow-y-auto rounded-lg border border-[var(--bd)] divide-y divide-[var(--surface-2)]">
                 {loadingCandidates ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-5 h-5 animate-spin text-[#6b7280]" />
+                    <Loader2 className="w-5 h-5 animate-spin text-[var(--t-muted)]" />
                   </div>
                 ) : candidates.length === 0 ? (
-                  <p className="text-xs text-[#6b7280] text-center py-8">Tidak ada produk Standalone yang cocok</p>
+                  <p className="text-xs text-[var(--t-muted)] text-center py-8">Tidak ada produk Standalone yang cocok</p>
                 ) : (
                   candidates.map((c) => (
-                    <label key={c.id} className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-[#fafafa] cursor-pointer">
+                    <label key={c.id} className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-[var(--surface-hover)] cursor-pointer">
                       <input
                         type="checkbox"
                         checked={selected.some((x) => x.id === c.id)}
                         onChange={() => toggleSelected(c)}
-                        className="w-4 h-4 accent-[#4a6741] cursor-pointer"
+                        className="w-4 h-4 accent-[var(--brand)] cursor-pointer"
                       />
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-[#2d3436]">{c.name}</p>
-                        <p className="text-xs text-[#6b7280]">{c.sku} · {c.variants?.length ?? 0} varian</p>
+                        <p className="text-sm font-medium text-[var(--t-heading)]">{c.name}</p>
+                        <p className="text-xs text-[var(--t-muted)]">{c.sku} · {c.variants?.length ?? 0} varian</p>
                       </div>
                     </label>
                   ))
                 )}
               </div>
-              <p className="text-xs text-[#6b7280]">{selected.length} produk dipilih (minimal 2)</p>
+              <p className="text-xs text-[var(--t-muted)]">{selected.length} produk dipilih (minimal 2)</p>
             </div>
           ) : (
             <div className="flex-1 overflow-y-auto space-y-4">
               <div className="space-y-1.5">
-                <Label className="text-sm font-medium text-[#2d3436]">Nama Variasi (mis. Ukuran)</Label>
+                <Label className="text-sm font-medium text-[var(--t-heading)]">Nama Variasi (mis. Ukuran)</Label>
                 <Input
                   value={variasi1Name}
                   onChange={(e) => setVariasi1Name(e.target.value)}
                   placeholder="Ukuran"
-                  className="h-9 bg-white border-[#e8e8e8] rounded-lg"
+                  className="h-9 bg-[var(--card)] border-[var(--bd)] rounded-lg"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-[#2d3436]">Label tiap produk</Label>
+                <Label className="text-sm font-medium text-[var(--t-heading)]">Label tiap produk</Label>
                 {selected.map((p) => (
                   <div key={p.id} className="flex items-center gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-[#2d3436] truncate">{p.name}</p>
-                      <p className="text-xs text-[#6b7280]">{p.sku}</p>
+                      <p className="text-sm text-[var(--t-heading)] truncate">{p.name}</p>
+                      <p className="text-xs text-[var(--t-muted)]">{p.sku}</p>
                     </div>
                     <Input
                       value={labels[p.sku] || ''}
                       onChange={(e) => setLabels((prev) => ({ ...prev, [p.sku]: e.target.value }))}
                       placeholder="mis. D13"
-                      className="h-9 w-28 bg-white border-[#e8e8e8] rounded-lg"
+                      className="h-9 w-28 bg-[var(--card)] border-[var(--bd)] rounded-lg"
                     />
                   </div>
                 ))}
                 {!labelsUnique && (
-                  <p className="text-[11px] text-[#dc2626]">Label tidak boleh sama antar produk</p>
+                  <p className="text-[11px] text-[var(--danger)]">Label tidak boleh sama antar produk</p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-[#2d3436]">Identitas produk hasil gabungan</Label>
+                <Label className="text-sm font-medium text-[var(--t-heading)]">Identitas produk hasil gabungan</Label>
                 <div className="space-y-2">
                   <label className="flex items-start gap-2 cursor-pointer">
                     <input
                       type="radio"
                       checked={targetMode === 'existing'}
                       onChange={() => setTargetMode('existing')}
-                      className="mt-1 accent-[#4a6741] cursor-pointer"
+                      className="mt-1 accent-[var(--brand)] cursor-pointer"
                     />
                     <div className="flex-1">
-                      <p className="text-sm text-[#2d3436]">Pakai salah satu produk yang dipilih sebagai dasar</p>
+                      <p className="text-sm text-[var(--t-heading)]">Pakai salah satu produk yang dipilih sebagai dasar</p>
                       {targetMode === 'existing' && (
                         <select
                           value={baseSku}
                           onChange={(e) => setBaseSku(e.target.value)}
-                          className="mt-1.5 h-9 w-full text-sm bg-white border border-[#e8e8e8] rounded-lg px-2 cursor-pointer"
+                          className="mt-1.5 h-9 w-full text-sm bg-[var(--card)] border border-[var(--bd)] rounded-lg px-2 cursor-pointer"
                         >
                           {selected.map((p) => (
                             <option key={p.sku} value={p.sku}>{p.sku} — {p.name}</option>
@@ -257,23 +257,23 @@ export function MergeMatrixDialog({ open, onClose, onMerged }: Props) {
                       type="radio"
                       checked={targetMode === 'new'}
                       onChange={() => setTargetMode('new')}
-                      className="mt-1 accent-[#4a6741] cursor-pointer"
+                      className="mt-1 accent-[var(--brand)] cursor-pointer"
                     />
                     <div className="flex-1 space-y-1.5">
-                      <p className="text-sm text-[#2d3436]">Buat produk baru sebagai wadah</p>
+                      <p className="text-sm text-[var(--t-heading)]">Buat produk baru sebagai wadah</p>
                       {targetMode === 'new' && (
                         <div className="grid grid-cols-2 gap-1.5">
                           <Input
                             value={newSku}
                             onChange={(e) => setNewSku(e.target.value)}
                             placeholder="Master SKU baru"
-                            className="h-9 bg-white border-[#e8e8e8] rounded-lg"
+                            className="h-9 bg-[var(--card)] border-[var(--bd)] rounded-lg"
                           />
                           <Input
                             value={newName}
                             onChange={(e) => setNewName(e.target.value)}
                             placeholder="Nama produk"
-                            className="h-9 bg-white border-[#e8e8e8] rounded-lg"
+                            className="h-9 bg-[var(--card)] border-[var(--bd)] rounded-lg"
                           />
                         </div>
                       )}
@@ -291,7 +291,7 @@ export function MergeMatrixDialog({ open, onClose, onMerged }: Props) {
                 <Button
                   onClick={goToConfigure}
                   disabled={selected.length < 2}
-                  className="bg-[#4a6741] hover:bg-[#3d5535] text-white gap-1.5"
+                  className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white gap-1.5"
                 >
                   Lanjut <ArrowRight className="w-4 h-4" />
                 </Button>
@@ -304,7 +304,7 @@ export function MergeMatrixDialog({ open, onClose, onMerged }: Props) {
                 <Button
                   onClick={() => setConfirmOpen(true)}
                   disabled={!canSubmit}
-                  className="bg-[#4a6741] hover:bg-[#3d5535] text-white"
+                  className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white"
                 >
                   Gabungkan
                 </Button>
@@ -318,7 +318,7 @@ export function MergeMatrixDialog({ open, onClose, onMerged }: Props) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-[#d97706]" />
+              <AlertTriangle className="w-5 h-5 text-[var(--warning)]" />
               Gabungkan {selected.length} produk?
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -333,7 +333,7 @@ export function MergeMatrixDialog({ open, onClose, onMerged }: Props) {
             <AlertDialogAction
               onClick={handleMerge}
               disabled={merging}
-              className="bg-[#d97706] hover:bg-[#b45309] text-white"
+              className="bg-[var(--warning)] hover:bg-[var(--warning-dark)] text-white"
             >
               {merging ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Ya, Gabungkan'}
             </AlertDialogAction>

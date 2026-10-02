@@ -46,6 +46,7 @@ import { toast } from 'sonner';
 import { getVariantLabel } from '@/lib/stock-sync';
 import { lookupBarcode } from '@/components/dashboard/barcode-scanner';
 import { DateRangePicker, type SimpleDateRange } from '@/components/dashboard/date-range-picker';
+import { ThemeToggle } from '@/components/dashboard/theme-toggle';
 import { format } from 'date-fns';
 
 // ============ TYPES ============
@@ -600,21 +601,21 @@ export default function PosPage() {
   // ============ RENDER ============
 
   return (
-    <div className="min-h-screen bg-[#f5f6fa] flex flex-col">
+    <div className="min-h-screen bg-[var(--surface)] flex flex-col">
       {/* Top bar */}
-      <div className="bg-white border-b border-[#e8e8e8] px-5 py-3 flex items-center justify-between">
+      <div className="bg-[var(--card)] border-b border-[var(--bd)] px-5 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link href="/" className="text-[#6b7280] hover:text-[#2d3436] transition-colors" title="Kembali ke Dashboard">
+          <Link href="/" className="text-[var(--t-muted)] hover:text-[var(--t-heading)] transition-colors" title="Kembali ke Dashboard">
             <ArrowLeft className="w-5 h-5" />
           </Link>
-          <h1 className="text-lg font-bold text-[#2d3436]">{settings?.storeName || 'Solutive'} — Kasir</h1>
+          <h1 className="text-lg font-bold text-[var(--t-heading)]">{settings?.storeName || 'Solutive'} — Kasir</h1>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 bg-[#f5f6fa] p-0.5 rounded-full">
+          <div className="flex items-center gap-1 bg-[var(--surface)] p-0.5 rounded-full">
             <button
               onClick={() => setActiveTab('kasir')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
-                activeTab === 'kasir' ? 'bg-white text-[#2d3436] shadow-sm' : 'text-[#6b7280] hover:text-[#2d3436]'
+                activeTab === 'kasir' ? 'bg-[var(--card)] text-[var(--t-heading)] shadow-sm' : 'text-[var(--t-muted)] hover:text-[var(--t-heading)]'
               }`}
             >
               <ShoppingCart className="w-3.5 h-3.5" /> Kasir
@@ -622,15 +623,16 @@ export default function PosPage() {
             <button
               onClick={() => setActiveTab('riwayat')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer ${
-                activeTab === 'riwayat' ? 'bg-white text-[#2d3436] shadow-sm' : 'text-[#6b7280] hover:text-[#2d3436]'
+                activeTab === 'riwayat' ? 'bg-[var(--card)] text-[var(--t-heading)] shadow-sm' : 'text-[var(--t-muted)] hover:text-[var(--t-heading)]'
               }`}
             >
               <History className="w-3.5 h-3.5" /> Riwayat
             </button>
           </div>
+          <ThemeToggle />
           <button
             onClick={openSettings}
-            className="p-2 rounded-lg hover:bg-[#f5f6fa] text-[#6b7280] hover:text-[#2d3436] transition-colors cursor-pointer"
+            className="p-2 rounded-lg hover:bg-[var(--surface)] text-[var(--t-muted)] hover:text-[var(--t-heading)] transition-colors cursor-pointer"
             title="Pengaturan Kasir"
           >
             <SettingsIcon className="w-5 h-5" />
@@ -642,20 +644,20 @@ export default function PosPage() {
       <>
       {/* Quick reprint — last 3 transactions */}
       {recentTransactions.length > 0 && (
-        <div className="bg-white border-b border-[#e8e8e8] px-5 py-2 flex items-center gap-3 overflow-x-auto">
-          <span className="text-[11px] font-medium text-[#6b7280] flex items-center gap-1 flex-shrink-0">
+        <div className="bg-[var(--card)] border-b border-[var(--bd)] px-5 py-2 flex items-center gap-3 overflow-x-auto">
+          <span className="text-[11px] font-medium text-[var(--t-muted)] flex items-center gap-1 flex-shrink-0">
             <History className="w-3.5 h-3.5" /> Terakhir:
           </span>
           {recentTransactions.map((tx) => (
-            <div key={tx.id} className="flex items-center gap-1.5 bg-[#f5f6fa] rounded-full pl-3 pr-1.5 py-1 flex-shrink-0">
-              <span className="text-[11px] font-semibold text-[#2d3436]">{tx.orderNo}</span>
-              <span className="text-[11px] text-[#6b7280]">{formatRupiah(tx.totalAmount || 0)}</span>
+            <div key={tx.id} className="flex items-center gap-1.5 bg-[var(--surface)] rounded-full pl-3 pr-1.5 py-1 flex-shrink-0">
+              <span className="text-[11px] font-semibold text-[var(--t-heading)]">{tx.orderNo}</span>
+              <span className="text-[11px] text-[var(--t-muted)]">{formatRupiah(tx.totalAmount || 0)}</span>
               <button
                 onClick={() => printReceipt(tx, settings)}
                 title="Cetak ulang"
-                className="w-5 h-5 rounded-full bg-white hover:bg-[#e8e8e8] flex items-center justify-center cursor-pointer"
+                className="w-5 h-5 rounded-full bg-[var(--card)] hover:bg-[var(--bd)] flex items-center justify-center cursor-pointer"
               >
-                <Printer className="w-3 h-3 text-[#4b5563]" />
+                <Printer className="w-3 h-3 text-[var(--t-body)]" />
               </button>
             </div>
           ))}
@@ -668,30 +670,30 @@ export default function PosPage() {
           {/* Search + barcode */}
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6b7280]" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--t-muted)]" />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Cari produk..."
-                className="pl-10 h-11 bg-white border-[#e8e8e8] rounded-lg"
+                className="pl-10 h-11 bg-[var(--card)] border-[var(--bd)] rounded-lg"
               />
             </div>
             <form onSubmit={handleBarcodeSubmit} className="relative w-64">
-              <ScanBarcode className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6b7280]" />
+              <ScanBarcode className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--t-muted)]" />
               <Input
                 ref={barcodeRef}
                 value={barcodeInput}
                 onChange={(e) => setBarcodeInput(e.target.value)}
                 placeholder="Scan barcode / SKU..."
                 disabled={scanning}
-                className="pl-10 h-11 bg-white border-[#e8e8e8] rounded-lg"
+                className="pl-10 h-11 bg-[var(--card)] border-[var(--bd)] rounded-lg"
               />
             </form>
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-4 pr-1">
             {loadingProducts ? (
-              <div className="flex items-center justify-center py-16 text-[#6b7280]">
+              <div className="flex items-center justify-center py-16 text-[var(--t-muted)]">
                 <Loader2 className="w-6 h-6 animate-spin" />
               </div>
             ) : (
@@ -703,7 +705,7 @@ export default function PosPage() {
                     ))}
                   </div>
                   {filteredProducts.length === 0 && (
-                    <p className="text-center text-sm text-[#6b7280] py-10">Tidak ada produk ditemukan</p>
+                    <p className="text-center text-sm text-[var(--t-muted)] py-10">Tidak ada produk ditemukan</p>
                   )}
                 </div>
               </>
@@ -712,15 +714,15 @@ export default function PosPage() {
         </div>
 
         {/* ============ RIGHT: CART ============ */}
-        <div className="w-full lg:w-[380px] flex-shrink-0 bg-white rounded-xl shadow-sm flex flex-col min-h-0">
-          <div className="px-4 py-3 border-b border-[#e8e8e8] flex items-center justify-between">
-            <span className="text-sm font-semibold text-[#2d3436] flex items-center gap-1.5">
+        <div className="w-full lg:w-[380px] flex-shrink-0 bg-[var(--card)] rounded-xl shadow-sm flex flex-col min-h-0">
+          <div className="px-4 py-3 border-b border-[var(--bd)] flex items-center justify-between">
+            <span className="text-sm font-semibold text-[var(--t-heading)] flex items-center gap-1.5">
               <ShoppingCart className="w-4 h-4" /> Keranjang
             </span>
             {cart.length > 0 && (
               <button
                 onClick={clearCart}
-                className="text-[11px] text-[#dc2626] hover:underline cursor-pointer"
+                className="text-[11px] text-[var(--danger)] hover:underline cursor-pointer"
               >
                 Kosongkan
               </button>
@@ -729,38 +731,38 @@ export default function PosPage() {
 
           <div className="flex-1 overflow-y-auto px-4 py-2 space-y-2">
             {cart.length === 0 ? (
-              <p className="text-center text-sm text-[#6b7280] py-10">Keranjang masih kosong</p>
+              <p className="text-center text-sm text-[var(--t-muted)] py-10">Keranjang masih kosong</p>
             ) : (
               cart.map((item) => (
-                <div key={item.variantId} className="flex items-center gap-2 py-2 border-b border-[#f0f0f0] last:border-0">
-                  <span className="w-3 h-3 rounded-full border border-[#e8e8e8] flex-shrink-0" style={{ backgroundColor: item.colorHex }} />
+                <div key={item.variantId} className="flex items-center gap-2 py-2 border-b border-[var(--surface-2)] last:border-0">
+                  <span className="w-3 h-3 rounded-full border border-[var(--bd)] flex-shrink-0" style={{ backgroundColor: item.colorHex }} />
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-[#2d3436] truncate">{item.sku}</p>
-                    <p className="text-[11px] text-[#6b7280] truncate">
+                    <p className="text-xs font-semibold text-[var(--t-heading)] truncate">{item.sku}</p>
+                    <p className="text-[11px] text-[var(--t-muted)] truncate">
                       {getVariantLabel(item.color, item.type)} · {formatRupiah(item.unitPrice)}
                     </p>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <button
                       onClick={() => updateCartQty(item.variantId, -1)}
-                      className="w-6 h-6 rounded-md bg-[#f5f6fa] hover:bg-[#e8e8e8] flex items-center justify-center cursor-pointer"
+                      className="w-6 h-6 rounded-md bg-[var(--surface)] hover:bg-[var(--bd)] flex items-center justify-center cursor-pointer"
                     >
                       <Minus className="w-3 h-3" />
                     </button>
                     <span className="text-xs font-semibold w-5 text-center">{item.qty}</span>
                     <button
                       onClick={() => updateCartQty(item.variantId, 1)}
-                      className="w-6 h-6 rounded-md bg-[#f5f6fa] hover:bg-[#e8e8e8] flex items-center justify-center cursor-pointer"
+                      className="w-6 h-6 rounded-md bg-[var(--surface)] hover:bg-[var(--bd)] flex items-center justify-center cursor-pointer"
                     >
                       <Plus className="w-3 h-3" />
                     </button>
                   </div>
-                  <span className="text-xs font-semibold text-[#2d3436] w-20 text-right flex-shrink-0">
+                  <span className="text-xs font-semibold text-[var(--t-heading)] w-20 text-right flex-shrink-0">
                     {formatRupiah(item.unitPrice * item.qty)}
                   </span>
                   <button
                     onClick={() => removeCartItem(item.variantId)}
-                    className="text-[#dc2626] hover:bg-[#dc2626]/10 rounded-md p-1 cursor-pointer flex-shrink-0"
+                    className="text-[var(--danger)] hover:bg-[var(--danger)]/10 rounded-md p-1 cursor-pointer flex-shrink-0"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -769,10 +771,10 @@ export default function PosPage() {
             )}
           </div>
 
-          <div className="border-t border-[#e8e8e8] px-4 py-3 space-y-3">
+          <div className="border-t border-[var(--bd)] px-4 py-3 space-y-3">
             {/* Discount */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-[#4b5563]">Diskon (Rp)</Label>
+              <Label className="text-xs font-medium text-[var(--t-body)]">Diskon (Rp)</Label>
               <Input
                 type="number"
                 min={0}
@@ -782,7 +784,7 @@ export default function PosPage() {
                   setDiscountAmount(parseInt(e.target.value, 10) || 0);
                 }}
                 placeholder="0"
-                className="h-9 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg"
+                className="h-9 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg"
               />
               {discountPresets.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
@@ -793,7 +795,7 @@ export default function PosPage() {
                         setDiscountAmount(preset);
                         setDiscountInput(String(preset));
                       }}
-                      className="text-[11px] px-2 py-1 rounded-full bg-[#4a6741]/10 text-[#4a6741] hover:bg-[#4a6741]/20 cursor-pointer font-medium"
+                      className="text-[11px] px-2 py-1 rounded-full bg-[var(--brand)]/10 text-[var(--brand)] hover:bg-[var(--brand)]/20 cursor-pointer font-medium"
                     >
                       {formatRupiah(preset)}
                     </button>
@@ -804,17 +806,17 @@ export default function PosPage() {
 
             {/* Totals */}
             <div className="space-y-1 text-sm">
-              <div className="flex justify-between text-[#6b7280]">
+              <div className="flex justify-between text-[var(--t-muted)]">
                 <span>Subtotal</span>
                 <span>{formatRupiah(subtotal)}</span>
               </div>
               {discountAmount > 0 && (
-                <div className="flex justify-between text-[#d97706]">
+                <div className="flex justify-between text-[var(--warning)]">
                   <span>Diskon</span>
                   <span>-{formatRupiah(discountAmount)}</span>
                 </div>
               )}
-              <div className="flex justify-between text-base font-bold text-[#2d3436] pt-1 border-t border-[#f0f0f0]">
+              <div className="flex justify-between text-base font-bold text-[var(--t-heading)] pt-1 border-t border-[var(--surface-2)]">
                 <span>Total</span>
                 <span>{formatRupiah(total)}</span>
               </div>
@@ -822,14 +824,14 @@ export default function PosPage() {
 
             {/* Payment method */}
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-[#4b5563]">Metode Pembayaran</Label>
+              <Label className="text-xs font-medium text-[var(--t-body)]">Metode Pembayaran</Label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setPaymentMethod('Cash')}
                   className={`h-9 rounded-lg text-sm font-medium border transition-colors cursor-pointer ${
                     paymentMethod === 'Cash'
-                      ? 'bg-[#4a6741] text-white border-[#4a6741]'
-                      : 'bg-white text-[#4b5563] border-[#e8e8e8] hover:bg-[#f5f6fa]'
+                      ? 'bg-[var(--brand)] text-white border-[var(--brand)]'
+                      : 'bg-[var(--card)] text-[var(--t-body)] border-[var(--bd)] hover:bg-[var(--surface)]'
                   }`}
                 >
                   Cash
@@ -838,8 +840,8 @@ export default function PosPage() {
                   onClick={() => setPaymentMethod('QRIS')}
                   className={`h-9 rounded-lg text-sm font-medium border transition-colors cursor-pointer ${
                     paymentMethod === 'QRIS'
-                      ? 'bg-[#4a6741] text-white border-[#4a6741]'
-                      : 'bg-white text-[#4b5563] border-[#e8e8e8] hover:bg-[#f5f6fa]'
+                      ? 'bg-[var(--brand)] text-white border-[var(--brand)]'
+                      : 'bg-[var(--card)] text-[var(--t-body)] border-[var(--bd)] hover:bg-[var(--surface)]'
                   }`}
                 >
                   QRIS
@@ -849,14 +851,14 @@ export default function PosPage() {
 
             {paymentMethod === 'Cash' && (
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-[#4b5563]">Uang Diterima (opsional)</Label>
+                <Label className="text-xs font-medium text-[var(--t-body)]">Uang Diterima (opsional)</Label>
                 <Input
                   type="number"
                   min={0}
                   value={cashReceived}
                   onChange={(e) => setCashReceived(e.target.value)}
                   placeholder="0"
-                  className="h-9 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg"
+                  className="h-9 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg"
                 />
                 {cashPresets.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
@@ -864,7 +866,7 @@ export default function PosPage() {
                       <button
                         key={preset}
                         onClick={() => setCashReceived(String(preset))}
-                        className="text-[11px] px-2 py-1 rounded-full bg-[#2563eb]/10 text-[#2563eb] hover:bg-[#2563eb]/20 cursor-pointer font-medium"
+                        className="text-[11px] px-2 py-1 rounded-full bg-[var(--info)]/10 text-[var(--info)] hover:bg-[var(--info)]/20 cursor-pointer font-medium"
                       >
                         {formatRupiah(preset)}
                       </button>
@@ -872,7 +874,7 @@ export default function PosPage() {
                   </div>
                 )}
                 {change != null && (
-                  <p className={`text-xs font-semibold ${change < 0 ? 'text-[#dc2626]' : 'text-[#15803d]'}`}>
+                  <p className={`text-xs font-semibold ${change < 0 ? 'text-[var(--danger)]' : 'text-[var(--success)]'}`}>
                     {change < 0 ? `Kurang ${formatRupiah(-change)}` : `Kembalian: ${formatRupiah(change)}`}
                   </p>
                 )}
@@ -880,7 +882,7 @@ export default function PosPage() {
             )}
 
             {paymentMethod === 'QRIS' && (
-              <p className="text-[11px] text-[#6b7280] bg-[#f5f6fa] rounded-lg px-3 py-2">
+              <p className="text-[11px] text-[var(--t-muted)] bg-[var(--surface)] rounded-lg px-3 py-2">
                 Tunjukkan QRIS ke customer, klik &quot;Selesaikan Transaksi&quot; setelah pembayaran masuk.
               </p>
             )}
@@ -888,7 +890,7 @@ export default function PosPage() {
             <Button
               onClick={handleCheckout}
               disabled={!canCheckout || (paymentMethod === 'Cash' && change != null && change < 0)}
-              className="w-full h-11 bg-[#4a6741] hover:bg-[#3d5535] text-white rounded-lg font-semibold"
+              className="w-full h-11 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white rounded-lg font-semibold"
             >
               {checkingOut ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               Selesaikan Transaksi (Enter)
@@ -906,12 +908,12 @@ export default function PosPage() {
           <div className="flex flex-wrap items-center gap-2">
             <DateRangePicker value={historyDateRange} onChange={setHistoryDateRange} allTimeLabel="Semua Waktu" />
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#6b7280]" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--t-muted)]" />
               <Input
                 value={historySearch}
                 onChange={(e) => setHistorySearch(e.target.value)}
                 placeholder="Cari nomor transaksi..."
-                className="pl-8 h-8 text-xs rounded-lg bg-white border-[#e8e8e8] w-[200px]"
+                className="pl-8 h-8 text-xs rounded-lg bg-[var(--card)] border-[var(--bd)] w-[200px]"
               />
             </div>
           </div>
@@ -919,38 +921,38 @@ export default function PosPage() {
           {/* Summary */}
           {historySummary && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="bg-white rounded-xl shadow-sm p-4">
-                <p className="text-[11px] text-[#6b7280]">Total Omzet</p>
-                <p className="text-lg font-bold text-[#4a6741]">{formatRupiah(historySummary.totalOmzet)}</p>
+              <div className="bg-[var(--card)] rounded-xl shadow-sm p-4">
+                <p className="text-[11px] text-[var(--t-muted)]">Total Omzet</p>
+                <p className="text-lg font-bold text-[var(--brand)]">{formatRupiah(historySummary.totalOmzet)}</p>
               </div>
-              <div className="bg-white rounded-xl shadow-sm p-4">
-                <p className="text-[11px] text-[#6b7280]">Jumlah Transaksi</p>
-                <p className="text-lg font-bold text-[#2d3436]">{historySummary.transactionCount}</p>
+              <div className="bg-[var(--card)] rounded-xl shadow-sm p-4">
+                <p className="text-[11px] text-[var(--t-muted)]">Jumlah Transaksi</p>
+                <p className="text-lg font-bold text-[var(--t-heading)]">{historySummary.transactionCount}</p>
               </div>
-              <div className="bg-white rounded-xl shadow-sm p-4">
-                <p className="text-[11px] text-[#6b7280]">Cash</p>
-                <p className="text-lg font-bold text-[#2d3436]">{historySummary.cashCount}x</p>
-                <p className="text-[11px] text-[#6b7280]">{formatRupiah(historySummary.cashTotal)}</p>
+              <div className="bg-[var(--card)] rounded-xl shadow-sm p-4">
+                <p className="text-[11px] text-[var(--t-muted)]">Cash</p>
+                <p className="text-lg font-bold text-[var(--t-heading)]">{historySummary.cashCount}x</p>
+                <p className="text-[11px] text-[var(--t-muted)]">{formatRupiah(historySummary.cashTotal)}</p>
               </div>
-              <div className="bg-white rounded-xl shadow-sm p-4">
-                <p className="text-[11px] text-[#6b7280]">QRIS</p>
-                <p className="text-lg font-bold text-[#2d3436]">{historySummary.qrisCount}x</p>
-                <p className="text-[11px] text-[#6b7280]">{formatRupiah(historySummary.qrisTotal)}</p>
+              <div className="bg-[var(--card)] rounded-xl shadow-sm p-4">
+                <p className="text-[11px] text-[var(--t-muted)]">QRIS</p>
+                <p className="text-lg font-bold text-[var(--t-heading)]">{historySummary.qrisCount}x</p>
+                <p className="text-[11px] text-[var(--t-muted)]">{formatRupiah(historySummary.qrisTotal)}</p>
               </div>
             </div>
           )}
 
           {/* List */}
-          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-[var(--card)] rounded-xl shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[600px]">
                 <thead>
-                  <tr className="bg-[#f5f6fa]">
-                    <th className="text-left text-xs font-medium text-[#4b5563] py-2.5 px-4">No. Transaksi</th>
-                    <th className="text-left text-xs font-medium text-[#4b5563] py-2.5 px-4">Waktu</th>
-                    <th className="text-left text-xs font-medium text-[#4b5563] py-2.5 px-4">Item</th>
-                    <th className="text-left text-xs font-medium text-[#4b5563] py-2.5 px-4">Bayar</th>
-                    <th className="text-right text-xs font-medium text-[#4b5563] py-2.5 px-4">Total</th>
+                  <tr className="bg-[var(--surface)]">
+                    <th className="text-left text-xs font-medium text-[var(--t-body)] py-2.5 px-4">No. Transaksi</th>
+                    <th className="text-left text-xs font-medium text-[var(--t-body)] py-2.5 px-4">Waktu</th>
+                    <th className="text-left text-xs font-medium text-[var(--t-body)] py-2.5 px-4">Item</th>
+                    <th className="text-left text-xs font-medium text-[var(--t-body)] py-2.5 px-4">Bayar</th>
+                    <th className="text-right text-xs font-medium text-[var(--t-body)] py-2.5 px-4">Total</th>
                     <th className="w-20"></th>
                   </tr>
                 </thead>
@@ -958,12 +960,12 @@ export default function PosPage() {
                   {loadingHistory ? (
                     <tr>
                       <td colSpan={6} className="text-center py-10">
-                        <Loader2 className="w-5 h-5 animate-spin mx-auto text-[#6b7280]" />
+                        <Loader2 className="w-5 h-5 animate-spin mx-auto text-[var(--t-muted)]" />
                       </td>
                     </tr>
                   ) : filteredHistoryOrders.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="text-center py-10 text-sm text-[#6b7280]">
+                      <td colSpan={6} className="text-center py-10 text-sm text-[var(--t-muted)]">
                         Belum ada transaksi POS di periode ini
                       </td>
                     </tr>
@@ -971,27 +973,27 @@ export default function PosPage() {
                     filteredHistoryOrders.map((order) => (
                       <tr
                         key={order.id}
-                        className="border-t border-[#f0f0f0] hover:bg-[#fafafa] transition-colors cursor-pointer"
+                        className="border-t border-[var(--surface-2)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer"
                         onClick={() => setDetailOrder(order)}
                       >
-                        <td className="py-2.5 px-4 text-sm font-semibold text-[#2d3436]">{order.orderNo}</td>
-                        <td className="py-2.5 px-4 text-xs text-[#6b7280]">
+                        <td className="py-2.5 px-4 text-sm font-semibold text-[var(--t-heading)]">{order.orderNo}</td>
+                        <td className="py-2.5 px-4 text-xs text-[var(--t-muted)]">
                           {new Date(order.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
                         </td>
-                        <td className="py-2.5 px-4 text-xs text-[#6b7280]">{order.orderItems.length} item</td>
+                        <td className="py-2.5 px-4 text-xs text-[var(--t-muted)]">{order.orderItems.length} item</td>
                         <td className="py-2.5 px-4">
                           <Badge
                             variant="outline"
                             className={`text-[11px] px-2 py-0 rounded-full font-semibold ${
                               order.paymentMethod === 'Cash'
-                                ? 'bg-[#4a6741]/10 text-[#4a6741] border-[#4a6741]/30'
-                                : 'bg-[#2563eb]/10 text-[#2563eb] border-[#2563eb]/30'
+                                ? 'bg-[var(--brand)]/10 text-[var(--brand)] border-[var(--brand)]/30'
+                                : 'bg-[var(--info)]/10 text-[var(--info)] border-[var(--info)]/30'
                             }`}
                           >
                             {order.paymentMethod}
                           </Badge>
                         </td>
-                        <td className="py-2.5 px-4 text-right text-sm font-semibold text-[#2d3436]">
+                        <td className="py-2.5 px-4 text-right text-sm font-semibold text-[var(--t-heading)]">
                           {formatRupiah(order.totalAmount || 0)}
                         </td>
                         <td className="py-2.5 px-2 text-right">
@@ -1002,7 +1004,7 @@ export default function PosPage() {
                                 printReceipt(order, settings);
                               }}
                               title="Cetak ulang"
-                              className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-[#4b5563] hover:bg-[#f5f6fa] transition-colors cursor-pointer"
+                              className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-[var(--t-body)] hover:bg-[var(--surface)] transition-colors cursor-pointer"
                             >
                               <Printer className="w-3.5 h-3.5" />
                             </button>
@@ -1012,7 +1014,7 @@ export default function PosPage() {
                                 setDeleteTarget(order);
                               }}
                               title="Hapus transaksi"
-                              className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-[#dc2626] hover:bg-[#dc2626]/10 transition-colors cursor-pointer"
+                              className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-colors cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -1032,37 +1034,37 @@ export default function PosPage() {
       <Dialog open={!!detailOrder} onOpenChange={() => setDetailOrder(null)}>
         <DialogContent className="sm:max-w-[420px] rounded-xl max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle className="text-[#2d3436]">{detailOrder?.orderNo}</DialogTitle>
+            <DialogTitle className="text-[var(--t-heading)]">{detailOrder?.orderNo}</DialogTitle>
             <DialogDescription>
               {detailOrder && new Date(detailOrder.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
             </DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto space-y-2 py-2">
             {detailOrder?.orderItems.map((item) => (
-              <div key={item.id} className="flex items-center justify-between text-sm py-1.5 border-b border-[#f0f0f0] last:border-0">
+              <div key={item.id} className="flex items-center justify-between text-sm py-1.5 border-b border-[var(--surface-2)] last:border-0">
                 <div className="min-w-0">
-                  <p className="font-medium text-[#2d3436] truncate">{item.variant.product.sku}</p>
-                  <p className="text-[11px] text-[#6b7280]">
+                  <p className="font-medium text-[var(--t-heading)] truncate">{item.variant.product.sku}</p>
+                  <p className="text-[11px] text-[var(--t-muted)]">
                     {getVariantLabel(item.variant.color, item.variant.type)} · {item.qty} x {formatRupiah(item.unitPrice || 0)}
                   </p>
                 </div>
-                <span className="font-semibold text-[#2d3436] flex-shrink-0">{formatRupiah((item.unitPrice || 0) * item.qty)}</span>
+                <span className="font-semibold text-[var(--t-heading)] flex-shrink-0">{formatRupiah((item.unitPrice || 0) * item.qty)}</span>
               </div>
             ))}
           </div>
           {detailOrder && (
-            <div className="border-t border-[#e8e8e8] pt-3 space-y-1 text-sm">
-              <div className="flex justify-between text-[#6b7280]">
+            <div className="border-t border-[var(--bd)] pt-3 space-y-1 text-sm">
+              <div className="flex justify-between text-[var(--t-muted)]">
                 <span>Subtotal</span>
                 <span>{formatRupiah(detailOrder.subtotalAmount || 0)}</span>
               </div>
               {detailOrder.discountAmount > 0 && (
-                <div className="flex justify-between text-[#d97706]">
+                <div className="flex justify-between text-[var(--warning)]">
                   <span>Diskon</span>
                   <span>-{formatRupiah(detailOrder.discountAmount)}</span>
                 </div>
               )}
-              <div className="flex justify-between text-base font-bold text-[#2d3436]">
+              <div className="flex justify-between text-base font-bold text-[var(--t-heading)]">
                 <span>Total</span>
                 <span>{formatRupiah(detailOrder.totalAmount || 0)}</span>
               </div>
@@ -1072,16 +1074,16 @@ export default function PosPage() {
             <Button
               variant="outline"
               onClick={() => detailOrder && setDeleteTarget(detailOrder)}
-              className="rounded-lg border-[#dc2626]/30 text-[#dc2626] hover:bg-[#dc2626]/10 gap-1.5"
+              className="rounded-lg border-[var(--danger)]/30 text-[var(--danger)] hover:bg-[var(--danger)]/10 gap-1.5"
             >
               <Trash2 className="w-3.5 h-3.5" /> Hapus
             </Button>
-            <Button variant="outline" onClick={() => setDetailOrder(null)} className="rounded-lg border-[#e8e8e8] text-[#4b5563]">
+            <Button variant="outline" onClick={() => setDetailOrder(null)} className="rounded-lg border-[var(--bd)] text-[var(--t-body)]">
               Tutup
             </Button>
             <Button
               onClick={() => detailOrder && printReceipt(detailOrder, settings)}
-              className="rounded-lg bg-[#4a6741] hover:bg-[#3d5535] text-white gap-1.5"
+              className="rounded-lg bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white gap-1.5"
             >
               <Printer className="w-3.5 h-3.5" /> Cetak Ulang
             </Button>
@@ -1097,8 +1099,8 @@ export default function PosPage() {
             <AlertDialogDescription>
               {deleteTarget && (
                 <>
-                  <span className="font-semibold text-[#2d3436]">{deleteTarget.orderNo}</span> senilai{' '}
-                  <span className="font-semibold text-[#2d3436]">{formatRupiah(deleteTarget.totalAmount || 0)}</span> akan
+                  <span className="font-semibold text-[var(--t-heading)]">{deleteTarget.orderNo}</span> senilai{' '}
+                  <span className="font-semibold text-[var(--t-heading)]">{formatRupiah(deleteTarget.totalAmount || 0)}</span> akan
                   dihapus permanen dan stok yang terjual akan dikembalikan ke inventory.
                 </>
               )}
@@ -1109,7 +1111,7 @@ export default function PosPage() {
             <AlertDialogAction
               onClick={handleDeleteTransaction}
               disabled={deleting}
-              className="rounded-lg bg-[#dc2626] hover:bg-[#b91c1c] text-white"
+              className="rounded-lg bg-[var(--danger)] hover:bg-[var(--danger-dark)] text-white"
             >
               {deleting ? 'Menghapus...' : 'Hapus Transaksi'}
             </AlertDialogAction>
@@ -1121,7 +1123,7 @@ export default function PosPage() {
       <Dialog open={!!variantPickerProduct} onOpenChange={() => setVariantPickerProduct(null)}>
         <DialogContent className="sm:max-w-[400px] rounded-xl">
           <DialogHeader>
-            <DialogTitle className="text-[#2d3436]">{variantPickerProduct?.sku}</DialogTitle>
+            <DialogTitle className="text-[var(--t-heading)]">{variantPickerProduct?.sku}</DialogTitle>
             <DialogDescription>{variantPickerProduct?.name} — pilih varian</DialogDescription>
           </DialogHeader>
           <div className="space-y-1.5 max-h-[50vh] overflow-y-auto">
@@ -1136,17 +1138,17 @@ export default function PosPage() {
                     setVariantPickerProduct(null);
                   }}
                   className={`w-full flex items-center gap-3 p-2.5 rounded-lg transition-colors text-left ${
-                    noPrice ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#f5f6fa] cursor-pointer'
+                    noPrice ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[var(--surface)] cursor-pointer'
                   }`}
                 >
-                  <span className="w-5 h-5 rounded-full border border-[#e8e8e8] flex-shrink-0" style={{ backgroundColor: variant.colorHex }} />
-                  <span className="text-sm text-[#2d3436] flex-1">{getVariantLabel(variant.color, variant.type)}</span>
+                  <span className="w-5 h-5 rounded-full border border-[var(--bd)] flex-shrink-0" style={{ backgroundColor: variant.colorHex }} />
+                  <span className="text-sm text-[var(--t-heading)] flex-1">{getVariantLabel(variant.color, variant.type)}</span>
                   {noPrice ? (
-                    <span className="text-[11px] font-medium text-[#dc2626]">Belum ada harga</span>
+                    <span className="text-[11px] font-medium text-[var(--danger)]">Belum ada harga</span>
                   ) : (
-                    <span className="text-xs font-semibold text-[#4a6741]">{formatRupiah(variant.price!)}</span>
+                    <span className="text-xs font-semibold text-[var(--brand)]">{formatRupiah(variant.price!)}</span>
                   )}
-                  <span className={`text-xs font-medium ${variant.qty === 0 ? 'text-[#dc2626]' : 'text-[#6b7280]'}`}>
+                  <span className={`text-xs font-medium ${variant.qty === 0 ? 'text-[var(--danger)]' : 'text-[var(--t-muted)]'}`}>
                     Stok: {variant.qty}
                   </span>
                 </button>
@@ -1160,22 +1162,22 @@ export default function PosPage() {
       <Dialog open={!!successData} onOpenChange={() => setSuccessData(null)}>
         <DialogContent className="sm:max-w-[380px] rounded-xl text-center">
           <div className="flex flex-col items-center gap-3 py-4">
-            <div className="w-14 h-14 rounded-full bg-[#15803d]/10 flex items-center justify-center">
-              <CheckCircle2 className="w-8 h-8 text-[#15803d]" />
+            <div className="w-14 h-14 rounded-full bg-[var(--success)]/10 flex items-center justify-center">
+              <CheckCircle2 className="w-8 h-8 text-[var(--success)]" />
             </div>
             <div>
-              <p className="text-sm text-[#6b7280]">Transaksi berhasil</p>
-              <p className="text-lg font-bold text-[#2d3436]">{successData?.orderNo}</p>
+              <p className="text-sm text-[var(--t-muted)]">Transaksi berhasil</p>
+              <p className="text-lg font-bold text-[var(--t-heading)]">{successData?.orderNo}</p>
             </div>
-            <div className="w-full bg-[#f5f6fa] rounded-lg p-3 space-y-1 text-sm">
+            <div className="w-full bg-[var(--surface)] rounded-lg p-3 space-y-1 text-sm">
               <div className="flex justify-between">
-                <span className="text-[#6b7280]">Total</span>
-                <span className="font-semibold text-[#2d3436]">{successData ? formatRupiah(successData.totalAmount || 0) : ''}</span>
+                <span className="text-[var(--t-muted)]">Total</span>
+                <span className="font-semibold text-[var(--t-heading)]">{successData ? formatRupiah(successData.totalAmount || 0) : ''}</span>
               </div>
               {successData?.paymentMethod === 'Cash' && successData?.cashReceived != null && (
                 <div className="flex justify-between">
-                  <span className="text-[#6b7280]">Kembalian</span>
-                  <span className="font-semibold text-[#2d3436]">
+                  <span className="text-[var(--t-muted)]">Kembalian</span>
+                  <span className="font-semibold text-[var(--t-heading)]">
                     {formatRupiah(successData.cashReceived - (successData.totalAmount || 0))}
                   </span>
                 </div>
@@ -1185,7 +1187,7 @@ export default function PosPage() {
             <Button
               onClick={() => successData && printReceipt(successData, settings)}
               variant="outline"
-              className="w-full h-10 rounded-lg border-[#e8e8e8] text-[#2d3436] gap-2"
+              className="w-full h-10 rounded-lg border-[var(--bd)] text-[var(--t-heading)] gap-2"
             >
               <Printer className="w-4 h-4" /> Print Struk
             </Button>
@@ -1201,13 +1203,13 @@ export default function PosPage() {
                 onClick={() => successData && sendReceiptWhatsApp(successData, settings, waPhone)}
                 disabled={!waPhone.trim()}
                 variant="outline"
-                className="h-10 rounded-lg border-[#e8e8e8] text-[#15803d] flex-shrink-0 gap-1.5 px-3"
+                className="h-10 rounded-lg border-[var(--bd)] text-[var(--success)] flex-shrink-0 gap-1.5 px-3"
               >
                 <MessageCircle className="w-4 h-4" /> Kirim
               </Button>
             </div>
           </div>
-          <Button onClick={() => setSuccessData(null)} className="w-full h-10 bg-[#4a6741] hover:bg-[#3d5535] text-white rounded-lg">
+          <Button onClick={() => setSuccessData(null)} className="w-full h-10 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white rounded-lg">
             Transaksi Baru
           </Button>
         </DialogContent>
@@ -1217,24 +1219,24 @@ export default function PosPage() {
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
         <DialogContent className="sm:max-w-[440px] rounded-xl max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <DialogTitle className="text-[#2d3436]">Pengaturan Kasir</DialogTitle>
+            <DialogTitle className="text-[var(--t-heading)]">Pengaturan Kasir</DialogTitle>
             <DialogDescription>Nama toko, kertas struk, dan preset — berlaku untuk semua transaksi POS</DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto space-y-4 py-2 pr-1">
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-[#2d3436]">Nama Toko</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Nama Toko</Label>
               <Input value={editStoreName} onChange={(e) => setEditStoreName(e.target.value)} className="rounded-lg" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-[#2d3436]">Alamat (opsional, tampil di struk)</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Alamat (opsional, tampil di struk)</Label>
               <Input value={editStoreAddress} onChange={(e) => setEditStoreAddress(e.target.value)} placeholder="Jl. Contoh No. 1, Jakarta" className="rounded-lg" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-[#2d3436]">No. Telepon (opsional, tampil di struk)</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">No. Telepon (opsional, tampil di struk)</Label>
               <Input value={editStorePhone} onChange={(e) => setEditStorePhone(e.target.value)} placeholder="0812xxxxxxx" className="rounded-lg" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-[#2d3436]">Pesan Penutup Struk</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Pesan Penutup Struk</Label>
               <Textarea
                 value={editReceiptFooter}
                 onChange={(e) => setEditReceiptFooter(e.target.value)}
@@ -1243,22 +1245,22 @@ export default function PosPage() {
                 className="rounded-lg"
               />
             </div>
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-[#e8e8e8] px-3 py-2.5">
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-[var(--bd)] px-3 py-2.5">
               <div>
-                <p className="text-sm font-medium text-[#2d3436]">Print Otomatis</p>
-                <p className="text-xs text-[#6b7280]">Langsung print struk begitu transaksi berhasil, tanpa klik konfirmasi lagi</p>
+                <p className="text-sm font-medium text-[var(--t-heading)]">Print Otomatis</p>
+                <p className="text-xs text-[var(--t-muted)]">Langsung print struk begitu transaksi berhasil, tanpa klik konfirmasi lagi</p>
               </div>
               <Switch checked={editAutoPrint} onCheckedChange={setEditAutoPrint} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-[#2d3436]">Lebar Kertas Struk</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Lebar Kertas Struk</Label>
               <div className="grid grid-cols-2 gap-2">
                 {[58, 80].map((w) => (
                   <button
                     key={w}
                     onClick={() => setEditPaperWidth(w as 58 | 80)}
                     className={`h-9 rounded-lg text-sm font-medium border cursor-pointer ${
-                      editPaperWidth === w ? 'bg-[#4a6741] text-white border-[#4a6741]' : 'bg-white text-[#4b5563] border-[#e8e8e8]'
+                      editPaperWidth === w ? 'bg-[var(--brand)] text-white border-[var(--brand)]' : 'bg-[var(--card)] text-[var(--t-body)] border-[var(--bd)]'
                     }`}
                   >
                     {w}mm
@@ -1267,19 +1269,19 @@ export default function PosPage() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-[#2d3436]">Preset Diskon (Rp, pisah koma)</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Preset Diskon (Rp, pisah koma)</Label>
               <Input value={editDiscountPresets} onChange={(e) => setEditDiscountPresets(e.target.value)} placeholder="10000, 20000, 50000" className="rounded-lg" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-[#2d3436]">Preset Uang Cash (Rp, pisah koma)</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Preset Uang Cash (Rp, pisah koma)</Label>
               <Input value={editCashPresets} onChange={(e) => setEditCashPresets(e.target.value)} placeholder="50000, 100000, 150000" className="rounded-lg" />
             </div>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setSettingsOpen(false)} className="rounded-lg border-[#e8e8e8] text-[#4b5563]">
+            <Button variant="outline" onClick={() => setSettingsOpen(false)} className="rounded-lg border-[var(--bd)] text-[var(--t-body)]">
               Batal
             </Button>
-            <Button onClick={saveSettings} disabled={savingSettings} className="rounded-lg bg-[#4a6741] hover:bg-[#3d5535] text-white">
+            <Button onClick={saveSettings} disabled={savingSettings} className="rounded-lg bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white">
               {savingSettings ? 'Menyimpan...' : 'Simpan'}
             </Button>
           </DialogFooter>
@@ -1300,20 +1302,20 @@ function ProductCard({ product, onClick }: { product: PosProduct; onClick: () =>
   return (
     <button
       onClick={onClick}
-      className={`text-left rounded-xl border transition-all cursor-pointer p-3 bg-white border-[#e8e8e8] hover:shadow-md ${noPrice ? 'opacity-60' : ''}`}
+      className={`text-left rounded-xl border transition-all cursor-pointer p-3 bg-[var(--card)] border-[var(--bd)] hover:shadow-md ${noPrice ? 'opacity-60' : ''}`}
     >
-      <p className="font-semibold text-[#2d3436] truncate text-sm">{product.sku}</p>
-      <p className="text-[11px] text-[#6b7280] truncate mb-1.5">{product.name}</p>
+      <p className="font-semibold text-[var(--t-heading)] truncate text-sm">{product.sku}</p>
+      <p className="text-[11px] text-[var(--t-muted)] truncate mb-1.5">{product.name}</p>
       {noPrice ? (
-        <Badge className="text-[10px] px-1.5 py-0 rounded-full bg-[#dc2626]/10 text-[#dc2626] border-[#dc2626]/30 gap-1" variant="outline">
+        <Badge className="text-[10px] px-1.5 py-0 rounded-full bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]/30 gap-1" variant="outline">
           <AlertTriangle className="w-2.5 h-2.5" /> Belum ada harga
         </Badge>
       ) : (
         <div className="flex items-center justify-between">
-          <span className="font-bold text-[#4a6741] text-sm">
+          <span className="font-bold text-[var(--brand)] text-sm">
             {range.min === range.max ? formatRupiah(range.min) : `${formatRupiah(range.min)} - ${formatRupiah(range.max)}`}
           </span>
-          <span className={`text-[11px] font-medium ${outOfStock ? 'text-[#dc2626]' : 'text-[#6b7280]'}`}>
+          <span className={`text-[11px] font-medium ${outOfStock ? 'text-[var(--danger)]' : 'text-[var(--t-muted)]'}`}>
             Stok: {totalStock}
           </span>
         </div>

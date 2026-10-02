@@ -116,22 +116,22 @@ const MAINTENANCE_TYPES = [
 function getStatusBadge(status: string) {
   switch (status) {
     case 'Working':
-      return 'bg-[#15803d]/10 text-[#15803d] border-[#15803d]/30';
+      return 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/30';
     case 'Need Maintenance':
-      return 'bg-[#d97706]/10 text-[#d97706] border-[#d97706]/30';
+      return 'bg-[var(--warning)]/10 text-[var(--warning)] border-[var(--warning)]/30';
     case 'Offline':
-      return 'bg-[#4b5563]/10 text-[#4b5563] border-[#4b5563]/30';
+      return 'bg-[var(--t-body)]/10 text-[var(--t-body)] border-[var(--t-body)]/30';
     default:
-      return 'bg-gray-100 text-gray-700';
+      return 'bg-[var(--surface-2)] text-[var(--t-body)]';
   }
 }
 
 function getStatusDot(status: string) {
   switch (status) {
-    case 'Working': return 'bg-[#15803d]';
-    case 'Need Maintenance': return 'bg-[#d97706]';
-    case 'Offline': return 'bg-[#4b5563]';
-    default: return 'bg-gray-400';
+    case 'Working': return 'bg-[var(--success)]';
+    case 'Need Maintenance': return 'bg-[var(--warning)]';
+    case 'Offline': return 'bg-[var(--t-body)]';
+    default: return 'bg-[var(--t-subtle)]';
   }
 }
 
@@ -140,9 +140,9 @@ function getMaintenanceStatus(nextDue: string): { label: string; className: stri
   const due = new Date(nextDue);
   const daysUntilDue = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
-  if (daysUntilDue < 0) return { label: 'Overdue', className: 'text-[#dc2626] bg-[#dc2626]/10', bgColor: 'border-[#dc2626]/30 bg-[#dc2626]/5' };
-  if (daysUntilDue <= 7) return { label: 'Soon', className: 'text-[#d97706] bg-[#d97706]/10', bgColor: 'border-[#d97706]/30 bg-[#d97706]/5' };
-  return { label: 'OK', className: 'text-[#15803d] bg-[#15803d]/10', bgColor: 'border-[#15803d]/30 bg-[#15803d]/5' };
+  if (daysUntilDue < 0) return { label: 'Overdue', className: 'text-[var(--danger)] bg-[var(--danger)]/10', bgColor: 'border-[var(--danger)]/30 bg-[var(--danger)]/5' };
+  if (daysUntilDue <= 7) return { label: 'Soon', className: 'text-[var(--warning)] bg-[var(--warning)]/10', bgColor: 'border-[var(--warning)]/30 bg-[var(--warning)]/5' };
+  return { label: 'OK', className: 'text-[var(--success)] bg-[var(--success)]/10', bgColor: 'border-[var(--success)]/30 bg-[var(--success)]/5' };
 }
 
 function emptyForm(): PrinterFormData {
@@ -285,12 +285,12 @@ export function PrinterDatabase() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#2d3436]">3D Printer Database</h1>
-          <p className="text-sm text-[#4b5563] mt-1">Kelola semua printer di workspace kamu</p>
+          <h1 className="text-2xl font-bold text-[var(--t-heading)]">3D Printer Database</h1>
+          <p className="text-sm text-[var(--t-body)] mt-1">Kelola semua printer di workspace kamu</p>
         </div>
         <Button
           onClick={() => setAddOpen(true)}
-          className="bg-[#4a6741] hover:bg-[#3d5535] text-white text-sm font-semibold rounded-lg flex items-center gap-2 h-10 px-4 shadow-sm cursor-pointer"
+          className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white text-sm font-semibold rounded-lg flex items-center gap-2 h-10 px-4 shadow-sm cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           Add Printer
@@ -299,66 +299,66 @@ export function PrinterDatabase() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl shadow-sm p-4">
+        <div className="bg-[var(--card)] rounded-xl shadow-sm p-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#4a6741]/10 flex items-center justify-center">
-              <Printer className="w-5 h-5 text-[#4a6741]" />
+            <div className="w-10 h-10 rounded-full bg-[var(--brand)]/10 flex items-center justify-center">
+              <Printer className="w-5 h-5 text-[var(--brand)]" />
             </div>
             <div>
-              <p className="text-[11px] text-[#4b5563] font-medium uppercase tracking-wider">Total Printer</p>
-              <p className="text-xl font-bold text-[#2d3436]">{stats.total}</p>
+              <p className="text-[11px] text-[var(--t-body)] font-medium uppercase tracking-wider">Total Printer</p>
+              <p className="text-xl font-bold text-[var(--t-heading)]">{stats.total}</p>
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-xl shadow-sm p-4">
+        <div className="bg-[var(--card)] rounded-xl shadow-sm p-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#15803d]/10 flex items-center justify-center">
-              <Check className="w-5 h-5 text-[#15803d]" />
+            <div className="w-10 h-10 rounded-full bg-[var(--success)]/10 flex items-center justify-center">
+              <Check className="w-5 h-5 text-[var(--success)]" />
             </div>
             <div>
-              <p className="text-[11px] text-[#4b5563] font-medium uppercase tracking-wider">Working</p>
-              <p className="text-xl font-bold text-[#15803d]">{stats.working}</p>
+              <p className="text-[11px] text-[var(--t-body)] font-medium uppercase tracking-wider">Working</p>
+              <p className="text-xl font-bold text-[var(--success)]">{stats.working}</p>
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-xl shadow-sm p-4">
+        <div className="bg-[var(--card)] rounded-xl shadow-sm p-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#d97706]/10 flex items-center justify-center">
-              <MonitorDot className="w-5 h-5 text-[#d97706]" />
+            <div className="w-10 h-10 rounded-full bg-[var(--warning)]/10 flex items-center justify-center">
+              <MonitorDot className="w-5 h-5 text-[var(--warning)]" />
             </div>
             <div>
-              <p className="text-[11px] text-[#4b5563] font-medium uppercase tracking-wider">Maintenance</p>
-              <p className="text-xl font-bold text-[#d97706]">{stats.maintenance}</p>
+              <p className="text-[11px] text-[var(--t-body)] font-medium uppercase tracking-wider">Maintenance</p>
+              <p className="text-xl font-bold text-[var(--warning)]">{stats.maintenance}</p>
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-xl shadow-sm p-4">
+        <div className="bg-[var(--card)] rounded-xl shadow-sm p-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#4b5563]/10 flex items-center justify-center">
-              <X className="w-5 h-5 text-[#4b5563]" />
+            <div className="w-10 h-10 rounded-full bg-[var(--t-body)]/10 flex items-center justify-center">
+              <X className="w-5 h-5 text-[var(--t-body)]" />
             </div>
             <div>
-              <p className="text-[11px] text-[#4b5563] font-medium uppercase tracking-wider">Offline</p>
-              <p className="text-xl font-bold text-[#4b5563]">{stats.offline}</p>
+              <p className="text-[11px] text-[var(--t-body)] font-medium uppercase tracking-wider">Offline</p>
+              <p className="text-xl font-bold text-[var(--t-body)]">{stats.offline}</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white rounded-xl shadow-sm p-4">
+      <div className="bg-[var(--card)] rounded-xl shadow-sm p-4">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6b7280]" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--t-muted)]" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Cari printer, brand, lokasi..."
-              className="pl-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg h-10"
+              className="pl-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg h-10"
             />
           </div>
           <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-[160px] text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg h-10">
+            <SelectTrigger className="w-[160px] text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg h-10">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -375,7 +375,7 @@ export function PrinterDatabase() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="bg-white rounded-xl shadow-sm p-5">
+            <div key={i} className="bg-[var(--card)] rounded-xl shadow-sm p-5">
               <Skeleton className="h-5 w-40 mb-3" />
               <Skeleton className="h-4 w-24 mb-4" />
               <div className="space-y-2">
@@ -386,18 +386,18 @@ export function PrinterDatabase() {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white rounded-xl shadow-sm py-16 flex flex-col items-center justify-center">
-          <div className="w-16 h-16 rounded-full bg-[#f5f6fa] flex items-center justify-center mb-4">
-            <Printer className="w-8 h-8 text-[#6b7280]" />
+        <div className="bg-[var(--card)] rounded-xl shadow-sm py-16 flex flex-col items-center justify-center">
+          <div className="w-16 h-16 rounded-full bg-[var(--surface)] flex items-center justify-center mb-4">
+            <Printer className="w-8 h-8 text-[var(--t-muted)]" />
           </div>
-          <p className="text-sm font-medium text-[#4b5563] mb-1">
+          <p className="text-sm font-medium text-[var(--t-body)] mb-1">
             {search || filterStatus !== 'all' ? 'Printer tidak ditemukan' : 'Belum ada printer'}
           </p>
-          <p className="text-xs text-[#6b7280] mb-4">
+          <p className="text-xs text-[var(--t-muted)] mb-4">
             {search || filterStatus !== 'all' ? 'Coba ubah filter pencarian' : 'Tambahkan printer pertamamu'}
           </p>
           {!search && filterStatus === 'all' && (
-            <Button onClick={() => setAddOpen(true)} size="sm" className="rounded-lg bg-[#4a6741] hover:bg-[#3d5535] text-white">
+            <Button onClick={() => setAddOpen(true)} size="sm" className="rounded-lg bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white">
               <Plus className="w-4 h-4 mr-1" />
               Add Printer
             </Button>
@@ -408,22 +408,22 @@ export function PrinterDatabase() {
           {filtered.map((printer) => (
             <div
               key={printer.id}
-              className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer group border border-transparent hover:border-[#4a6741]/20"
+              className="bg-[var(--card)] rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer group border border-transparent hover:border-[var(--brand)]/20"
               onClick={() => openDetail(printer)}
             >
               {/* Card Header */}
               <div className="px-5 pt-5 pb-3">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-10 h-10 rounded-lg bg-[#f5f6fa] flex items-center justify-center text-lg">
+                    <div className="w-10 h-10 rounded-lg bg-[var(--surface)] flex items-center justify-center text-lg">
                       🖨️
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-[#2d3436] group-hover:text-[#4a6741] transition-colors">
+                      <h3 className="text-sm font-bold text-[var(--t-heading)] group-hover:text-[var(--brand)] transition-colors">
                         {printer.name}
                       </h3>
                       {printer.brand && (
-                        <p className="text-[11px] text-[#6b7280]">
+                        <p className="text-[11px] text-[var(--t-muted)]">
                           {printer.brand}{printer.model ? ` · ${printer.model}` : ''}
                         </p>
                       )}
@@ -439,34 +439,34 @@ export function PrinterDatabase() {
               {/* Card Details */}
               <div className="px-5 pb-3 space-y-1.5">
                 {printer.location && (
-                  <div className="flex items-center gap-1.5 text-[11px] text-[#4b5563]">
-                    <MapPin className="w-3 h-3 text-[#6b7280]" />
+                  <div className="flex items-center gap-1.5 text-[11px] text-[var(--t-body)]">
+                    <MapPin className="w-3 h-3 text-[var(--t-muted)]" />
                     {printer.location}
                   </div>
                 )}
                 {printer.notes && (
-                  <p className="text-[11px] text-[#6b7280] line-clamp-2 leading-relaxed">
+                  <p className="text-[11px] text-[var(--t-muted)] line-clamp-2 leading-relaxed">
                     {printer.notes}
                   </p>
                 )}
               </div>
 
               {/* Card Footer */}
-              <div className="px-5 py-3 bg-[#fafafa] border-t border-[#f0f0f0] flex items-center justify-between">
-                <span className="text-[11px] text-[#6b7280]">
+              <div className="px-5 py-3 bg-[var(--surface-hover)] border-t border-[var(--surface-2)] flex items-center justify-between">
+                <span className="text-[11px] text-[var(--t-muted)]">
                   Added {new Date(printer.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </span>
                 <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                   <button
                     onClick={() => setEditPrinter(printer)}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-[#4b5563] hover:bg-[#4a6741]/10 hover:text-[#4a6741] transition-colors cursor-pointer"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--t-body)] hover:bg-[var(--brand)]/10 hover:text-[var(--brand)] transition-colors cursor-pointer"
                     title="Edit"
                   >
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => setDeleteId(printer.id)}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-[#4b5563] hover:bg-[#dc2626]/10 hover:text-[#dc2626] transition-colors cursor-pointer"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--t-body)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)] transition-colors cursor-pointer"
                     title="Delete"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -560,18 +560,18 @@ export function PrinterDatabase() {
             <>
               <DialogHeader>
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-[#f5f6fa] flex items-center justify-center text-2xl">
+                  <div className="w-12 h-12 rounded-xl bg-[var(--surface)] flex items-center justify-center text-2xl">
                     🖨️
                   </div>
                   <div>
-                    <DialogTitle className="text-[#2d3436]">{detailPrinter.name}</DialogTitle>
-                    <p className="text-xs text-[#6b7280]">{detailPrinter.brand}{detailPrinter.model ? ` · ${detailPrinter.model}` : ''}</p>
+                    <DialogTitle className="text-[var(--t-heading)]">{detailPrinter.name}</DialogTitle>
+                    <p className="text-xs text-[var(--t-muted)]">{detailPrinter.brand}{detailPrinter.model ? ` · ${detailPrinter.model}` : ''}</p>
                   </div>
                 </div>
               </DialogHeader>
               <div className="space-y-3 py-2">
-                <div className="bg-[#f5f6fa] rounded-lg p-3">
-                  <span className="text-[11px] text-[#6b7280] uppercase tracking-wider font-medium">Status</span>
+                <div className="bg-[var(--surface)] rounded-lg p-3">
+                  <span className="text-[11px] text-[var(--t-muted)] uppercase tracking-wider font-medium">Status</span>
                   <p className="mt-1">
                     <Badge className={`text-[11px] px-2 py-0.5 rounded-full font-semibold gap-1 ${getStatusBadge(detailPrinter.status)}`} variant="outline">
                       <span className={`w-1.5 h-1.5 rounded-full ${getStatusDot(detailPrinter.status)}`} />
@@ -580,14 +580,14 @@ export function PrinterDatabase() {
                   </p>
                 </div>
                 {(detailPrinter.purchaseDate || detailPrinter.purchasePrice != null) && (
-                  <div className="bg-[#f5f6fa] rounded-lg p-3 space-y-1">
-                    <span className="text-[11px] text-[#6b7280] uppercase tracking-wider font-medium flex items-center gap-1.5">
+                  <div className="bg-[var(--surface)] rounded-lg p-3 space-y-1">
+                    <span className="text-[11px] text-[var(--t-muted)] uppercase tracking-wider font-medium flex items-center gap-1.5">
                       <Wallet className="w-3.5 h-3.5" />
                       Info Pembelian
                     </span>
-                    <div className="flex items-center justify-between text-sm text-[#2d3436] pt-0.5">
-                      <span className="flex items-center gap-1.5 text-[#4b5563]">
-                        <Calendar className="w-3.5 h-3.5 text-[#6b7280]" />
+                    <div className="flex items-center justify-between text-sm text-[var(--t-heading)] pt-0.5">
+                      <span className="flex items-center gap-1.5 text-[var(--t-body)]">
+                        <Calendar className="w-3.5 h-3.5 text-[var(--t-muted)]" />
                         {detailPrinter.purchaseDate
                           ? new Date(detailPrinter.purchaseDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
                           : '-'}
@@ -601,18 +601,18 @@ export function PrinterDatabase() {
                   </div>
                 )}
                 {detailPrinter.location && (
-                  <div className="flex items-center gap-2 text-sm text-[#4b5563]">
-                    <MapPin className="w-4 h-4 text-[#6b7280]" />
+                  <div className="flex items-center gap-2 text-sm text-[var(--t-body)]">
+                    <MapPin className="w-4 h-4 text-[var(--t-muted)]" />
                     <span>{detailPrinter.location}</span>
                   </div>
                 )}
                 {detailPrinter.notes && (
                   <div className="flex items-start gap-2">
-                    <FileText className="w-4 h-4 text-[#6b7280] mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-[#4b5563] leading-relaxed">{detailPrinter.notes}</p>
+                    <FileText className="w-4 h-4 text-[var(--t-muted)] mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-[var(--t-body)] leading-relaxed">{detailPrinter.notes}</p>
                   </div>
                 )}
-                <div className="text-[11px] text-[#6b7280] pt-2 border-t border-[#f0f0f0]">
+                <div className="text-[11px] text-[var(--t-muted)] pt-2 border-t border-[var(--surface-2)]">
                   Added: {new Date(detailPrinter.createdAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
                   <br />
                   Last updated: {new Date(detailPrinter.updatedAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
@@ -620,20 +620,20 @@ export function PrinterDatabase() {
               </div>
 
               {/* Maintenance Section */}
-              <div className="border-t border-[#f0f0f0] pt-4">
+              <div className="border-t border-[var(--surface-2)] pt-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <Wrench className="w-4 h-4 text-[#4a6741]" />
-                    <h4 className="text-sm font-semibold text-[#2d3436]">Maintenance Log</h4>
+                    <Wrench className="w-4 h-4 text-[var(--brand)]" />
+                    <h4 className="text-sm font-semibold text-[var(--t-heading)]">Maintenance Log</h4>
                     {maintenances.length > 0 && (
-                      <span className="text-[11px] text-[#6b7280] bg-[#f5f6fa] px-2 py-0.5 rounded-full">
+                      <span className="text-[11px] text-[var(--t-muted)] bg-[var(--surface)] px-2 py-0.5 rounded-full">
                         {maintenances.length}
                       </span>
                     )}
                   </div>
                   <button
                     onClick={() => { setShowAddMaintenance(true); }}
-                    className="text-xs text-[#4a6741] font-medium hover:underline cursor-pointer flex items-center gap-1"
+                    className="text-xs text-[var(--brand)] font-medium hover:underline cursor-pointer flex items-center gap-1"
                   >
                     <Plus className="w-3 h-3" /> Add
                   </button>
@@ -642,17 +642,17 @@ export function PrinterDatabase() {
                 {maintenances.length > 0 && (
                   <div className="flex items-center gap-2 mb-3">
                     <div className="relative flex-1">
-                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#9ca3af]" />
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--t-subtle)]" />
                       <Input
                         value={maintenanceSearch}
                         onChange={(e) => setMaintenanceSearch(e.target.value)}
                         placeholder="Cari jenis maintenance, mis. nozzle, lubricant..."
-                        className="h-8 pl-8 text-xs bg-[#f5f6fa] border-[#e8e8e8] rounded-lg"
+                        className="h-8 pl-8 text-xs bg-[var(--surface)] border-[var(--bd)] rounded-lg"
                       />
                     </div>
                     <Select value={maintenanceSort} onValueChange={(v) => setMaintenanceSort(v as typeof maintenanceSort)}>
-                      <SelectTrigger className="h-8 w-[40px] px-2 text-xs bg-[#f5f6fa] border-[#e8e8e8] rounded-lg [&>svg:last-child]:hidden">
-                        <ArrowUpDown className="w-3.5 h-3.5 text-[#6b7280]" />
+                      <SelectTrigger className="h-8 w-[40px] px-2 text-xs bg-[var(--surface)] border-[var(--bd)] rounded-lg [&>svg:last-child]:hidden">
+                        <ArrowUpDown className="w-3.5 h-3.5 text-[var(--t-muted)]" />
                       </SelectTrigger>
                       <SelectContent align="end">
                         <SelectItem value="lastDoneDesc">Terbaru diganti</SelectItem>
@@ -668,9 +668,9 @@ export function PrinterDatabase() {
                     {[1, 2].map(i => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}
                   </div>
                 ) : maintenances.length === 0 ? (
-                  <p className="text-xs text-[#6b7280] text-center py-4">No maintenance records yet</p>
+                  <p className="text-xs text-[var(--t-muted)] text-center py-4">No maintenance records yet</p>
                 ) : filteredMaintenances.length === 0 ? (
-                  <p className="text-xs text-[#6b7280] text-center py-4">Nggak ada hasil untuk &quot;{maintenanceSearch}&quot;</p>
+                  <p className="text-xs text-[var(--t-muted)] text-center py-4">Nggak ada hasil untuk &quot;{maintenanceSearch}&quot;</p>
                 ) : (
                   <div className="space-y-2 max-h-[300px] overflow-y-auto">
                     {filteredMaintenances.map((m) => {
@@ -685,27 +685,27 @@ export function PrinterDatabase() {
                           <span className="text-lg flex-shrink-0">{icon}</span>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs font-semibold text-[#2d3436] truncate">{displayName}</span>
+                              <span className="text-xs font-semibold text-[var(--t-heading)] truncate">{displayName}</span>
                               <span className={`text-[11px] px-1.5 py-0.5 rounded-full font-semibold ${status.className}`}>
                                 {status.label}
                               </span>
                             </div>
                             <div className="flex items-center gap-3 mt-0.5">
-                              <span className="text-[11px] text-[#6b7280]">Last: {new Date(m.lastDone).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                              <span className="text-[11px] text-[#6b7280]">Next: {new Date(m.nextDue).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                              <span className="text-[11px] text-[var(--t-muted)]">Last: {new Date(m.lastDone).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                              <span className="text-[11px] text-[var(--t-muted)]">Next: {new Date(m.nextDue).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                               {daysUntilDue < 0 && (
-                                <span className="text-[11px] text-[#dc2626] font-medium">{Math.abs(daysUntilDue)}d overdue</span>
+                                <span className="text-[11px] text-[var(--danger)] font-medium">{Math.abs(daysUntilDue)}d overdue</span>
                               )}
                               {daysUntilDue >= 0 && daysUntilDue <= 7 && (
-                                <span className="text-[11px] text-[#d97706] font-medium">{daysUntilDue}d left</span>
+                                <span className="text-[11px] text-[var(--warning)] font-medium">{daysUntilDue}d left</span>
                               )}
                             </div>
                           </div>
                           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                            <button onClick={() => setEditMaintenance(m)} className="p-1 rounded hover:bg-white/60 text-[#4b5563] hover:text-[#2563eb] cursor-pointer">
+                            <button onClick={() => setEditMaintenance(m)} className="p-1 rounded hover:bg-[var(--card)]/60 text-[var(--t-body)] hover:text-[var(--info)] cursor-pointer">
                               <Pencil className="w-3 h-3" />
                             </button>
-                            <button onClick={() => setDeleteMaintenanceId(m.id)} className="p-1 rounded hover:bg-white/60 text-[#4b5563] hover:text-[#dc2626] cursor-pointer">
+                            <button onClick={() => setDeleteMaintenanceId(m.id)} className="p-1 rounded hover:bg-[var(--card)]/60 text-[var(--t-body)] hover:text-[var(--danger)] cursor-pointer">
                               <Trash2 className="w-3 h-3" />
                             </button>
                           </div>
@@ -720,7 +720,7 @@ export function PrinterDatabase() {
                 <Button variant="outline" onClick={() => { setDetailPrinter(null); setMaintenancePrinterId(null); setMaintenances([]); }} className="rounded-full px-5">Close</Button>
                 <Button
                   onClick={() => { setDetailPrinter(null); setMaintenancePrinterId(null); setMaintenances([]); setEditPrinter(detailPrinter); }}
-                  className="bg-[#4a6741] hover:bg-[#3d5535] text-white rounded-full px-5"
+                  className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white rounded-full px-5"
                 >
                   <Pencil className="w-3.5 h-3.5 mr-1.5" />
                   Edit
@@ -755,7 +755,7 @@ export function PrinterDatabase() {
                   toast.error('Gagal menghapus printer');
                 }
               }}
-              className="rounded-lg bg-[#dc2626] hover:bg-[#b91c1c] text-white"
+              className="rounded-lg bg-[var(--danger)] hover:bg-[var(--danger-dark)] text-white"
             >
               Delete
             </AlertDialogAction>
@@ -822,7 +822,7 @@ export function PrinterDatabase() {
                   toast.error('Gagal menghapus maintenance record');
                 }
               }}
-              className="rounded-lg bg-[#dc2626] hover:bg-[#b91c1c] text-white"
+              className="rounded-lg bg-[var(--danger)] hover:bg-[var(--danger-dark)] text-white"
             >
               Delete
             </AlertDialogAction>
@@ -884,22 +884,22 @@ function PrinterFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md rounded-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-[#2d3436] flex items-center gap-2">
-            <Printer className="w-5 h-5 text-[#4a6741]" />
+          <DialogTitle className="text-[var(--t-heading)] flex items-center gap-2">
+            <Printer className="w-5 h-5 text-[var(--brand)]" />
             {title}
           </DialogTitle>
-          <DialogDescription className="text-[#4b5563]">{description}</DialogDescription>
+          <DialogDescription className="text-[var(--t-body)]">{description}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           {/* Name */}
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium text-[#2d3436]">Nama Printer *</Label>
+            <Label className="text-sm font-medium text-[var(--t-heading)]">Nama Printer *</Label>
             <Input
               value={form.name}
               onChange={(e) => update('name', e.target.value)}
               placeholder="e.g. Ender 3 V3 #1"
-              className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg"
+              className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg"
               autoFocus
             />
           </div>
@@ -907,21 +907,21 @@ function PrinterFormDialog({
           {/* Brand + Model */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-[#2d3436]">Brand</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Brand</Label>
               <Input
                 value={form.brand}
                 onChange={(e) => update('brand', e.target.value)}
                 placeholder="e.g. Creality"
-                className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg"
+                className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-[#2d3436]">Model</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Model</Label>
               <Input
                 value={form.model}
                 onChange={(e) => update('model', e.target.value)}
                 placeholder="e.g. Ender 3 V3"
-                className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg"
+                className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg"
               />
             </div>
           </div>
@@ -929,7 +929,7 @@ function PrinterFormDialog({
           {/* Purchase Date + Price */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-[#2d3436] flex items-center gap-1.5">
+              <Label className="text-sm font-medium text-[var(--t-heading)] flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5" />
                 Tanggal Beli
               </Label>
@@ -937,26 +937,26 @@ function PrinterFormDialog({
                 type="date"
                 value={form.purchaseDate}
                 onChange={(e) => update('purchaseDate', e.target.value)}
-                className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg"
+                className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-[#2d3436]">Harga Beli (Rp)</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Harga Beli (Rp)</Label>
               <Input
                 type="number"
                 value={form.purchasePrice}
                 onChange={(e) => update('purchasePrice', e.target.value)}
                 placeholder="e.g. 8500000"
-                className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg"
+                className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg"
               />
             </div>
           </div>
 
           {/* Status */}
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium text-[#2d3436]">Status</Label>
+            <Label className="text-sm font-medium text-[var(--t-heading)]">Status</Label>
             <Select value={form.status} onValueChange={(v) => update('status', v)}>
-              <SelectTrigger className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg">
+              <SelectTrigger className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -974,7 +974,7 @@ function PrinterFormDialog({
 
           {/* Location */}
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium text-[#2d3436] flex items-center gap-1.5">
+            <Label className="text-sm font-medium text-[var(--t-heading)] flex items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5" />
               Lokasi
             </Label>
@@ -982,13 +982,13 @@ function PrinterFormDialog({
               value={form.location}
               onChange={(e) => update('location', e.target.value)}
               placeholder="e.g. Workshop A, Ruang 2"
-              className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg"
+              className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg"
             />
           </div>
 
           {/* Notes */}
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium text-[#2d3436] flex items-center gap-1.5">
+            <Label className="text-sm font-medium text-[var(--t-heading)] flex items-center gap-1.5">
               <FileText className="w-3.5 h-3.5" />
               Catatan
             </Label>
@@ -997,7 +997,7 @@ function PrinterFormDialog({
               onChange={(e) => update('notes', e.target.value)}
               placeholder="Catatan tambahan tentang printer..."
               rows={3}
-              className="w-full text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#4a6741]/20 focus:border-[#4a6741]/30 resize-none"
+              className="w-full text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20 focus:border-[var(--brand)]/30 resize-none"
             />
           </div>
         </div>
@@ -1009,7 +1009,7 @@ function PrinterFormDialog({
           <Button
             onClick={handleSubmit}
             disabled={submitting || !form.name.trim()}
-            className="bg-[#4a6741] hover:bg-[#3d5535] text-white rounded-full px-5 disabled:opacity-50"
+            className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white rounded-full px-5 disabled:opacity-50"
           >
             {submitting ? 'Menyimpan...' : title === 'Add Printer' ? 'Add Printer' : 'Save Changes'}
           </Button>
@@ -1121,11 +1121,11 @@ function MaintenanceFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md rounded-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-[#2d3436] flex items-center gap-2">
-            <Wrench className="w-5 h-5 text-[#4a6741]" />
+          <DialogTitle className="text-[var(--t-heading)] flex items-center gap-2">
+            <Wrench className="w-5 h-5 text-[var(--brand)]" />
             {title}
           </DialogTitle>
-          <DialogDescription className="text-[#4b5563]">
+          <DialogDescription className="text-[var(--t-body)]">
             {isEdit ? 'Update maintenance record.' : 'Add a new maintenance record.'}
           </DialogDescription>
         </DialogHeader>
@@ -1133,12 +1133,12 @@ function MaintenanceFormDialog({
         <div className="space-y-4">
           {/* Maintenance Type */}
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium text-[#2d3436] flex items-center gap-1.5">
+            <Label className="text-sm font-medium text-[var(--t-heading)] flex items-center gap-1.5">
               <AlertTriangle className="w-3.5 h-3.5" />
               Type *
             </Label>
             <Select value={form.type} onValueChange={handleTypeChange}>
-              <SelectTrigger className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg">
+              <SelectTrigger className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1157,12 +1157,12 @@ function MaintenanceFormDialog({
           {/* Custom Type Name (only when Custom is selected) */}
           {form.type === 'Custom' && (
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-[#2d3436]">Custom Type Name *</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Custom Type Name *</Label>
               <Input
                 value={form.customType}
                 onChange={(e) => setForm(prev => ({ ...prev, customType: e.target.value }))}
                 placeholder="e.g. Bed Levelling, Hotend Replacement"
-                className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg"
+                className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg"
                 autoFocus
               />
             </div>
@@ -1170,7 +1170,7 @@ function MaintenanceFormDialog({
 
           {/* Last Done Date */}
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium text-[#2d3436] flex items-center gap-1.5">
+            <Label className="text-sm font-medium text-[var(--t-heading)] flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5" />
               Last Done *
             </Label>
@@ -1178,13 +1178,13 @@ function MaintenanceFormDialog({
               type="date"
               value={form.lastDone}
               onChange={(e) => setForm(prev => ({ ...prev, lastDone: e.target.value }))}
-              className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg"
+              className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg"
             />
           </div>
 
           {/* Interval Days */}
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium text-[#2d3436] flex items-center gap-1.5">
+            <Label className="text-sm font-medium text-[var(--t-heading)] flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5" />
               Repeat Every
             </Label>
@@ -1194,14 +1194,14 @@ function MaintenanceFormDialog({
                 min={1}
                 value={form.intervalDays}
                 onChange={(e) => setForm(prev => ({ ...prev, intervalDays: parseInt(e.target.value) || 1 }))}
-                className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg w-24"
+                className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg w-24"
               />
-              <span className="text-sm text-[#4b5563]">days</span>
+              <span className="text-sm text-[var(--t-body)]">days</span>
               {form.lastDone && form.intervalDays > 0 && (() => {
                 const nextDue = new Date(form.lastDone);
                 nextDue.setDate(nextDue.getDate() + form.intervalDays);
                 return (
-                  <span className="text-[11px] text-[#4a6741] bg-[#4a6741]/10 px-2 py-0.5 rounded-full font-medium">
+                  <span className="text-[11px] text-[var(--brand)] bg-[var(--brand)]/10 px-2 py-0.5 rounded-full font-medium">
                     Next: {nextDue.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                   </span>
                 );
@@ -1211,7 +1211,7 @@ function MaintenanceFormDialog({
 
           {/* Notes */}
           <div className="space-y-1.5">
-            <Label className="text-sm font-medium text-[#2d3436] flex items-center gap-1.5">
+            <Label className="text-sm font-medium text-[var(--t-heading)] flex items-center gap-1.5">
               <FileText className="w-3.5 h-3.5" />
               Notes
             </Label>
@@ -1220,7 +1220,7 @@ function MaintenanceFormDialog({
               onChange={(e) => setForm(prev => ({ ...prev, notes: e.target.value }))}
               placeholder="Additional notes..."
               rows={3}
-              className="w-full text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#4a6741]/20 focus:border-[#4a6741]/30 resize-none"
+              className="w-full text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/20 focus:border-[var(--brand)]/30 resize-none"
             />
           </div>
         </div>
@@ -1232,7 +1232,7 @@ function MaintenanceFormDialog({
           <Button
             onClick={handleSubmit}
             disabled={submitting || !form.lastDone}
-            className="bg-[#4a6741] hover:bg-[#3d5535] text-white rounded-full px-5 disabled:opacity-50"
+            className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white rounded-full px-5 disabled:opacity-50"
           >
             {submitting && <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />}
             {submitting ? 'Menyimpan...' : isEdit ? 'Save Changes' : 'Add Record'}

@@ -95,7 +95,7 @@ function BarcodeScannerPopover({
         <button
           type="button"
           disabled={disabled}
-          className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-[#4b5563] hover:text-[#4a6741] hover:bg-[#4a6741]/10 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+          className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-[var(--t-body)] hover:text-[var(--brand)] hover:bg-[var(--brand)]/10 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
           aria-label="Scan barcode"
         >
           <ScanBarcode className="w-3.5 h-3.5" />
@@ -111,7 +111,7 @@ function BarcodeScannerPopover({
           inputRef.current?.focus();
         }}
       >
-        <p className="text-xs font-medium text-[#2d3436] mb-2">Barcode / SKU Entry</p>
+        <p className="text-xs font-medium text-[var(--t-heading)] mb-2">Barcode / SKU Entry</p>
         <div className="flex gap-2">
           <Input
             ref={inputRef}
@@ -119,18 +119,18 @@ function BarcodeScannerPopover({
             onChange={(e) => setBarcode(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Enter barcode..."
-            className="h-8 text-sm bg-[#f0f0f0] border-none focus-visible:ring-1 focus-visible:ring-[#4a6741]/30"
+            className="h-8 text-sm bg-[var(--surface-2)] border-none focus-visible:ring-1 focus-visible:ring-[var(--brand)]/30"
           />
           <Button
             size="sm"
             onClick={handleSubmit}
             disabled={!barcode.trim()}
-            className="h-8 px-3 bg-[#4a6741] hover:bg-[#3d5535] text-white text-xs rounded-md disabled:opacity-50"
+            className="h-8 px-3 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white text-xs rounded-md disabled:opacity-50"
           >
             Add
           </Button>
         </div>
-        <p className="text-[11px] text-[#6b7280] mt-1.5">Enter a barcode or SKU and press Add or Enter</p>
+        <p className="text-[11px] text-[var(--t-muted)] mt-1.5">Enter a barcode or SKU and press Add or Enter</p>
       </PopoverContent>
     </Popover>
   );
@@ -304,8 +304,8 @@ export function InputPesananDialog({ open, onOpenChange, onOrderCreated }: Input
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg rounded-xl max-h-[85vh]">
         <DialogHeader>
-          <DialogTitle className="text-[#2d3436]">Input Pesanan</DialogTitle>
-          <DialogDescription className="text-[#4b5563]">
+          <DialogTitle className="text-[var(--t-heading)]">Input Pesanan</DialogTitle>
+          <DialogDescription className="text-[var(--t-body)]">
             Add new order entries. Enter SKU, pick a color variant, and set quantity.
           </DialogDescription>
         </DialogHeader>
@@ -313,10 +313,10 @@ export function InputPesananDialog({ open, onOpenChange, onOrderCreated }: Input
         <div className="space-y-4">
           {/* Column headers */}
           <div className="grid grid-cols-[1fr_1fr_0.6fr_1fr_auto] gap-2 px-1">
-            <Label className="text-xs text-[#4b5563]">SKU</Label>
-            <Label className="text-xs text-[#4b5563]">Product Name</Label>
-            <Label className="text-xs text-[#4b5563]">Qty</Label>
-            <Label className="text-xs text-[#4b5563]">Color Variant</Label>
+            <Label className="text-xs text-[var(--t-body)]">SKU</Label>
+            <Label className="text-xs text-[var(--t-body)]">Product Name</Label>
+            <Label className="text-xs text-[var(--t-body)]">Qty</Label>
+            <Label className="text-xs text-[var(--t-body)]">Color Variant</Label>
             <div className="w-6" />
           </div>
 
@@ -331,7 +331,7 @@ export function InputPesananDialog({ open, onOpenChange, onOrderCreated }: Input
                       onBlur={() => handleSkuBlur(idx)}
                       placeholder="SKU"
                       disabled={entry.lookingUp}
-                      className="h-9 text-sm bg-[#f0f0f0] border-none focus-visible:ring-1 focus-visible:ring-[#4a6741]/30 pr-8"
+                      className="h-9 text-sm bg-[var(--surface-2)] border-none focus-visible:ring-1 focus-visible:ring-[var(--brand)]/30 pr-8"
                     />
                     <BarcodeScannerPopover
                       disabled={entry.lookingUp}
@@ -343,7 +343,7 @@ export function InputPesananDialog({ open, onOpenChange, onOrderCreated }: Input
                     onChange={(e) => updateEntry(idx, 'productName', e.target.value)}
                     placeholder="Product Name"
                     disabled
-                    className="h-9 text-sm bg-[#f0f0f0] border-none opacity-70"
+                    className="h-9 text-sm bg-[var(--surface-2)] border-none opacity-70"
                   />
                   <Input
                     value={entry.qty}
@@ -351,14 +351,14 @@ export function InputPesananDialog({ open, onOpenChange, onOrderCreated }: Input
                     placeholder="0"
                     type="number"
                     min="1"
-                    className="h-9 text-sm bg-[#f0f0f0] border-none focus-visible:ring-1 focus-visible:ring-[#4a6741]/30"
+                    className="h-9 text-sm bg-[var(--surface-2)] border-none focus-visible:ring-1 focus-visible:ring-[var(--brand)]/30"
                   />
                   {entry.variantOptions.length > 0 ? (
                     <Select
                       value={entry.selectedColor ? entry.variantId || '' : ''}
                       onValueChange={(val) => handleVariantSelect(idx, val)}
                     >
-                      <SelectTrigger className="h-9 text-sm bg-[#f0f0f0] border-none focus:ring-1 focus:ring-[#4a6741]/30">
+                      <SelectTrigger className="h-9 text-sm bg-[var(--surface-2)] border-none focus:ring-1 focus:ring-[var(--brand)]/30">
                         <SelectValue placeholder="Select color" />
                       </SelectTrigger>
                       <SelectContent>
@@ -366,11 +366,11 @@ export function InputPesananDialog({ open, onOpenChange, onOrderCreated }: Input
                           <SelectItem key={v.id} value={v.id}>
                             <div className="flex items-center gap-2">
                               <span
-                                className="w-3 h-3 rounded-full border border-[#e8e8e8] flex-shrink-0"
+                                className="w-3 h-3 rounded-full border border-[var(--bd)] flex-shrink-0"
                                 style={{ backgroundColor: v.colorHex }}
                               />
                               <span>{v.color}{v.type ? ` - ${v.type}` : ''}</span>
-                              <span className="text-[11px] text-[#6b7280]">(qty: {v.qty})</span>
+                              <span className="text-[11px] text-[var(--t-muted)]">(qty: {v.qty})</span>
                             </div>
                           </SelectItem>
                         ))}
@@ -382,7 +382,7 @@ export function InputPesananDialog({ open, onOpenChange, onOrderCreated }: Input
                       onChange={(e) => updateEntry(idx, 'selectedColor', e.target.value)}
                       placeholder="Color"
                       disabled={!entry.variantId}
-                      className="h-9 text-sm bg-[#f0f0f0] border-none opacity-70"
+                      className="h-9 text-sm bg-[var(--surface-2)] border-none opacity-70"
                     />
                   )}
                   <Button
@@ -390,14 +390,14 @@ export function InputPesananDialog({ open, onOpenChange, onOrderCreated }: Input
                     size="sm"
                     onClick={() => removeEntry(idx)}
                     disabled={entries.length <= 1}
-                    className="w-6 h-6 p-0 text-[#4b5563] hover:text-[#dc2626] hover:bg-[#fef2f2] disabled:opacity-20"
+                    className="w-6 h-6 p-0 text-[var(--t-body)] hover:text-[var(--danger)] hover:bg-[var(--danger-bg)] disabled:opacity-20"
                   >
                     ×
                   </Button>
                 </div>
               ))}
               {entries.some((e) => e.error) && (
-                <p className="text-xs text-[#dc2626]">
+                <p className="text-xs text-[var(--danger)]">
                   {entries.find((e) => e.error)?.error}
                 </p>
               )}
@@ -407,7 +407,7 @@ export function InputPesananDialog({ open, onOpenChange, onOrderCreated }: Input
           <Button
             variant="outline"
             onClick={addEntry}
-            className="w-full border-dashed border-[#e8e8e8] text-[#4b5563] hover:text-[#4a6741] hover:border-[#4a6741] text-sm"
+            className="w-full border-dashed border-[var(--bd)] text-[var(--t-body)] hover:text-[var(--brand)] hover:border-[var(--brand)] text-sm"
           >
             + Add Item
           </Button>
@@ -425,7 +425,7 @@ export function InputPesananDialog({ open, onOpenChange, onOrderCreated }: Input
           <Button
             onClick={handleSubmit}
             disabled={submitting || entries.every((e) => !e.variantId || !e.qty)}
-            className="bg-[#4a6741] hover:bg-[#3d5535] text-white rounded-full px-5 disabled:opacity-50"
+            className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white rounded-full px-5 disabled:opacity-50"
           >
             {submitting ? 'Submitting...' : 'Submit Order'}
           </Button>
