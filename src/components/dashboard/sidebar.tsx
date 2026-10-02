@@ -107,7 +107,7 @@ export function Sidebar({ activeItem, onItemClick, onScanBarcode, collapsed, onT
 
       <div
         className={`
-          fixed left-0 top-0 h-screen bg-white border-r border-[#e8e8e8] flex flex-col z-50 transition-all duration-300 ease-in-out
+          fixed left-0 top-0 h-screen bg-[var(--card)] border-r border-[var(--bd)] flex flex-col z-50 transition-all duration-300 ease-in-out
           ${collapsed ? 'w-[68px]' : 'w-[240px]'}
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
           md:translate-x-0 md:z-50
@@ -115,11 +115,11 @@ export function Sidebar({ activeItem, onItemClick, onScanBarcode, collapsed, onT
       >
         {/* Brand */}
         <div className="flex items-center gap-3 px-4 py-5 h-[68px]">
-          <div className="w-9 h-9 rounded-full bg-[#4a6741] flex items-center justify-center flex-shrink-0">
+          <div className="w-9 h-9 rounded-full bg-[var(--brand)] flex items-center justify-center flex-shrink-0">
             <Package className="w-5 h-5 text-white" />
           </div>
           {!collapsed && (
-            <span className="text-xl font-bold text-[#4a6741] tracking-tight whitespace-nowrap">
+            <span className="text-xl font-bold text-[var(--brand)] tracking-tight whitespace-nowrap">
               Solutive
             </span>
           )}
@@ -127,9 +127,9 @@ export function Sidebar({ activeItem, onItemClick, onScanBarcode, collapsed, onT
           {mobileOpen && (
             <button
               onClick={onMobileClose}
-              className="ml-auto p-1.5 rounded-lg hover:bg-[#f5f6fa] transition-colors cursor-pointer md:hidden"
+              className="ml-auto p-1.5 rounded-lg hover:bg-[var(--surface)] transition-colors cursor-pointer md:hidden"
             >
-              <X className="w-5 h-5 text-[#4b5563]" />
+              <X className="w-5 h-5 text-[var(--t-body)]" />
             </button>
           )}
         </div>
@@ -138,10 +138,10 @@ export function Sidebar({ activeItem, onItemClick, onScanBarcode, collapsed, onT
         {!collapsed && (
           <div className="px-4 pb-3">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4b5563]" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--t-body)]" />
               <Input
                 placeholder="Search..."
-                className="pl-9 bg-[#f0f0f0] border-none rounded-full h-9 text-sm focus-visible:ring-1 focus-visible:ring-[#4a6741]/30"
+                className="pl-9 bg-[var(--surface-2)] border-none rounded-full h-9 text-sm focus-visible:ring-1 focus-visible:ring-[var(--brand)]/30"
               />
             </div>
           </div>
@@ -161,8 +161,8 @@ export function Sidebar({ activeItem, onItemClick, onScanBarcode, collapsed, onT
                   onClick={() => handleItemClick(item.id)}
                   className={`w-full flex items-center gap-3 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${
                     collapsed
-                      ? `justify-center px-0 py-2.5 ${isActive ? 'bg-[#4a6741] text-white shadow-sm' : 'text-[#4b5563] hover:bg-[#f5f6fa] hover:text-[#2d3436]'}`
-                      : `px-3 py-2.5 ${isActive ? 'bg-[#4a6741] text-white shadow-sm' : 'text-[#4b5563] hover:bg-[#f5f6fa] hover:text-[#2d3436]'}`
+                      ? `justify-center px-0 py-2.5 ${isActive ? 'bg-[var(--brand)] text-white shadow-sm' : 'text-[var(--t-body)] hover:bg-[var(--surface)] hover:text-[var(--t-heading)]'}`
+                      : `px-3 py-2.5 ${isActive ? 'bg-[var(--brand)] text-white shadow-sm' : 'text-[var(--t-body)] hover:bg-[var(--surface)] hover:text-[var(--t-heading)]'}`
                   }`}
                 >
                   <Icon className="w-[18px] h-[18px] flex-shrink-0" />
@@ -192,13 +192,13 @@ export function Sidebar({ activeItem, onItemClick, onScanBarcode, collapsed, onT
               if (collapsed) {
                 // When sidebar collapsed, show children directly as flat items
                 return (
-                  <div key={group.id} className="space-y-1 mt-2 pt-2 border-t border-[#e8e8e8]">
+                  <div key={group.id} className="space-y-1 mt-2 pt-2 border-t border-[var(--bd)]">
                     {/* Group label when collapsed */}
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <button
                           onClick={() => toggleGroup(group.id)}
-                          className={`w-full flex items-center justify-center px-0 py-2.5 rounded-lg text-[11px] font-medium text-[#6b7280] transition-colors cursor-pointer`}
+                          className={`w-full flex items-center justify-center px-0 py-2.5 rounded-lg text-[11px] font-medium text-[var(--t-muted)] transition-colors cursor-pointer`}
                         >
                           <GroupIcon className="w-3.5 h-3.5" />
                         </button>
@@ -218,8 +218,8 @@ export function Sidebar({ activeItem, onItemClick, onScanBarcode, collapsed, onT
                               onClick={() => handleItemClick(child.id)}
                               className={`w-full flex items-center justify-center px-0 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer ${
                                 childActive
-                                  ? 'bg-[#4a6741] text-white shadow-sm'
-                                  : 'text-[#4b5563] hover:bg-[#f5f6fa] hover:text-[#2d3436]'
+                                  ? 'bg-[var(--brand)] text-white shadow-sm'
+                                  : 'text-[var(--t-body)] hover:bg-[var(--surface)] hover:text-[var(--t-heading)]'
                               }`}
                             >
                               <ChildIcon className="w-[18px] h-[18px] flex-shrink-0" />
@@ -243,8 +243,8 @@ export function Sidebar({ activeItem, onItemClick, onScanBarcode, collapsed, onT
                     onClick={() => toggleGroup(group.id)}
                     className={`w-full flex items-center gap-3 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer px-3 py-2.5 ${
                       groupActive
-                        ? 'text-[#4a6741]'
-                        : 'text-[#4b5563] hover:bg-[#f5f6fa] hover:text-[#2d3436]'
+                        ? 'text-[var(--brand)]'
+                        : 'text-[var(--t-body)] hover:bg-[var(--surface)] hover:text-[var(--t-heading)]'
                     }`}
                   >
                     <GroupIcon className="w-[18px] h-[18px] flex-shrink-0" />
@@ -258,7 +258,7 @@ export function Sidebar({ activeItem, onItemClick, onScanBarcode, collapsed, onT
 
                   {/* Children */}
                   {isExpanded && (
-                    <div className="ml-4 pl-3 border-l-2 border-[#e8e8e8] space-y-0.5">
+                    <div className="ml-4 pl-3 border-l-2 border-[var(--bd)] space-y-0.5">
                       {group.children.map((child) => {
                         const ChildIcon = child.icon;
                         const childActive = activeItem === child.id;
@@ -269,8 +269,8 @@ export function Sidebar({ activeItem, onItemClick, onScanBarcode, collapsed, onT
                             onClick={() => handleItemClick(child.id)}
                             className={`w-full flex items-center gap-2.5 rounded-lg text-[13px] font-medium transition-all duration-200 cursor-pointer px-3 py-2 ${
                               childActive
-                                ? 'bg-[#4a6741] text-white shadow-sm'
-                                : 'text-[#4b5563] hover:bg-[#f5f6fa] hover:text-[#2d3436]'
+                                ? 'bg-[var(--brand)] text-white shadow-sm'
+                                : 'text-[var(--t-body)] hover:bg-[var(--surface)] hover:text-[var(--t-heading)]'
                             }`}
                           >
                             <ChildIcon className="w-4 h-4 flex-shrink-0" />
@@ -292,7 +292,7 @@ export function Sidebar({ activeItem, onItemClick, onScanBarcode, collapsed, onT
                 <TooltipTrigger asChild>
                   <button
                     onClick={handleScan}
-                    className="w-full flex items-center justify-center py-2.5 rounded-lg text-[#4b5563] hover:bg-[#f5f6fa] hover:text-[#4a6741] transition-colors cursor-pointer"
+                    className="w-full flex items-center justify-center py-2.5 rounded-lg text-[var(--t-body)] hover:bg-[var(--surface)] hover:text-[var(--brand)] transition-colors cursor-pointer"
                   >
                     <ScanBarcode className="w-[18px] h-[18px]" />
                   </button>
@@ -305,7 +305,7 @@ export function Sidebar({ activeItem, onItemClick, onScanBarcode, collapsed, onT
               <Button
                 onClick={handleScan}
                 variant="outline"
-                className="w-full justify-start gap-3 rounded-lg border-[#e8e8e8] text-[#4b5563] hover:bg-[#f5f6fa] hover:text-[#4a6741] hover:border-[#4a6741]/30 text-sm font-medium h-10"
+                className="w-full justify-start gap-3 rounded-lg border-[var(--bd)] text-[var(--t-body)] hover:bg-[var(--surface)] hover:text-[var(--brand)] hover:border-[var(--brand)]/30 text-sm font-medium h-10"
               >
                 <ScanBarcode className="w-[18px] h-[18px]" />
                 Scan Barcode
@@ -314,7 +314,7 @@ export function Sidebar({ activeItem, onItemClick, onScanBarcode, collapsed, onT
           </div>
 
           {/* Bottom items */}
-          <div className="space-y-1 pt-2 pb-4 border-t border-[#e8e8e8] mt-2">
+          <div className="space-y-1 pt-2 pb-4 border-t border-[var(--bd)] mt-2">
             {bottomItems.map((item) => {
               const Icon = item.icon;
 
@@ -322,7 +322,7 @@ export function Sidebar({ activeItem, onItemClick, onScanBarcode, collapsed, onT
                 <button
                   key={item.id}
                   onClick={() => handleItemClick(item.id)}
-                  className={`w-full flex items-center gap-3 rounded-lg text-sm font-medium text-[#4b5563] hover:bg-[#f5f6fa] hover:text-[#2d3436] transition-all duration-200 cursor-pointer ${
+                  className={`w-full flex items-center gap-3 rounded-lg text-sm font-medium text-[var(--t-body)] hover:bg-[var(--surface)] hover:text-[var(--t-heading)] transition-all duration-200 cursor-pointer ${
                     collapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2.5'
                   }`}
                 >
@@ -349,12 +349,12 @@ export function Sidebar({ activeItem, onItemClick, onScanBarcode, collapsed, onT
         {/* Collapse Toggle Button — hidden on mobile */}
         <button
           onClick={onToggle}
-          className="absolute -right-3 top-[78px] w-6 h-6 bg-white border border-[#e8e8e8] rounded-full flex items-center justify-center shadow-sm hover:bg-[#f5f6fa] hover:border-[#4a6741]/30 transition-colors cursor-pointer z-[60] hidden md:flex"
+          className="absolute -right-3 top-[78px] w-6 h-6 bg-[var(--card)] border border-[var(--bd)] rounded-full flex items-center justify-center shadow-sm hover:bg-[var(--surface)] hover:border-[var(--brand)]/30 transition-colors cursor-pointer z-[60] hidden md:flex"
         >
           {collapsed ? (
-            <ChevronRight className="w-3.5 h-3.5 text-[#4b5563]" />
+            <ChevronRight className="w-3.5 h-3.5 text-[var(--t-body)]" />
           ) : (
-            <ChevronLeft className="w-3.5 h-3.5 text-[#4b5563]" />
+            <ChevronLeft className="w-3.5 h-3.5 text-[var(--t-body)]" />
           )}
         </button>
       </div>

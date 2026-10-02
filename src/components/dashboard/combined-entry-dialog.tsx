@@ -401,8 +401,8 @@ export function CombinedEntryDialog({
         {!entryType && (
           <>
             <DialogHeader>
-              <DialogTitle className="text-[#2d3436]">Add New Entry</DialogTitle>
-              <DialogDescription className="text-[#4b5563]">
+              <DialogTitle className="text-[var(--t-heading)]">Add New Entry</DialogTitle>
+              <DialogDescription className="text-[var(--t-body)]">
                 Choose what type of entry you want to create.
               </DialogDescription>
             </DialogHeader>
@@ -411,28 +411,28 @@ export function CombinedEntryDialog({
               {/* Input Pesanan Card */}
               <button
                 onClick={() => setEntryType('order')}
-                className="group flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-[#e8e8e8] hover:border-[#4a6741] hover:bg-[#4a6741]/5 transition-all duration-200 cursor-pointer"
+                className="group flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-[var(--bd)] hover:border-[var(--brand)] hover:bg-[var(--brand)]/5 transition-all duration-200 cursor-pointer"
               >
-                <div className="w-14 h-14 rounded-xl bg-[#4a6741]/10 group-hover:bg-[#4a6741]/20 flex items-center justify-center transition-colors">
-                  <ShoppingCart className="w-7 h-7 text-[#4a6741]" />
+                <div className="w-14 h-14 rounded-xl bg-[var(--brand)]/10 group-hover:bg-[var(--brand)]/20 flex items-center justify-center transition-colors">
+                  <ShoppingCart className="w-7 h-7 text-[var(--brand)]" />
                 </div>
                 <div className="text-center">
-                  <p className="text-sm font-semibold text-[#2d3436]">Input Pesanan</p>
-                  <p className="text-[11px] text-[#6b7280] mt-0.5">Create new order</p>
+                  <p className="text-sm font-semibold text-[var(--t-heading)]">Input Pesanan</p>
+                  <p className="text-[11px] text-[var(--t-muted)] mt-0.5">Create new order</p>
                 </div>
               </button>
 
               {/* Production Card */}
               <button
                 onClick={() => setEntryType('production')}
-                className="group flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-[#e8e8e8] hover:border-[#2563eb] hover:bg-[#2563eb]/5 transition-all duration-200 cursor-pointer"
+                className="group flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-[var(--bd)] hover:border-[var(--info)] hover:bg-[var(--info)]/5 transition-all duration-200 cursor-pointer"
               >
-                <div className="w-14 h-14 rounded-xl bg-[#2563eb]/10 group-hover:bg-[#2563eb]/20 flex items-center justify-center transition-colors">
-                  <Factory className="w-7 h-7 text-[#2563eb]" />
+                <div className="w-14 h-14 rounded-xl bg-[var(--info)]/10 group-hover:bg-[var(--info)]/20 flex items-center justify-center transition-colors">
+                  <Factory className="w-7 h-7 text-[var(--info)]" />
                 </div>
                 <div className="text-center">
-                  <p className="text-sm font-semibold text-[#2d3436]">Production</p>
-                  <p className="text-[11px] text-[#6b7280] mt-0.5">Record production output</p>
+                  <p className="text-sm font-semibold text-[var(--t-heading)]">Production</p>
+                  <p className="text-[11px] text-[var(--t-muted)] mt-0.5">Record production output</p>
                 </div>
               </button>
             </div>
@@ -456,18 +456,18 @@ export function CombinedEntryDialog({
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setEntryType(null)}
-                  className="p-1 rounded-md hover:bg-[#f0f0f0] transition-colors cursor-pointer"
+                  className="p-1 rounded-md hover:bg-[var(--surface-2)] transition-colors cursor-pointer"
                 >
-                  <svg className="w-4 h-4 text-[#4b5563]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-[var(--t-body)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                   </svg>
                 </button>
                 <div>
-                  <DialogTitle className="text-[#2d3436] flex items-center gap-2">
-                    <ShoppingCart className="w-5 h-5 text-[#4a6741]" />
+                  <DialogTitle className="text-[var(--t-heading)] flex items-center gap-2">
+                    <ShoppingCart className="w-5 h-5 text-[var(--brand)]" />
                     Input Pesanan
                   </DialogTitle>
-                  <DialogDescription className="text-[#4b5563]">
+                  <DialogDescription className="text-[var(--t-body)]">
                     Add new order entries. Enter SKU, pick a color variant, and set quantity.
                   </DialogDescription>
                 </div>
@@ -476,10 +476,10 @@ export function CombinedEntryDialog({
 
             <div className="space-y-4">
               <div className="grid grid-cols-[1fr_1fr_0.6fr_1fr_auto] gap-2 px-1 max-sm:hidden">
-                <Label className="text-xs text-[#4b5563]">SKU</Label>
-                <Label className="text-xs text-[#4b5563]">Product Name</Label>
-                <Label className="text-xs text-[#4b5563]">Qty</Label>
-                <Label className="text-xs text-[#4b5563]">Color Variant</Label>
+                <Label className="text-xs text-[var(--t-body)]">SKU</Label>
+                <Label className="text-xs text-[var(--t-body)]">Product Name</Label>
+                <Label className="text-xs text-[var(--t-body)]">Qty</Label>
+                <Label className="text-xs text-[var(--t-body)]">Color Variant</Label>
                 <div className="w-6" />
               </div>
 
@@ -508,7 +508,7 @@ export function CombinedEntryDialog({
                           placeholder="SKU"
                           disabled={entry.lookingUp}
                           autoFocus={idx === 0}
-                          className="h-9 text-sm bg-[#f0f0f0] border-none focus-visible:ring-1 focus-visible:ring-[#4a6741]/30"
+                          className="h-9 text-sm bg-[var(--surface-2)] border-none focus-visible:ring-1 focus-visible:ring-[var(--brand)]/30"
                         />
                       </div>
                       <Input
@@ -516,7 +516,7 @@ export function CombinedEntryDialog({
                         onChange={(e) => updateEntry(idx, 'productName', e.target.value)}
                         placeholder="Product Name"
                         disabled
-                        className="h-9 text-sm bg-[#f0f0f0] border-none opacity-70"
+                        className="h-9 text-sm bg-[var(--surface-2)] border-none opacity-70"
                       />
                       <Input
                         value={entry.qty}
@@ -524,14 +524,14 @@ export function CombinedEntryDialog({
                         placeholder="0"
                         type="number"
                         min="1"
-                        className="h-9 text-sm bg-[#f0f0f0] border-none focus-visible:ring-1 focus-visible:ring-[#4a6741]/30"
+                        className="h-9 text-sm bg-[var(--surface-2)] border-none focus-visible:ring-1 focus-visible:ring-[var(--brand)]/30"
                       />
                       {entry.variantOptions.length > 0 ? (
                         <Select
                           value={entry.selectedColor ? entry.variantId || '' : ''}
                           onValueChange={(val) => handleVariantSelect(idx, val)}
                         >
-                          <SelectTrigger className="h-9 text-sm bg-[#f0f0f0] border-none focus:ring-1 focus:ring-[#4a6741]/30">
+                          <SelectTrigger className="h-9 text-sm bg-[var(--surface-2)] border-none focus:ring-1 focus:ring-[var(--brand)]/30">
                             <SelectValue placeholder="Select color" />
                           </SelectTrigger>
                           <SelectContent>
@@ -539,11 +539,11 @@ export function CombinedEntryDialog({
                               <SelectItem key={v.id} value={v.id}>
                                 <div className="flex items-center gap-2">
                                   <span
-                                    className="w-3 h-3 rounded-full border border-[#e8e8e8] flex-shrink-0"
+                                    className="w-3 h-3 rounded-full border border-[var(--bd)] flex-shrink-0"
                                     style={{ backgroundColor: v.colorHex }}
                                   />
                                   <span>{v.color}{v.type ? ` - ${v.type}` : ''}</span>
-                                  <span className="text-[11px] text-[#6b7280]">(qty: {v.qty})</span>
+                                  <span className="text-[11px] text-[var(--t-muted)]">(qty: {v.qty})</span>
                                 </div>
                               </SelectItem>
                             ))}
@@ -555,7 +555,7 @@ export function CombinedEntryDialog({
                           onChange={(e) => updateEntry(idx, 'selectedColor', e.target.value)}
                           placeholder="Color"
                           disabled={!entry.variantId}
-                          className="h-9 text-sm bg-[#f0f0f0] border-none opacity-70"
+                          className="h-9 text-sm bg-[var(--surface-2)] border-none opacity-70"
                         />
                       )}
                       <Button
@@ -563,14 +563,14 @@ export function CombinedEntryDialog({
                         size="sm"
                         onClick={() => removeEntry(idx)}
                         disabled={entries.length <= 1}
-                        className="w-6 h-6 p-0 text-[#4b5563] hover:text-[#dc2626] hover:bg-[#fef2f2] disabled:opacity-20"
+                        className="w-6 h-6 p-0 text-[var(--t-body)] hover:text-[var(--danger)] hover:bg-[var(--danger-bg)] disabled:opacity-20"
                       >
                         ×
                       </Button>
                     </div>
                   ))}
                   {entries.some((e) => e.error) && (
-                    <p className="text-xs text-[#dc2626]">
+                    <p className="text-xs text-[var(--danger)]">
                       {entries.find((e) => e.error)?.error}
                     </p>
                   )}
@@ -580,7 +580,7 @@ export function CombinedEntryDialog({
               <Button
                 variant="outline"
                 onClick={addEntry}
-                className="w-full border-dashed border-[#e8e8e8] text-[#4b5563] hover:text-[#4a6741] hover:border-[#4a6741] text-sm"
+                className="w-full border-dashed border-[var(--bd)] text-[var(--t-body)] hover:text-[var(--brand)] hover:border-[var(--brand)] text-sm"
               >
                 + Add Item
               </Button>
@@ -598,7 +598,7 @@ export function CombinedEntryDialog({
               <Button
                 onClick={handleOrderSubmit}
                 disabled={submittingOrder || entries.every((e) => !e.variantId || !e.qty)}
-                className="bg-[#4a6741] hover:bg-[#3d5535] text-white rounded-full px-5 disabled:opacity-50"
+                className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white rounded-full px-5 disabled:opacity-50"
               >
                 {submittingOrder ? 'Submitting...' : 'Submit Order'}
               </Button>
@@ -613,18 +613,18 @@ export function CombinedEntryDialog({
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setEntryType(null)}
-                  className="p-1 rounded-md hover:bg-[#f0f0f0] transition-colors cursor-pointer"
+                  className="p-1 rounded-md hover:bg-[var(--surface-2)] transition-colors cursor-pointer"
                 >
-                  <svg className="w-4 h-4 text-[#4b5563]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 text-[var(--t-body)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                   </svg>
                 </button>
                 <div>
-                  <DialogTitle className="text-[#2d3436] flex items-center gap-2">
-                    <Factory className="w-5 h-5 text-[#2563eb]" />
+                  <DialogTitle className="text-[var(--t-heading)] flex items-center gap-2">
+                    <Factory className="w-5 h-5 text-[var(--info)]" />
                     Add Production Item
                   </DialogTitle>
-                  <DialogDescription className="text-[#4b5563]">
+                  <DialogDescription className="text-[var(--t-body)]">
                     Record a new production entry. Stock will be added when marked as completed.
                   </DialogDescription>
                 </div>
@@ -634,30 +634,30 @@ export function CombinedEntryDialog({
             <div className="space-y-4">
               {/* Select Variant */}
               <div className="space-y-1.5">
-                <Label className="text-xs text-[#4b5563] font-medium">Product Variant</Label>
+                <Label className="text-xs text-[var(--t-body)] font-medium">Product Variant</Label>
                 {loadingVariants ? (
-                  <div className="h-9 bg-[#f0f0f0] rounded-md animate-pulse" />
+                  <div className="h-9 bg-[var(--surface-2)] rounded-md animate-pulse" />
                 ) : (
                   <Select value={selectedVariantId} onValueChange={setSelectedVariantId}>
-                    <SelectTrigger className="h-10 text-sm bg-[#f0f0f0] border-none focus:ring-1 focus:ring-[#4a6741]/30">
+                    <SelectTrigger className="h-10 text-sm bg-[var(--surface-2)] border-none focus:ring-1 focus:ring-[var(--brand)]/30">
                       <SelectValue placeholder="Select a variant..." />
                     </SelectTrigger>
                     <SelectContent>
                       {variants.length === 0 ? (
-                        <div className="px-2 py-3 text-sm text-[#6b7280] text-center">
+                        <div className="px-2 py-3 text-sm text-[var(--t-muted)] text-center">
                           No variants found. Add products first.
                         </div>
                       ) : (
                         variants.map((v) => (
                           <SelectItem key={v.id} value={v.id}>
                             <div className="flex items-center gap-2">
-                              <span className="font-semibold text-[#2d3436]">{v.product.sku}</span>
-                              <span className="text-[#4b5563]">·</span>
+                              <span className="font-semibold text-[var(--t-heading)]">{v.product.sku}</span>
+                              <span className="text-[var(--t-body)]">·</span>
                               <span
-                                className="w-3 h-3 rounded-full border border-[#e8e8e8] flex-shrink-0"
+                                className="w-3 h-3 rounded-full border border-[var(--bd)] flex-shrink-0"
                                 style={{ backgroundColor: v.colorHex }}
                               />
-                              <span className="text-[#4b5563]">{v.color}{v.type ? ` - ${v.type}` : ''}</span>
+                              <span className="text-[var(--t-body)]">{v.color}{v.type ? ` - ${v.type}` : ''}</span>
                             </div>
                           </SelectItem>
                         ))
@@ -666,16 +666,16 @@ export function CombinedEntryDialog({
                   </Select>
                 )}
                 {selectedVariant && (
-                  <div className="text-[11px] text-[#6b7280] space-y-0.5">
+                  <div className="text-[11px] text-[var(--t-muted)] space-y-0.5">
                     <p>{selectedVariant.product.name} — {selectedVariant.color}{selectedVariant.type ? ` - ${selectedVariant.type}` : ''}</p>
                     {selectedVariant.product.parentProduct && (
-                      <p className="text-[#2563eb] flex items-center gap-1">
+                      <p className="text-[var(--info)] flex items-center gap-1">
                         <Layers className="w-3 h-3" />
                         Varian of {selectedVariant.product.parentProduct.sku} — stock will sync to group
                       </p>
                     )}
                     {!selectedVariant.product.parentProductId && selectedVariant.product.id && (
-                      <p className="text-[#4a6741] flex items-center gap-1">
+                      <p className="text-[var(--brand)] flex items-center gap-1">
                         <Layers className="w-3 h-3" />
                         Master/Standalone — stock changes apply to this product only
                       </p>
@@ -686,23 +686,23 @@ export function CombinedEntryDialog({
 
               {/* Quantity */}
               <div className="space-y-1.5">
-                <Label className="text-xs text-[#4b5563] font-medium">Quantity to Produce</Label>
+                <Label className="text-xs text-[var(--t-body)] font-medium">Quantity to Produce</Label>
                 <Input
                   value={prodQty}
                   onChange={(e) => setProdQty(e.target.value)}
                   placeholder="Enter quantity"
                   type="number"
                   min="1"
-                  className="h-10 text-sm bg-[#f0f0f0] border-none focus-visible:ring-1 focus-visible:ring-[#4a6741]/30"
+                  className="h-10 text-sm bg-[var(--surface-2)] border-none focus-visible:ring-1 focus-visible:ring-[var(--brand)]/30"
                 />
               </div>
 
               {/* Printer */}
               <div className="space-y-1.5">
-                <Label className="text-xs text-[#4b5563] font-medium">Printer</Label>
+                <Label className="text-xs text-[var(--t-body)] font-medium">Printer</Label>
                 {printers.length > 0 ? (
                   <Select value={assignedTo} onValueChange={setAssignedTo}>
-                    <SelectTrigger className="h-10 text-sm bg-[#f0f0f0] border-none focus:ring-1 focus:ring-[#4a6741]/30">
+                    <SelectTrigger className="h-10 text-sm bg-[var(--surface-2)] border-none focus:ring-1 focus:ring-[var(--brand)]/30">
                       <SelectValue placeholder="Select printer..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -711,7 +711,7 @@ export function CombinedEntryDialog({
                         .map((p) => (
                           <SelectItem key={p.id} value={p.name}>
                             <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-[#15803d] flex-shrink-0" />
+                              <span className="w-2 h-2 rounded-full bg-[var(--success)] flex-shrink-0" />
                               {p.name}
                             </div>
                           </SelectItem>
@@ -723,7 +723,7 @@ export function CombinedEntryDialog({
                     value={assignedTo}
                     onChange={(e) => setAssignedTo(e.target.value)}
                     placeholder="No printers configured yet"
-                    className="h-10 text-sm bg-[#f0f0f0] border-none focus-visible:ring-1 focus-visible:ring-[#4a6741]/30"
+                    className="h-10 text-sm bg-[var(--surface-2)] border-none focus-visible:ring-1 focus-visible:ring-[var(--brand)]/30"
                   />
                 )}
               </div>
@@ -741,7 +741,7 @@ export function CombinedEntryDialog({
               <Button
                 onClick={handleProdSubmit}
                 disabled={submittingProd || !selectedVariantId || !prodQty || parseInt(prodQty, 10) <= 0}
-                className="bg-[#2563eb] hover:bg-[#2980b9] text-white rounded-full px-5 disabled:opacity-50"
+                className="bg-[var(--info)] hover:bg-[var(--info-dark-alt)] text-white rounded-full px-5 disabled:opacity-50"
               >
                 {submittingProd ? 'Adding...' : 'Add to Production'}
               </Button>

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Sidebar } from '@/components/dashboard/sidebar';
 import { Header } from '@/components/dashboard/header';
+import { ThemeToggle } from '@/components/dashboard/theme-toggle';
 import { LowStockCard, type LowStockItem, type RecommendationItem } from '@/components/dashboard/low-stock-card';
 import { PrintQueueCard, type PrintQueueItem } from '@/components/dashboard/print-queue-card';
 import { InProductionCard, type ProductionItem } from '@/components/dashboard/in-production-card';
@@ -176,32 +177,35 @@ function MobileHeader({
   onScanClick: () => void;
 }) {
   return (
-    <div className="md:hidden sticky top-0 z-30 bg-white border-b border-[#e8e8e8] px-4 py-3">
+    <div className="md:hidden sticky top-0 z-30 bg-[var(--card)] border-b border-[var(--bd)] px-4 py-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
             onClick={onMenuClick}
-            className="p-2 -ml-2 rounded-lg hover:bg-[#f5f6fa] transition-colors cursor-pointer"
+            className="p-2 -ml-2 rounded-lg hover:bg-[var(--surface)] transition-colors cursor-pointer"
           >
-            <Menu className="w-5 h-5 text-[#2d3436]" />
+            <Menu className="w-5 h-5 text-[var(--t-heading)]" />
           </button>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-[#4a6741] flex items-center justify-center">
+            <div className="w-7 h-7 rounded-full bg-[var(--brand)] flex items-center justify-center">
               <Package className="w-4 h-4 text-white" />
             </div>
-            <span className="font-bold text-[#4a6741] text-sm">Solutive</span>
+            <span className="font-bold text-[var(--brand)] text-sm">Solutive</span>
           </div>
         </div>
-        <button
-          onClick={onScanClick}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#4a6741] hover:bg-[#3d5535] text-white text-xs font-medium rounded-full transition-colors cursor-pointer"
-        >
-          <ScanBarcode className="w-3.5 h-3.5" />
-          <span>Scan</span>
-        </button>
+        <div className="flex items-center gap-1.5">
+          <ThemeToggle />
+          <button
+            onClick={onScanClick}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white text-xs font-medium rounded-full transition-colors cursor-pointer"
+          >
+            <ScanBarcode className="w-3.5 h-3.5" />
+            <span>Scan</span>
+          </button>
+        </div>
       </div>
       {/* Mobile page title */}
-      <h1 className="text-lg font-bold text-[#2d3436] mt-2">{title}</h1>
+      <h1 className="text-lg font-bold text-[var(--t-heading)] mt-2">{title}</h1>
     </div>
   );
 }
@@ -540,7 +544,7 @@ export default function Home() {
     : activeNavItem.charAt(0).toUpperCase() + activeNavItem.slice(1).replace(/-/g, ' ');
 
   return (
-    <div className="min-h-screen bg-[#f5f6fa]">
+    <div className="min-h-screen bg-[var(--surface)]">
       {/* Sidebar — hidden on mobile, shown on md+ */}
       <Sidebar
         activeItem={activeNavItem}
@@ -606,11 +610,11 @@ export default function Home() {
 
             {/* Summary Cards Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-6">
-              <div className="bg-white rounded-xl shadow-sm p-3 md:p-4">
+              <div className="bg-[var(--card)] rounded-xl shadow-sm p-3 md:p-4">
                 <div className="flex items-center justify-between mb-2 md:mb-3">
-                  <span className="text-[11px] md:text-xs text-[#4b5563] font-medium">Stock Alert</span>
-                  <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#dc2626]/10 flex items-center justify-center">
-                    <svg className="w-3.5 h-3.5 md:w-4 md:h-4 text-[#dc2626]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <span className="text-[11px] md:text-xs text-[var(--t-body)] font-medium">Stock Alert</span>
+                  <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[var(--danger)]/10 flex items-center justify-center">
+                    <svg className="w-3.5 h-3.5 md:w-4 md:h-4 text-[var(--danger)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                     </svg>
                   </div>
@@ -620,24 +624,24 @@ export default function Home() {
                 ) : (
                   <>
                     <div className="flex items-baseline gap-1.5">
-                      <p className="text-xl md:text-2xl font-bold text-[#b91c1c]">{summary?.minusStockCount ?? 0}</p>
-                      <span className="text-[11px] text-[#6b7280]">/</span>
-                      <p className="text-lg md:text-xl font-bold text-[#d97706]">{summary?.lowStockCount ?? 0}</p>
+                      <p className="text-xl md:text-2xl font-bold text-[var(--danger-dark)]">{summary?.minusStockCount ?? 0}</p>
+                      <span className="text-[11px] text-[var(--t-muted)]">/</span>
+                      <p className="text-lg md:text-xl font-bold text-[var(--warning)]">{summary?.lowStockCount ?? 0}</p>
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[11px] md:text-[11px] text-[#b91c1c]">minus</span>
-                      <span className="text-[11px] text-[#6b7280]">·</span>
-                      <span className="text-[11px] md:text-[11px] text-[#d97706]">low stock</span>
+                      <span className="text-[11px] md:text-[11px] text-[var(--danger-dark)]">minus</span>
+                      <span className="text-[11px] text-[var(--t-muted)]">·</span>
+                      <span className="text-[11px] md:text-[11px] text-[var(--warning)]">low stock</span>
                     </div>
                   </>
                 )}
               </div>
 
-              <div className="bg-white rounded-xl shadow-sm p-3 md:p-4">
+              <div className="bg-[var(--card)] rounded-xl shadow-sm p-3 md:p-4">
                 <div className="flex items-center justify-between mb-2 md:mb-3">
-                  <span className="text-[11px] md:text-xs text-[#4b5563] font-medium">Print Queue</span>
-                  <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#2563eb]/10 flex items-center justify-center">
-                    <svg className="w-3.5 h-3.5 md:w-4 md:h-4 text-[#2563eb]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <span className="text-[11px] md:text-xs text-[var(--t-body)] font-medium">Print Queue</span>
+                  <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[var(--info)]/10 flex items-center justify-center">
+                    <svg className="w-3.5 h-3.5 md:w-4 md:h-4 text-[var(--info)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                     </svg>
                   </div>
@@ -646,15 +650,15 @@ export default function Home() {
                   <SummaryCardSkeleton />
                 ) : (
                   <>
-                    <p className="text-xl md:text-2xl font-bold text-[#2563eb]">{summary?.printQueueCount ?? 0}</p>
-                    <p className="text-[11px] md:text-xs text-[#4b5563]">
+                    <p className="text-xl md:text-2xl font-bold text-[var(--info)]">{summary?.printQueueCount ?? 0}</p>
+                    <p className="text-[11px] md:text-xs text-[var(--t-body)]">
                       in queue
                       {summary && summary.printQueueDurationMinutes > 0 && (
                         <> · ~{formatDuration(summary.printQueueDurationMinutes)}</>
                       )}
                     </p>
                     {summary && summary.printQueueItemsMissingEstimate > 0 && (
-                      <p className="text-[10px] text-[#d97706] mt-0.5">
+                      <p className="text-[10px] text-[var(--warning)] mt-0.5">
                         {summary.printQueueItemsMissingEstimate} item belum ada estimasi
                       </p>
                     )}
@@ -662,11 +666,11 @@ export default function Home() {
                 )}
               </div>
 
-              <div className="bg-white rounded-xl shadow-sm p-3 md:p-4">
+              <div className="bg-[var(--card)] rounded-xl shadow-sm p-3 md:p-4">
                 <div className="flex items-center justify-between mb-2 md:mb-3 gap-2">
-                  <span className="text-[11px] md:text-xs text-[#4b5563] font-medium flex-shrink-0">Total Orders</span>
-                  <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#d97706]/10 flex items-center justify-center flex-shrink-0">
-                    <svg className="w-3.5 h-3.5 md:w-4 md:h-4 text-[#d97706]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <span className="text-[11px] md:text-xs text-[var(--t-body)] font-medium flex-shrink-0">Total Orders</span>
+                  <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[var(--warning)]/10 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-3.5 h-3.5 md:w-4 md:h-4 text-[var(--warning)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                     </svg>
                   </div>
@@ -675,11 +679,11 @@ export default function Home() {
                   <SummaryCardSkeleton />
                 ) : (
                   <>
-                    <p className="text-xl md:text-2xl font-bold text-[#d97706]">
+                    <p className="text-xl md:text-2xl font-bold text-[var(--warning)]">
                       {orderCountLoading ? '…' : orderDateRange ? (filteredOrderCount ?? 0) : (summary?.totalOrders ?? 0)}
                     </p>
                     <div className="flex items-center justify-between gap-2 mt-1">
-                      <p className="text-[11px] md:text-xs text-[#4b5563]">{orderDateRange ? 'dalam range' : 'total orders'}</p>
+                      <p className="text-[11px] md:text-xs text-[var(--t-body)]">{orderDateRange ? 'dalam range' : 'total orders'}</p>
                       <DateRangePicker value={orderDateRange} onChange={setOrderDateRange} />
                     </div>
                   </>
@@ -689,20 +693,20 @@ export default function Home() {
 
             {/* Error State */}
             {error && (
-              <div className="bg-white rounded-xl shadow-sm p-4 md:p-6 mb-4 md:mb-6 border-l-4 border-[#dc2626]">
+              <div className="bg-[var(--card)] rounded-xl shadow-sm p-4 md:p-6 mb-4 md:mb-6 border-l-4 border-[var(--danger)]">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-[#dc2626]/10 flex items-center justify-center flex-shrink-0">
-                    <svg className="w-4 h-4 text-[#dc2626]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-8 h-8 rounded-full bg-[var(--danger)]/10 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-4 h-4 text-[var(--danger)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-[#2d3436]">Failed to load dashboard data</p>
-                    <p className="text-xs text-[#4b5563] mt-0.5 truncate">{error}</p>
+                    <p className="text-sm font-medium text-[var(--t-heading)]">Failed to load dashboard data</p>
+                    <p className="text-xs text-[var(--t-body)] mt-0.5 truncate">{error}</p>
                   </div>
                   <button
                     onClick={fetchDashboardData}
-                    className="text-xs text-[#4a6741] font-medium hover:underline cursor-pointer flex-shrink-0"
+                    className="text-xs text-[var(--brand)] font-medium hover:underline cursor-pointer flex-shrink-0"
                   >
                     Retry
                   </button>
@@ -787,16 +791,16 @@ export default function Home() {
             <div className="hidden md:block">
               <Header title={headerTitle} />
             </div>
-            <div className="bg-white rounded-xl shadow-sm p-8 md:p-12 flex flex-col items-center justify-center">
-              <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[#f5f6fa] flex items-center justify-center mb-4">
-                <svg className="w-8 h-8 md:w-10 md:h-10 text-[#6b7280]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="bg-[var(--card)] rounded-xl shadow-sm p-8 md:p-12 flex flex-col items-center justify-center">
+              <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[var(--surface)] flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 md:w-10 md:h-10 text-[var(--t-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                 </svg>
               </div>
-              <h2 className="text-lg font-semibold text-[#2d3436] mb-2">
+              <h2 className="text-lg font-semibold text-[var(--t-heading)] mb-2">
                 {headerTitle}
               </h2>
-              <p className="text-sm text-[#4b5563] text-center max-w-md">
+              <p className="text-sm text-[var(--t-body)] text-center max-w-md">
                 This section is coming soon. It will be available in a future update.
               </p>
             </div>

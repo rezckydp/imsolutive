@@ -50,7 +50,7 @@ function SkeletonRows() {
   return (
     <>
       {[...Array(4)].map((_, i) => (
-        <tr key={i} className="border-t border-[#f0f0f0]">
+        <tr key={i} className="border-t border-[var(--surface-2)]">
           <td className="py-2.5 px-3">
             <Skeleton className="h-4 w-16" />
           </td>
@@ -121,40 +121,40 @@ export function LowStockCard({ minusItems = [], lowItems = [], recommendationIte
     <Card className="rounded-xl shadow-sm border-0">
       <CardHeader className="pb-3 px-4 pt-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <CardTitle className="text-sm font-semibold text-[#2d3436]">
+          <CardTitle className="text-sm font-semibold text-[var(--t-heading)]">
             {isReco ? (
               <span className="flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-[#4a6741]" />
+                <Sparkles className="w-4 h-4 text-[var(--brand)]" />
                 Recommendation
               </span>
             ) : isMinus ? (
               <span className="flex items-center gap-1.5">
-                <PackageX className="w-4 h-4 text-[#b91c1c]" />
+                <PackageX className="w-4 h-4 text-[var(--danger-dark)]" />
                 Stok Minus
               </span>
             ) : (
               <span className="flex items-center gap-1.5">
-                <AlertTriangle className="w-4 h-4 text-[#d97706]" />
+                <AlertTriangle className="w-4 h-4 text-[var(--warning)]" />
                 Low Stock
               </span>
             )}
           </CardTitle>
           <div className="flex items-center gap-2">
             {/* Toggle Button */}
-            <div className="flex items-center bg-[#f5f6fa] rounded-lg p-0.5">
+            <div className="flex items-center bg-[var(--surface)] rounded-lg p-0.5">
               <button
                 onClick={() => handleTabChange('reco')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                   isReco
-                    ? 'bg-white text-[#4a6741] shadow-sm'
-                    : 'text-[#4b5563] hover:text-[#2d3436]'
+                    ? 'bg-[var(--card)] text-[var(--brand)] shadow-sm'
+                    : 'text-[var(--t-body)] hover:text-[var(--t-heading)]'
                 }`}
               >
                 <Sparkles className="w-3 h-3" />
                 Recommendation
                 {recommendationItems.length > 0 && (
                   <span className={`ml-0.5 text-[11px] px-1.5 py-0 rounded-full font-bold ${
-                    isReco ? 'bg-[#4a6741] text-white' : 'bg-[#4a6741]/10 text-[#4a6741]'
+                    isReco ? 'bg-[var(--brand)] text-white' : 'bg-[var(--brand)]/10 text-[var(--brand)]'
                   }`}>
                     {recommendationItems.length}
                   </span>
@@ -164,15 +164,15 @@ export function LowStockCard({ minusItems = [], lowItems = [], recommendationIte
                 onClick={() => handleTabChange('minus')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                   isMinus
-                    ? 'bg-white text-[#b91c1c] shadow-sm'
-                    : 'text-[#4b5563] hover:text-[#2d3436]'
+                    ? 'bg-[var(--card)] text-[var(--danger-dark)] shadow-sm'
+                    : 'text-[var(--t-body)] hover:text-[var(--t-heading)]'
                 }`}
               >
                 <PackageX className="w-3 h-3" />
                 Minus
                 {minusItems.length > 0 && (
                   <span className={`ml-0.5 text-[11px] px-1.5 py-0 rounded-full font-bold ${
-                    isMinus ? 'bg-[#b91c1c] text-white' : 'bg-[#b91c1c]/10 text-[#b91c1c]'
+                    isMinus ? 'bg-[var(--danger-dark)] text-white' : 'bg-[var(--danger-dark)]/10 text-[var(--danger-dark)]'
                   }`}>
                     {minusItems.length}
                   </span>
@@ -182,15 +182,15 @@ export function LowStockCard({ minusItems = [], lowItems = [], recommendationIte
                 onClick={() => handleTabChange('low')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                   tab === 'low'
-                    ? 'bg-white text-[#d97706] shadow-sm'
-                    : 'text-[#4b5563] hover:text-[#2d3436]'
+                    ? 'bg-[var(--card)] text-[var(--warning)] shadow-sm'
+                    : 'text-[var(--t-body)] hover:text-[var(--t-heading)]'
                 }`}
               >
                 <AlertTriangle className="w-3 h-3" />
                 Low Stock
                 {lowItems.length > 0 && (
                   <span className={`ml-0.5 text-[11px] px-1.5 py-0 rounded-full font-bold ${
-                    tab === 'low' ? 'bg-[#d97706] text-white' : 'bg-[#d97706]/10 text-[#d97706]'
+                    tab === 'low' ? 'bg-[var(--warning)] text-white' : 'bg-[var(--warning)]/10 text-[var(--warning)]'
                   }`}>
                     {lowItems.length}
                   </span>
@@ -203,43 +203,43 @@ export function LowStockCard({ minusItems = [], lowItems = [], recommendationIte
               <button
                 onClick={() => setPage(Math.max(0, page - 1))}
                 disabled={page === 0}
-                className="p-1 rounded hover:bg-[#f5f6fa] disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed transition-colors"
+                className="p-1 rounded hover:bg-[var(--surface)] disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed transition-colors"
               >
-                <ChevronLeft className="w-4 h-4 text-[#4b5563]" />
+                <ChevronLeft className="w-4 h-4 text-[var(--t-body)]" />
               </button>
-              <span className="text-xs text-[#4b5563] mx-1">
+              <span className="text-xs text-[var(--t-body)] mx-1">
                 {totalPages > 0 ? `${page + 1}/${totalPages}` : '0/0'}
               </span>
               <button
                 onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
                 disabled={page >= totalPages - 1}
-                className="p-1 rounded hover:bg-[#f5f6fa] disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed transition-colors"
+                className="p-1 rounded hover:bg-[var(--surface)] disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed transition-colors"
               >
-                <ChevronRight className="w-4 h-4 text-[#4b5563]" />
+                <ChevronRight className="w-4 h-4 text-[var(--t-body)]" />
               </button>
             </div>
           </div>
         </div>
       </CardHeader>
       <CardContent className="px-4 pb-4 pt-0">
-        <div className="rounded-lg border border-[#e8e8e8] overflow-x-auto -webkit-overflow-scrolling-touch">
+        <div className="rounded-lg border border-[var(--bd)] overflow-x-auto -webkit-overflow-scrolling-touch">
           <table className="w-full min-w-[440px]">
             <thead>
-              <tr className="bg-[#f5f6fa]">
-                <th className="text-left text-xs font-medium text-[#4b5563] py-2 px-3">SKU</th>
-                <th className="text-left text-xs font-medium text-[#4b5563] py-2 px-3">Variant</th>
+              <tr className="bg-[var(--surface)]">
+                <th className="text-left text-xs font-medium text-[var(--t-body)] py-2 px-3">SKU</th>
+                <th className="text-left text-xs font-medium text-[var(--t-body)] py-2 px-3">Variant</th>
                 {isReco ? (
                   <>
-                    <th className="text-right text-xs font-medium text-[#4b5563] py-2 px-3">Stok</th>
-                    <th className="text-right text-xs font-medium text-[#4b5563] py-2 px-3">Avg/hari</th>
-                    <th className="text-right text-xs font-medium text-[#4b5563] py-2 px-3">Saran</th>
+                    <th className="text-right text-xs font-medium text-[var(--t-body)] py-2 px-3">Stok</th>
+                    <th className="text-right text-xs font-medium text-[var(--t-body)] py-2 px-3">Avg/hari</th>
+                    <th className="text-right text-xs font-medium text-[var(--t-body)] py-2 px-3">Saran</th>
                   </>
                 ) : (
                   <>
-                    <th className="text-right text-xs font-medium text-[#4b5563] py-2 px-3">
+                    <th className="text-right text-xs font-medium text-[var(--t-body)] py-2 px-3">
                       {isMinus ? 'Qty' : 'Stok'}
                     </th>
-                    <th className="text-right text-xs font-medium text-[#4b5563] py-2 px-3">Queued</th>
+                    <th className="text-right text-xs font-medium text-[var(--t-body)] py-2 px-3">Queued</th>
                   </>
                 )}
                 <th className="w-9"></th>
@@ -253,25 +253,25 @@ export function LowStockCard({ minusItems = [], lowItems = [], recommendationIte
                   <td colSpan={5} className="text-center py-8">
                     <div className="flex flex-col items-center gap-2">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        isReco ? 'bg-[#4a6741]/10' : isMinus ? 'bg-[#b91c1c]/10' : 'bg-[#d97706]/10'
+                        isReco ? 'bg-[var(--brand)]/10' : isMinus ? 'bg-[var(--danger-dark)]/10' : 'bg-[var(--warning)]/10'
                       }`}>
                         {isReco ? (
-                          <Sparkles className="w-5 h-5 text-[#4a6741]" />
+                          <Sparkles className="w-5 h-5 text-[var(--brand)]" />
                         ) : isMinus ? (
-                          <PackageX className="w-5 h-5 text-[#b91c1c]" />
+                          <PackageX className="w-5 h-5 text-[var(--danger-dark)]" />
                         ) : (
-                          <AlertTriangle className="w-5 h-5 text-[#d97706]" />
+                          <AlertTriangle className="w-5 h-5 text-[var(--warning)]" />
                         )}
                       </div>
-                      <p className="text-xs text-[#4b5563]">
+                      <p className="text-xs text-[var(--t-body)]">
                         {isReco ? 'Belum ada saran reorder' : isMinus ? 'Tidak ada stok minus' : 'Tidak ada low stock'}
                       </p>
                       {isReco ? (
-                        <p className="text-[11px] text-[#6b7280]">Muncul kalau ada produk dengan demand rutin & stok mepet</p>
+                        <p className="text-[11px] text-[var(--t-muted)]">Muncul kalau ada produk dengan demand rutin & stok mepet</p>
                       ) : isMinus ? (
-                        <p className="text-[11px] text-[#6b7280]">Produk dengan stok minus akan muncul di sini</p>
+                        <p className="text-[11px] text-[var(--t-muted)]">Produk dengan stok minus akan muncul di sini</p>
                       ) : (
-                        <p className="text-[11px] text-[#6b7280]">Produk dengan stok di bawah minimum akan muncul di sini</p>
+                        <p className="text-[11px] text-[var(--t-muted)]">Produk dengan stok di bawah minimum akan muncul di sini</p>
                       )}
                     </div>
                   </td>
@@ -284,15 +284,15 @@ export function LowStockCard({ minusItems = [], lowItems = [], recommendationIte
                   return (
                     <tr
                       key={item.variantId || item.sku + idx}
-                      className={`border-t border-[#f0f0f0] hover:bg-[#fafafa] transition-colors ${
-                        isMinus ? 'bg-[#b91c1c]/[0.03]' : isReco ? 'bg-[#4a6741]/[0.02]' : ''
+                      className={`border-t border-[var(--surface-2)] hover:bg-[var(--surface-hover)] transition-colors ${
+                        isMinus ? 'bg-[var(--danger-dark)]/[0.03]' : isReco ? 'bg-[var(--brand)]/[0.02]' : ''
                       }`}
                     >
                       <td className="py-2.5 px-3">
-                        <span className="text-sm font-semibold text-[#2d3436] bg-[#f0f0f0] px-1.5 py-0.5 rounded">
+                        <span className="text-sm font-semibold text-[var(--t-heading)] bg-[var(--surface-2)] px-1.5 py-0.5 rounded">
                           {item.sku}
                         </span>
-                        <p className="text-[11px] text-[#6b7280] mt-0.5 truncate max-w-[80px]">{item.name}</p>
+                        <p className="text-[11px] text-[var(--t-muted)] mt-0.5 truncate max-w-[80px]">{item.name}</p>
                       </td>
                       <td className="py-2.5 px-3">
                         <div className="flex items-center gap-2">
@@ -301,9 +301,9 @@ export function LowStockCard({ minusItems = [], lowItems = [], recommendationIte
                             style={{ backgroundColor: item.colorHex }}
                           />
                           <div className="min-w-0">
-                            <span className="text-sm text-[#4b5563]">{item.color}{item.type ? ` - ${item.type}` : ''}</span>
+                            <span className="text-sm text-[var(--t-body)]">{item.color}{item.type ? ` - ${item.type}` : ''}</span>
                             {!isReco && stock.note && (
-                              <p className="text-[11px] text-[#d97706] font-medium truncate max-w-[100px]" title={stock.note}>
+                              <p className="text-[11px] text-[var(--warning)] font-medium truncate max-w-[100px]" title={stock.note}>
                                 {stock.note}
                               </p>
                             )}
@@ -313,34 +313,34 @@ export function LowStockCard({ minusItems = [], lowItems = [], recommendationIte
                       {isReco ? (
                         <>
                           <td className="py-2.5 px-3 text-right">
-                            <span className={`text-sm font-semibold ${reco.currentQty < 0 ? 'text-[#b91c1c]' : 'text-[#2d3436]'}`}>
+                            <span className={`text-sm font-semibold ${reco.currentQty < 0 ? 'text-[var(--danger-dark)]' : 'text-[var(--t-heading)]'}`}>
                               {reco.currentQty}
                             </span>
                           </td>
                           <td className="py-2.5 px-3 text-right">
-                            <span className="text-sm text-[#4b5563]">{reco.avgDailyDemand}</span>
+                            <span className="text-sm text-[var(--t-body)]">{reco.avgDailyDemand}</span>
                           </td>
                           <td className="py-2.5 px-3 text-right">
-                            <span className="text-sm font-bold text-[#4a6741]">+{reco.suggestedQty}</span>
+                            <span className="text-sm font-bold text-[var(--brand)]">+{reco.suggestedQty}</span>
                           </td>
                         </>
                       ) : (
                         <>
                           <td className="py-2.5 px-3 text-right">
                             {isMinus ? (
-                              <span className="text-sm font-bold text-[#b91c1c]">{stock.qty}</span>
+                              <span className="text-sm font-bold text-[var(--danger-dark)]">{stock.qty}</span>
                             ) : (
                               <div className="text-right">
-                                <span className="text-sm font-semibold text-[#d97706]">{stock.qty}</span>
-                                <p className="text-[11px] text-[#6b7280]">min: {stock.minStock}</p>
+                                <span className="text-sm font-semibold text-[var(--warning)]">{stock.qty}</span>
+                                <p className="text-[11px] text-[var(--t-muted)]">min: {stock.minStock}</p>
                               </div>
                             )}
                           </td>
                           <td className="py-2.5 px-3 text-right">
                             {queued > 0 ? (
-                              <span className="text-sm font-semibold text-[#2563eb]">{queued}</span>
+                              <span className="text-sm font-semibold text-[var(--info)]">{queued}</span>
                             ) : (
-                              <span className="text-sm text-[#6b7280]">0</span>
+                              <span className="text-sm text-[var(--t-muted)]">0</span>
                             )}
                           </td>
                         </>
@@ -351,10 +351,10 @@ export function LowStockCard({ minusItems = [], lowItems = [], recommendationIte
                           disabled={sendingId === item.variantId}
                           className={`p-1.5 rounded-md transition-colors cursor-pointer disabled:opacity-50 ${
                             isReco
-                              ? 'bg-[#4a6741]/10 hover:bg-[#4a6741]/20 text-[#4a6741]'
+                              ? 'bg-[var(--brand)]/10 hover:bg-[var(--brand)]/20 text-[var(--brand)]'
                               : isMinus
-                              ? 'bg-[#b91c1c]/10 hover:bg-[#b91c1c]/20 text-[#b91c1c]'
-                              : 'bg-[#2563eb]/10 hover:bg-[#2563eb]/20 text-[#2563eb]'
+                              ? 'bg-[var(--danger-dark)]/10 hover:bg-[var(--danger-dark)]/20 text-[var(--danger-dark)]'
+                              : 'bg-[var(--info)]/10 hover:bg-[var(--info)]/20 text-[var(--info)]'
                           }`}
                           title={isReco ? `Send ${reco.suggestedQty} to Print Queue` : 'Send to Print Queue'}
                         >

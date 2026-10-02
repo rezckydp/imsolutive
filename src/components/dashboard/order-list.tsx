@@ -19,10 +19,10 @@ interface OrderListProps {
 }
 
 const statusStyles: Record<string, string> = {
-  Processing: 'bg-white text-[#2563eb] border-[#dfe6e9]',
-  Completed: 'bg-white text-[#4a6741] border-[#dfe6e9]',
-  Pending: 'bg-white text-[#d97706] border-[#dfe6e9]',
-  Cancelled: 'bg-white text-[#dc2626] border-[#dfe6e9]',
+  Processing: 'bg-[var(--card)] text-[var(--info)] border-[var(--bd-blue)]',
+  Completed: 'bg-[var(--card)] text-[var(--brand)] border-[var(--bd-blue)]',
+  Pending: 'bg-[var(--card)] text-[var(--warning)] border-[var(--bd-blue)]',
+  Cancelled: 'bg-[var(--card)] text-[var(--danger)] border-[var(--bd-blue)]',
 };
 
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -31,7 +31,7 @@ function SkeletonRows() {
   return (
     <>
       {[...Array(6)].map((_, i) => (
-        <tr key={i} className="border-t border-[#f0f0f0]">
+        <tr key={i} className="border-t border-[var(--surface-2)]">
           <td className="py-2.5 px-4">
             <Skeleton className="h-4 w-28" />
           </td>
@@ -63,17 +63,17 @@ export function OrderList({ orders = [], loading = false }: OrderListProps) {
   return (
     <Card className="rounded-xl shadow-sm border-0">
       <CardHeader className="pb-3 flex flex-row items-center justify-between px-4 pt-4">
-        <CardTitle className="text-sm font-semibold text-[#2d3436]">Order List</CardTitle>
+        <CardTitle className="text-sm font-semibold text-[var(--t-heading)]">Order List</CardTitle>
         <div className="relative">
           <button
             onClick={() => setShowMonthDropdown(!showMonthDropdown)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#f0f0f0] hover:bg-[#e8e8e8] text-sm text-[#4b5563] font-medium transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface-2)] hover:bg-[var(--bd)] text-sm text-[var(--t-body)] font-medium transition-colors cursor-pointer"
           >
             {selectedMonth}
             <ChevronDown className="w-3.5 h-3.5" />
           </button>
           {showMonthDropdown && (
-            <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-[#e8e8e8] py-1 z-50 min-w-[140px]">
+            <div className="absolute right-0 top-full mt-1 bg-[var(--card)] rounded-lg shadow-lg border border-[var(--bd)] py-1 z-50 min-w-[140px]">
               {months.map((month) => (
                 <button
                   key={month}
@@ -81,8 +81,8 @@ export function OrderList({ orders = [], loading = false }: OrderListProps) {
                     setSelectedMonth(month);
                     setShowMonthDropdown(false);
                   }}
-                  className={`w-full text-left px-3 py-2 text-sm hover:bg-[#f5f6fa] transition-colors cursor-pointer ${
-                    month === selectedMonth ? 'text-[#4a6741] font-medium bg-[#f5f6fa]' : 'text-[#4b5563]'
+                  className={`w-full text-left px-3 py-2 text-sm hover:bg-[var(--surface)] transition-colors cursor-pointer ${
+                    month === selectedMonth ? 'text-[var(--brand)] font-medium bg-[var(--surface)]' : 'text-[var(--t-body)]'
                   }`}
                 >
                   {month}
@@ -93,14 +93,14 @@ export function OrderList({ orders = [], loading = false }: OrderListProps) {
         </div>
       </CardHeader>
       <CardContent className="px-4 pb-4 pt-0">
-        <div className="rounded-lg border border-[#e8e8e8] overflow-hidden">
+        <div className="rounded-lg border border-[var(--bd)] overflow-hidden">
           <div className="max-h-64 overflow-y-auto -webkit-overflow-scrolling-touch">
             <table className="w-full">
               <thead>
-                <tr className="bg-[#f5f6fa]">
-                  <th className="text-left text-xs font-medium text-[#4b5563] py-2 px-4">Order No.</th>
-                  <th className="text-left text-xs font-medium text-[#4b5563] py-2 px-4">Timestamp</th>
-                  <th className="text-left text-xs font-medium text-[#4b5563] py-2 px-4">Status</th>
+                <tr className="bg-[var(--surface)]">
+                  <th className="text-left text-xs font-medium text-[var(--t-body)] py-2 px-4">Order No.</th>
+                  <th className="text-left text-xs font-medium text-[var(--t-body)] py-2 px-4">Timestamp</th>
+                  <th className="text-left text-xs font-medium text-[var(--t-body)] py-2 px-4">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -108,7 +108,7 @@ export function OrderList({ orders = [], loading = false }: OrderListProps) {
                   <SkeletonRows />
                 ) : filteredOrders.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="text-center py-6 text-sm text-[#4b5563]">
+                    <td colSpan={3} className="text-center py-6 text-sm text-[var(--t-body)]">
                       No orders found
                     </td>
                   </tr>
@@ -116,14 +116,14 @@ export function OrderList({ orders = [], loading = false }: OrderListProps) {
                   filteredOrders.map((order) => (
                     <tr
                       key={order.orderNo}
-                      className="border-t border-[#f0f0f0] hover:bg-[#fafafa] transition-colors"
+                      className="border-t border-[var(--surface-2)] hover:bg-[var(--surface-hover)] transition-colors"
                     >
-                      <td className="py-2.5 px-4 text-sm font-medium text-[#2d3436]">{order.orderNo}</td>
-                      <td className="py-2.5 px-4 text-sm text-[#4b5563]">{order.timestamp}</td>
+                      <td className="py-2.5 px-4 text-sm font-medium text-[var(--t-heading)]">{order.orderNo}</td>
+                      <td className="py-2.5 px-4 text-sm text-[var(--t-body)]">{order.timestamp}</td>
                       <td className="py-2.5 px-4">
                         <Badge
                           variant="outline"
-                          className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium ${statusStyles[order.status] || 'bg-white text-gray-600 border-gray-200'}`}
+                          className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium ${statusStyles[order.status] || 'bg-[var(--card)] text-[var(--t-body)] border-[var(--bd)]'}`}
                         >
                           {order.status}
                         </Badge>

@@ -140,15 +140,15 @@ function formatDateShort(isoString: string): string {
 function StatusBadge({ status }: { status: string }) {
   const config: Record<string, { className: string; label: string }> = {
     'In Progress': {
-      className: 'bg-[#2563eb]/10 text-[#2563eb] border-[#2563eb]/20',
+      className: 'bg-[var(--info)]/10 text-[var(--info)] border-[var(--info)]/20',
       label: 'In Progress',
     },
     'Completed': {
-      className: 'bg-[#15803d]/10 text-[#15803d] border-[#15803d]/20',
+      className: 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/20',
       label: 'Completed',
     },
     'Cancelled': {
-      className: 'bg-[#dc2626]/10 text-[#dc2626] border-[#dc2626]/20',
+      className: 'bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]/20',
       label: 'Cancelled',
     },
   };
@@ -162,8 +162,8 @@ function StatusBadge({ status }: { status: string }) {
 
 function TypeBadge({ type }: { type: string }) {
   const config: Record<string, { className: string }> = {
-    Full: { className: 'bg-[#4a6741]/10 text-[#4a6741] border-[#4a6741]/20' },
-    Partial: { className: 'bg-[#d97706]/10 text-[#d97706] border-[#d97706]/20' },
+    Full: { className: 'bg-[var(--brand)]/10 text-[var(--brand)] border-[var(--brand)]/20' },
+    Partial: { className: 'bg-[var(--warning)]/10 text-[var(--warning)] border-[var(--warning)]/20' },
   };
   const c = config[type] || config['Full'];
   return (
@@ -573,12 +573,12 @@ export function StockOpname() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
           <div>
-            <h2 className="text-lg md:text-xl font-bold text-[#2d3436]">Stock Opname</h2>
-            <p className="text-xs md:text-sm text-[#4b5563] mt-0.5">Track and adjust inventory counts</p>
+            <h2 className="text-lg md:text-xl font-bold text-[var(--t-heading)]">Stock Opname</h2>
+            <p className="text-xs md:text-sm text-[var(--t-body)] mt-0.5">Track and adjust inventory counts</p>
           </div>
           <Button
             onClick={() => setNewSessionOpen(true)}
-            className="bg-[#4a6741] hover:bg-[#3d5535] text-white gap-2 self-start sm:self-auto"
+            className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white gap-2 self-start sm:self-auto"
           >
             <Plus className="w-4 h-4" />
             New Session
@@ -590,17 +590,17 @@ export function StockOpname() {
           <SessionListSkeleton />
         ) : sessions.length === 0 ? (
           <Card className="p-8 md:p-12 flex flex-col items-center justify-center">
-            <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[#f5f6fa] flex items-center justify-center mb-4">
-              <ClipboardCheck className="w-8 h-8 md:w-10 md:h-10 text-[#6b7280]" />
+            <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-[var(--surface)] flex items-center justify-center mb-4">
+              <ClipboardCheck className="w-8 h-8 md:w-10 md:h-10 text-[var(--t-muted)]" />
             </div>
-            <h3 className="text-base md:text-lg font-semibold text-[#2d3436] mb-2">No Stock Opname Sessions</h3>
-            <p className="text-sm text-[#4b5563] text-center max-w-md mb-4">
+            <h3 className="text-base md:text-lg font-semibold text-[var(--t-heading)] mb-2">No Stock Opname Sessions</h3>
+            <p className="text-sm text-[var(--t-body)] text-center max-w-md mb-4">
               Start a new stock opname session to count and adjust your inventory.
             </p>
             <Button
               onClick={() => setNewSessionOpen(true)}
               variant="outline"
-              className="border-[#4a6741] text-[#4a6741] hover:bg-[#4a6741]/5 gap-2"
+              className="border-[var(--brand)] text-[var(--brand)] hover:bg-[var(--brand)]/5 gap-2"
             >
               <Plus className="w-4 h-4" />
               Create First Session
@@ -611,17 +611,17 @@ export function StockOpname() {
             {sessions.map((session) => (
               <Card
                 key={session.id}
-                className="p-4 md:p-5 hover:shadow-md transition-shadow cursor-pointer border border-[#e8e8e8]"
+                className="p-4 md:p-5 hover:shadow-md transition-shadow cursor-pointer border border-[var(--bd)]"
                 onClick={() => handleOpenSession(session.id)}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-lg bg-[#4a6741]/10 flex items-center justify-center flex-shrink-0">
-                      <ClipboardCheck className="w-5 h-5 text-[#4a6741]" />
+                    <div className="w-10 h-10 rounded-lg bg-[var(--brand)]/10 flex items-center justify-center flex-shrink-0">
+                      <ClipboardCheck className="w-5 h-5 text-[var(--brand)]" />
                     </div>
                     <div className="min-w-0">
-                      <p className="font-semibold text-sm md:text-base text-[#2d3436]">{session.sessionNo}</p>
-                      <p className="text-xs text-[#4b5563] truncate">
+                      <p className="font-semibold text-sm md:text-base text-[var(--t-heading)]">{session.sessionNo}</p>
+                      <p className="text-xs text-[var(--t-body)] truncate">
                         {session.type} Count {session.notes ? `· ${session.notes}` : ''}
                       </p>
                     </div>
@@ -635,23 +635,23 @@ export function StockOpname() {
                 {/* Stats row */}
                 <div className="flex items-center gap-4 md:gap-6 mt-3 ml-0 sm:ml-[52px]">
                   <div className="flex items-center gap-1.5">
-                    <PackageSearch className="w-3.5 h-3.5 text-[#6b7280]" />
-                    <span className="text-xs text-[#4b5563]">
-                      <span className="font-medium text-[#2d3436]">{session.totalItems}</span> items
+                    <PackageSearch className="w-3.5 h-3.5 text-[var(--t-muted)]" />
+                    <span className="text-xs text-[var(--t-body)]">
+                      <span className="font-medium text-[var(--t-heading)]">{session.totalItems}</span> items
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     {session.totalDiff > 0 ? (
-                      <span className="text-xs font-medium text-[#15803d]">+{session.totalDiff}</span>
+                      <span className="text-xs font-medium text-[var(--success)]">+{session.totalDiff}</span>
                     ) : session.totalDiff < 0 ? (
-                      <span className="text-xs font-medium text-[#dc2626]">{session.totalDiff}</span>
+                      <span className="text-xs font-medium text-[var(--danger)]">{session.totalDiff}</span>
                     ) : (
-                      <span className="text-xs font-medium text-[#6b7280]">0</span>
+                      <span className="text-xs font-medium text-[var(--t-muted)]">0</span>
                     )}
-                    <span className="text-xs text-[#4b5563]">difference</span>
+                    <span className="text-xs text-[var(--t-body)]">difference</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-[#6b7280]">{formatDateShort(session.startedAt)}</span>
+                    <span className="text-xs text-[var(--t-muted)]">{formatDateShort(session.startedAt)}</span>
                   </div>
                 </div>
               </Card>
@@ -669,42 +669,42 @@ export function StockOpname() {
             <div className="space-y-4 py-2">
               {/* Type selector */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-[#2d3436]">Session Type</label>
+                <label className="text-sm font-medium text-[var(--t-heading)]">Session Type</label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => setNewSessionType('Full')}
                     className={`p-3 rounded-lg border-2 text-center transition-all cursor-pointer ${
                       newSessionType === 'Full'
-                        ? 'border-[#4a6741] bg-[#4a6741]/5'
-                        : 'border-[#e8e8e8] hover:border-[#4a6741]/30'
+                        ? 'border-[var(--brand)] bg-[var(--brand)]/5'
+                        : 'border-[var(--bd)] hover:border-[var(--brand)]/30'
                     }`}
                   >
-                    <FileText className={`w-5 h-5 mx-auto mb-1.5 ${newSessionType === 'Full' ? 'text-[#4a6741]' : 'text-[#6b7280]'}`} />
-                    <span className={`text-sm font-medium ${newSessionType === 'Full' ? 'text-[#4a6741]' : 'text-[#4b5563]'}`}>
+                    <FileText className={`w-5 h-5 mx-auto mb-1.5 ${newSessionType === 'Full' ? 'text-[var(--brand)]' : 'text-[var(--t-muted)]'}`} />
+                    <span className={`text-sm font-medium ${newSessionType === 'Full' ? 'text-[var(--brand)]' : 'text-[var(--t-body)]'}`}>
                       Full Count
                     </span>
-                    <p className="text-[11px] text-[#6b7280] mt-0.5">Count all products</p>
+                    <p className="text-[11px] text-[var(--t-muted)] mt-0.5">Count all products</p>
                   </button>
                   <button
                     onClick={() => setNewSessionType('Partial')}
                     className={`p-3 rounded-lg border-2 text-center transition-all cursor-pointer ${
                       newSessionType === 'Partial'
-                        ? 'border-[#d97706] bg-[#d97706]/5'
-                        : 'border-[#e8e8e8] hover:border-[#d97706]/30'
+                        ? 'border-[var(--warning)] bg-[var(--warning)]/5'
+                        : 'border-[var(--bd)] hover:border-[var(--warning)]/30'
                     }`}
                   >
-                    <PackageSearch className={`w-5 h-5 mx-auto mb-1.5 ${newSessionType === 'Partial' ? 'text-[#d97706]' : 'text-[#6b7280]'}`} />
-                    <span className={`text-sm font-medium ${newSessionType === 'Partial' ? 'text-[#d97706]' : 'text-[#4b5563]'}`}>
+                    <PackageSearch className={`w-5 h-5 mx-auto mb-1.5 ${newSessionType === 'Partial' ? 'text-[var(--warning)]' : 'text-[var(--t-muted)]'}`} />
+                    <span className={`text-sm font-medium ${newSessionType === 'Partial' ? 'text-[var(--warning)]' : 'text-[var(--t-body)]'}`}>
                       Partial Count
                     </span>
-                    <p className="text-[11px] text-[#6b7280] mt-0.5">Count selected items</p>
+                    <p className="text-[11px] text-[var(--t-muted)] mt-0.5">Count selected items</p>
                   </button>
                 </div>
               </div>
 
               {/* Notes */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-[#2d3436]">Notes (optional)</label>
+                <label className="text-sm font-medium text-[var(--t-heading)]">Notes (optional)</label>
                 <Textarea
                   value={newSessionNotes}
                   onChange={(e) => setNewSessionNotes(e.target.value)}
@@ -714,13 +714,13 @@ export function StockOpname() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setNewSessionOpen(false)} className="border-[#e8e8e8]">
+              <Button variant="outline" onClick={() => setNewSessionOpen(false)} className="border-[var(--bd)]">
                 Cancel
               </Button>
               <Button
                 onClick={handleCreateSession}
                 disabled={creating}
-                className="bg-[#4a6741] hover:bg-[#3d5535] text-white"
+                className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white"
               >
                 {creating ? (
                   <>
@@ -745,7 +745,7 @@ export function StockOpname() {
       <div className="mb-6">
         <button
           onClick={handleBack}
-          className="flex items-center gap-2 text-sm text-[#4b5563] hover:text-[#4a6741] transition-colors mb-3 cursor-pointer"
+          className="flex items-center gap-2 text-sm text-[var(--t-body)] hover:text-[var(--brand)] transition-colors mb-3 cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Sessions
@@ -763,14 +763,14 @@ export function StockOpname() {
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
               <div className="flex items-center gap-3 mb-1.5">
-                <h2 className="text-lg md:text-xl font-bold text-[#2d3436]">{sessionDetail.sessionNo}</h2>
+                <h2 className="text-lg md:text-xl font-bold text-[var(--t-heading)]">{sessionDetail.sessionNo}</h2>
                 <TypeBadge type={sessionDetail.type} />
                 <StatusBadge status={sessionDetail.status} />
               </div>
               {sessionDetail.notes && (
-                <p className="text-sm text-[#4b5563] mb-1">{sessionDetail.notes}</p>
+                <p className="text-sm text-[var(--t-body)] mb-1">{sessionDetail.notes}</p>
               )}
-              <p className="text-xs text-[#6b7280]">
+              <p className="text-xs text-[var(--t-muted)]">
                 Started: {formatDate(sessionDetail.startedAt)}
                 {sessionDetail.completedAt && ` · Completed: ${formatDate(sessionDetail.completedAt)}`}
               </p>
@@ -778,15 +778,15 @@ export function StockOpname() {
 
             {/* Summary stats */}
             <div className="flex items-center gap-4 sm:gap-5 flex-shrink-0">
-              <div className="text-center px-3 py-2 bg-[#f5f6fa] rounded-lg">
-                <p className="text-lg font-bold text-[#2d3436]">{sessionDetail.totalItems}</p>
-                <p className="text-[11px] text-[#4b5563] font-medium">Items</p>
+              <div className="text-center px-3 py-2 bg-[var(--surface)] rounded-lg">
+                <p className="text-lg font-bold text-[var(--t-heading)]">{sessionDetail.totalItems}</p>
+                <p className="text-[11px] text-[var(--t-body)] font-medium">Items</p>
               </div>
-              <div className="text-center px-3 py-2 bg-[#f5f6fa] rounded-lg">
-                <p className={`text-lg font-bold ${sessionDetail.totalDiff > 0 ? 'text-[#15803d]' : sessionDetail.totalDiff < 0 ? 'text-[#dc2626]' : 'text-[#6b7280]'}`}>
+              <div className="text-center px-3 py-2 bg-[var(--surface)] rounded-lg">
+                <p className={`text-lg font-bold ${sessionDetail.totalDiff > 0 ? 'text-[var(--success)]' : sessionDetail.totalDiff < 0 ? 'text-[var(--danger)]' : 'text-[var(--t-muted)]'}`}>
                   {sessionDetail.totalDiff > 0 ? '+' : ''}{sessionDetail.totalDiff}
                 </p>
-                <p className="text-[11px] text-[#4b5563] font-medium">Difference</p>
+                <p className="text-[11px] text-[var(--t-body)] font-medium">Difference</p>
               </div>
             </div>
           </div>
@@ -803,21 +803,21 @@ export function StockOpname() {
         </Card>
       ) : !sessionDetail ? (
         <Card className="p-8 text-center">
-          <p className="text-[#4b5563]">Session not found</p>
+          <p className="text-[var(--t-body)]">Session not found</p>
         </Card>
       ) : sessionDetail.status === 'Cancelled' ? (
         /* ==================== CANCELLED VIEW ==================== */
         <Card className="p-8 md:p-12 flex flex-col items-center justify-center">
-          <div className="w-16 h-16 rounded-full bg-[#dc2626]/10 flex items-center justify-center mb-4">
-            <XCircle className="w-8 h-8 text-[#dc2626]" />
+          <div className="w-16 h-16 rounded-full bg-[var(--danger)]/10 flex items-center justify-center mb-4">
+            <XCircle className="w-8 h-8 text-[var(--danger)]" />
           </div>
-          <h3 className="text-lg font-semibold text-[#2d3436] mb-2">Session Cancelled</h3>
-          <p className="text-sm text-[#4b5563] text-center max-w-md">
+          <h3 className="text-lg font-semibold text-[var(--t-heading)] mb-2">Session Cancelled</h3>
+          <p className="text-sm text-[var(--t-body)] text-center max-w-md">
             This stock opname session was cancelled and is no longer active.
           </p>
           {sessionDetail.items && sessionDetail.items.length > 0 && (
             <div className="mt-6 w-full max-w-lg">
-              <p className="text-xs text-[#6b7280] text-center mb-3">
+              <p className="text-xs text-[var(--t-muted)] text-center mb-3">
                 {sessionDetail.items.length} item(s) were counted before cancellation
               </p>
             </div>
@@ -828,8 +828,8 @@ export function StockOpname() {
         <div className="space-y-4">
           <Card className="p-4 md:p-6">
             <div className="flex items-center gap-2 mb-4">
-              <CheckCircle2 className="w-5 h-5 text-[#15803d]" />
-              <h3 className="font-semibold text-[#2d3436]">Counted Items</h3>
+              <CheckCircle2 className="w-5 h-5 text-[var(--success)]" />
+              <h3 className="font-semibold text-[var(--t-heading)]">Counted Items</h3>
               <Badge variant="secondary" className="ml-auto text-xs">
                 {sessionDetail.items?.length || 0} items
               </Badge>
@@ -839,53 +839,53 @@ export function StockOpname() {
               <div className="overflow-x-auto -mx-4 md:-mx-6 px-4 md:px-6">
                 <table className="w-full min-w-[500px]">
                   <thead>
-                    <tr className="border-b border-[#e8e8e8]">
-                      <th className="text-left text-[11px] font-medium text-[#4b5563] uppercase tracking-wider pb-3 pr-4">SKU</th>
-                      <th className="text-left text-[11px] font-medium text-[#4b5563] uppercase tracking-wider pb-3 pr-4">Product</th>
-                      <th className="text-left text-[11px] font-medium text-[#4b5563] uppercase tracking-wider pb-3 pr-4">Variant</th>
-                      <th className="text-right text-[11px] font-medium text-[#4b5563] uppercase tracking-wider pb-3 pr-4">System</th>
-                      <th className="text-right text-[11px] font-medium text-[#4b5563] uppercase tracking-wider pb-3 pr-4">Actual</th>
-                      <th className="text-right text-[11px] font-medium text-[#4b5563] uppercase tracking-wider pb-3 pr-4">Diff</th>
-                      <th className="text-center text-[11px] font-medium text-[#4b5563] uppercase tracking-wider pb-3">Status</th>
+                    <tr className="border-b border-[var(--bd)]">
+                      <th className="text-left text-[11px] font-medium text-[var(--t-body)] uppercase tracking-wider pb-3 pr-4">SKU</th>
+                      <th className="text-left text-[11px] font-medium text-[var(--t-body)] uppercase tracking-wider pb-3 pr-4">Product</th>
+                      <th className="text-left text-[11px] font-medium text-[var(--t-body)] uppercase tracking-wider pb-3 pr-4">Variant</th>
+                      <th className="text-right text-[11px] font-medium text-[var(--t-body)] uppercase tracking-wider pb-3 pr-4">System</th>
+                      <th className="text-right text-[11px] font-medium text-[var(--t-body)] uppercase tracking-wider pb-3 pr-4">Actual</th>
+                      <th className="text-right text-[11px] font-medium text-[var(--t-body)] uppercase tracking-wider pb-3 pr-4">Diff</th>
+                      <th className="text-center text-[11px] font-medium text-[var(--t-body)] uppercase tracking-wider pb-3">Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {sessionDetail.items.map((item) => (
-                      <tr key={item.id} className="border-b border-[#e8e8e8] last:border-0">
+                      <tr key={item.id} className="border-b border-[var(--bd)] last:border-0">
                         <td className="py-3 pr-4">
-                          <span className="text-sm font-medium text-[#2d3436]">{item.variant.product.sku}</span>
+                          <span className="text-sm font-medium text-[var(--t-heading)]">{item.variant.product.sku}</span>
                         </td>
                         <td className="py-3 pr-4">
-                          <span className="text-sm text-[#4b5563]">{item.variant.product.name}</span>
+                          <span className="text-sm text-[var(--t-body)]">{item.variant.product.name}</span>
                         </td>
                         <td className="py-3 pr-4">
                           <div className="flex items-center gap-2">
                             <div
-                              className="w-4 h-4 rounded-full border border-[#e8e8e8] flex-shrink-0"
+                              className="w-4 h-4 rounded-full border border-[var(--bd)] flex-shrink-0"
                               style={{ backgroundColor: item.variant.colorHex }}
                             />
-                            <span className="text-sm text-[#4b5563]">{item.variant.color}{item.variant.type ? ` - ${item.variant.type}` : ''}</span>
+                            <span className="text-sm text-[var(--t-body)]">{item.variant.color}{item.variant.type ? ` - ${item.variant.type}` : ''}</span>
                           </div>
                         </td>
                         <td className="py-3 pr-4 text-right">
-                          <span className="text-sm text-[#2d3436]">{item.systemQty}</span>
+                          <span className="text-sm text-[var(--t-heading)]">{item.systemQty}</span>
                         </td>
                         <td className="py-3 pr-4 text-right">
-                          <span className="text-sm font-medium text-[#2d3436]">{item.actualQty}</span>
+                          <span className="text-sm font-medium text-[var(--t-heading)]">{item.actualQty}</span>
                         </td>
                         <td className="py-3 pr-4 text-right">
-                          <span className={`text-sm font-medium ${item.difference > 0 ? 'text-[#15803d]' : item.difference < 0 ? 'text-[#dc2626]' : 'text-[#6b7280]'}`}>
+                          <span className={`text-sm font-medium ${item.difference > 0 ? 'text-[var(--success)]' : item.difference < 0 ? 'text-[var(--danger)]' : 'text-[var(--t-muted)]'}`}>
                             {item.difference > 0 ? '+' : ''}{item.difference}
                           </span>
                         </td>
                         <td className="py-3 text-center">
                           {item.adjusted ? (
-                            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#15803d]/10 text-[#15803d]">
+                            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--success)]/10 text-[var(--success)]">
                               <Check className="w-3 h-3" />
                               <span className="text-[11px] font-medium">Adjusted</span>
                             </div>
                           ) : (
-                            <span className="text-[11px] text-[#6b7280]">Pending</span>
+                            <span className="text-[11px] text-[var(--t-muted)]">Pending</span>
                           )}
                         </td>
                       </tr>
@@ -894,15 +894,15 @@ export function StockOpname() {
                 </table>
               </div>
             ) : (
-              <p className="text-sm text-[#6b7280] text-center py-6">No items counted in this session.</p>
+              <p className="text-sm text-[var(--t-muted)] text-center py-6">No items counted in this session.</p>
             )}
           </Card>
 
           {/* Summary */}
-          <Card className="p-4 bg-[#f5f6fa]">
+          <Card className="p-4 bg-[var(--surface)]">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-[#4b5563]">Total Difference</span>
-              <span className={`text-lg font-bold ${sessionDetail.totalDiff > 0 ? 'text-[#15803d]' : sessionDetail.totalDiff < 0 ? 'text-[#dc2626]' : 'text-[#6b7280]'}`}>
+              <span className="text-sm text-[var(--t-body)]">Total Difference</span>
+              <span className={`text-lg font-bold ${sessionDetail.totalDiff > 0 ? 'text-[var(--success)]' : sessionDetail.totalDiff < 0 ? 'text-[var(--danger)]' : 'text-[var(--t-muted)]'}`}>
                 {sessionDetail.totalDiff > 0 ? '+' : ''}{sessionDetail.totalDiff}
               </span>
             </div>
@@ -914,20 +914,20 @@ export function StockOpname() {
           {/* Count Form */}
           <Card className="p-4 md:p-6">
             <div className="flex items-center gap-2 mb-4">
-              <PackageSearch className="w-5 h-5 text-[#4a6741]" />
-              <h3 className="font-semibold text-[#2d3436]">Count Item</h3>
+              <PackageSearch className="w-5 h-5 text-[var(--brand)]" />
+              <h3 className="font-semibold text-[var(--t-heading)]">Count Item</h3>
             </div>
 
             <div className="space-y-3">
               {/* ========== BARCODE SCAN INPUT (primary method) ========== */}
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-[#4b5563] flex items-center gap-1.5">
+                <label className="text-xs font-medium text-[var(--t-body)] flex items-center gap-1.5">
                   <ScanBarcode className="w-3.5 h-3.5" />
                   Scan Barcode / SKU
                 </label>
                 <div className="flex gap-2">
                   <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6b7280]" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--t-muted)]" />
                     <Input
                       ref={barcodeInputRef}
                       value={barcodeInput}
@@ -941,45 +941,45 @@ export function StockOpname() {
                       placeholder="Scan or type barcode / SKU..."
                       disabled={barcodeLookingUp}
                       autoFocus
-                      className="pl-9 h-11 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg"
+                      className="pl-9 h-11 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg"
                     />
                   </div>
                   <Button
                     onClick={handleBarcodeScan}
                     disabled={barcodeLookingUp || !barcodeInput.trim()}
-                    className="bg-[#4a6741] hover:bg-[#3d5535] text-white h-11 px-4 rounded-lg flex-shrink-0 disabled:opacity-50"
+                    className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white h-11 px-4 rounded-lg flex-shrink-0 disabled:opacity-50"
                   >
                     {barcodeLookingUp ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                   </Button>
                 </div>
                 {barcodeError && (
-                  <p className="text-xs text-[#dc2626] mt-1">{barcodeError}</p>
+                  <p className="text-xs text-[var(--danger)] mt-1">{barcodeError}</p>
                 )}
               </div>
 
               {/* Divider: or search manually */}
               <div className="flex items-center gap-3">
-                <div className="flex-1 border-t border-[#e8e8e8]" />
-                <span className="text-[11px] text-[#6b7280] font-medium">atau cari manual</span>
-                <div className="flex-1 border-t border-[#e8e8e8]" />
+                <div className="flex-1 border-t border-[var(--bd)]" />
+                <span className="text-[11px] text-[var(--t-muted)] font-medium">atau cari manual</span>
+                <div className="flex-1 border-t border-[var(--bd)]" />
               </div>
 
               {/* Variant Search (manual fallback) */}
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-[#4b5563]">Search Variant (SKU or Product Name)</label>
+                <label className="text-xs font-medium text-[var(--t-body)]">Search Variant (SKU or Product Name)</label>
                 <Popover open={variantSearchOpen} onOpenChange={setVariantSearchOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
                       role="combobox"
                       aria-expanded={variantSearchOpen}
-                      className="w-full justify-between h-10 border-[#e8e8e8] text-left font-normal"
+                      className="w-full justify-between h-10 border-[var(--bd)] text-left font-normal"
                       disabled={productsLoading}
                     >
                       {selectedProduct && selectedVariant ? (
                         <div className="flex items-center gap-2 min-w-0 truncate">
                           <div
-                            className="w-3.5 h-3.5 rounded-full border border-[#e8e8e8] flex-shrink-0"
+                            className="w-3.5 h-3.5 rounded-full border border-[var(--bd)] flex-shrink-0"
                             style={{ backgroundColor: selectedVariant.colorHex }}
                           />
                           <span className="truncate">
@@ -987,9 +987,9 @@ export function StockOpname() {
                           </span>
                         </div>
                       ) : productsLoading ? (
-                        <span className="text-[#6b7280]">Loading products...</span>
+                        <span className="text-[var(--t-muted)]">Loading products...</span>
                       ) : (
-                        <span className="text-[#6b7280]">Search SKU or product name...</span>
+                        <span className="text-[var(--t-muted)]">Search SKU or product name...</span>
                       )}
                       <ChevronDown className="w-4 h-4 flex-shrink-0 opacity-50" />
                     </Button>
@@ -1021,7 +1021,7 @@ export function StockOpname() {
                               <div className="flex items-center gap-2 min-w-0 w-full">
                                 <div className="min-w-0 flex-1">
                                   <span className="text-sm font-medium">{product.sku}</span>
-                                  <span className="text-sm text-[#4b5563] ml-2">{product.name}</span>
+                                  <span className="text-sm text-[var(--t-body)] ml-2">{product.name}</span>
                                 </div>
                                 <Badge variant="secondary" className="text-[11px] flex-shrink-0">
                                   {product.variants.length} {product.variants.length === 1 ? 'color' : 'colors'}
@@ -1039,7 +1039,7 @@ export function StockOpname() {
               {/* Color variant selector (if product has multiple variants) */}
               {selectedProduct && selectedProduct.variants.length > 1 && (
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-[#4b5563]">Select Color Variant</label>
+                  <label className="text-xs font-medium text-[var(--t-body)]">Select Color Variant</label>
                   <div className="flex flex-wrap gap-2">
                     {selectedProduct.variants.map((v) => (
                       <button
@@ -1047,16 +1047,16 @@ export function StockOpname() {
                         onClick={() => setSelectedVariantId(v.id)}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all cursor-pointer ${
                           selectedVariantId === v.id
-                            ? 'border-[#4a6741] bg-[#4a6741]/5 text-[#4a6741]'
-                            : 'border-[#e8e8e8] text-[#4b5563] hover:border-[#4a6741]/30'
+                            ? 'border-[var(--brand)] bg-[var(--brand)]/5 text-[var(--brand)]'
+                            : 'border-[var(--bd)] text-[var(--t-body)] hover:border-[var(--brand)]/30'
                         }`}
                       >
                         <div
-                          className="w-3 h-3 rounded-full border border-[#e8e8e8] flex-shrink-0"
+                          className="w-3 h-3 rounded-full border border-[var(--bd)] flex-shrink-0"
                           style={{ backgroundColor: v.colorHex }}
                         />
                         {v.color}{v.type ? ` - ${v.type}` : ''}
-                        <span className="text-[#6b7280]">({v.qty})</span>
+                        <span className="text-[var(--t-muted)]">({v.qty})</span>
                       </button>
                     ))}
                   </div>
@@ -1065,12 +1065,12 @@ export function StockOpname() {
 
               {/* Single variant info */}
               {selectedProduct && selectedProduct.variants.length === 1 && selectedVariant && (
-                <div className="flex items-center gap-2 text-xs text-[#4b5563] bg-[#f5f6fa] px-3 py-2 rounded-lg">
+                <div className="flex items-center gap-2 text-xs text-[var(--t-body)] bg-[var(--surface)] px-3 py-2 rounded-lg">
                   <span className="font-medium">System stock: {selectedVariant.qty}</span>
-                  <span className="text-[#6b7280]">·</span>
+                  <span className="text-[var(--t-muted)]">·</span>
                   <div className="flex items-center gap-1">
                     <div
-                      className="w-3 h-3 rounded-full border border-[#e8e8e8]"
+                      className="w-3 h-3 rounded-full border border-[var(--bd)]"
                       style={{ backgroundColor: selectedVariant.colorHex }}
                     />
                     {selectedVariant.color}{selectedVariant.type ? ` - ${selectedVariant.type}` : ''}
@@ -1081,7 +1081,7 @@ export function StockOpname() {
               {/* Actual Qty Input */}
               <div className="flex flex-col sm:flex-row gap-3">
                 <div className="space-y-1.5 flex-1">
-                  <label className="text-xs font-medium text-[#4b5563]">Actual Quantity</label>
+                  <label className="text-xs font-medium text-[var(--t-body)]">Actual Quantity</label>
                   <Input
                     ref={countInputRef}
                     type="number"
@@ -1102,7 +1102,7 @@ export function StockOpname() {
                   <Button
                     onClick={handleCount}
                     disabled={counting || !selectedVariantId || !actualQty}
-                    className="bg-[#4a6741] hover:bg-[#3d5535] text-white gap-2 w-full sm:w-auto h-10"
+                    className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white gap-2 w-full sm:w-auto h-10"
                   >
                     {counting ? (
                       <>
@@ -1124,8 +1124,8 @@ export function StockOpname() {
           {/* Counted Items Table */}
           <Card className="p-4 md:p-6">
             <div className="flex items-center gap-2 mb-4">
-              <FileText className="w-5 h-5 text-[#4a6741]" />
-              <h3 className="font-semibold text-[#2d3436]">Counted Items</h3>
+              <FileText className="w-5 h-5 text-[var(--brand)]" />
+              <h3 className="font-semibold text-[var(--t-heading)]">Counted Items</h3>
               {sessionDetail.items && sessionDetail.items.length > 0 && (
                 <Badge variant="secondary" className="ml-auto text-xs">
                   {sessionDetail.items.length} items
@@ -1137,42 +1137,42 @@ export function StockOpname() {
               <div className="overflow-x-auto -mx-4 md:-mx-6 px-4 md:px-6">
                 <table className="w-full min-w-[550px]">
                   <thead>
-                    <tr className="border-b border-[#e8e8e8]">
-                      <th className="text-left text-[11px] font-medium text-[#4b5563] uppercase tracking-wider pb-3 pr-4">SKU</th>
-                      <th className="text-left text-[11px] font-medium text-[#4b5563] uppercase tracking-wider pb-3 pr-4">Product</th>
-                      <th className="text-left text-[11px] font-medium text-[#4b5563] uppercase tracking-wider pb-3 pr-4">Color</th>
-                      <th className="text-right text-[11px] font-medium text-[#4b5563] uppercase tracking-wider pb-3 pr-4">System</th>
-                      <th className="text-right text-[11px] font-medium text-[#4b5563] uppercase tracking-wider pb-3 pr-4">Actual</th>
-                      <th className="text-right text-[11px] font-medium text-[#4b5563] uppercase tracking-wider pb-3 pr-4">Diff</th>
-                      <th className="text-center text-[11px] font-medium text-[#4b5563] uppercase tracking-wider pb-3 w-12"></th>
+                    <tr className="border-b border-[var(--bd)]">
+                      <th className="text-left text-[11px] font-medium text-[var(--t-body)] uppercase tracking-wider pb-3 pr-4">SKU</th>
+                      <th className="text-left text-[11px] font-medium text-[var(--t-body)] uppercase tracking-wider pb-3 pr-4">Product</th>
+                      <th className="text-left text-[11px] font-medium text-[var(--t-body)] uppercase tracking-wider pb-3 pr-4">Color</th>
+                      <th className="text-right text-[11px] font-medium text-[var(--t-body)] uppercase tracking-wider pb-3 pr-4">System</th>
+                      <th className="text-right text-[11px] font-medium text-[var(--t-body)] uppercase tracking-wider pb-3 pr-4">Actual</th>
+                      <th className="text-right text-[11px] font-medium text-[var(--t-body)] uppercase tracking-wider pb-3 pr-4">Diff</th>
+                      <th className="text-center text-[11px] font-medium text-[var(--t-body)] uppercase tracking-wider pb-3 w-12"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {sessionDetail.items.map((item) => (
-                      <tr key={item.id} className="border-b border-[#e8e8e8] last:border-0 group">
+                      <tr key={item.id} className="border-b border-[var(--bd)] last:border-0 group">
                         <td className="py-3 pr-4">
-                          <span className="text-sm font-medium text-[#2d3436]">{item.variant.product.sku}</span>
+                          <span className="text-sm font-medium text-[var(--t-heading)]">{item.variant.product.sku}</span>
                         </td>
                         <td className="py-3 pr-4">
-                          <span className="text-sm text-[#4b5563]">{item.variant.product.name}</span>
+                          <span className="text-sm text-[var(--t-body)]">{item.variant.product.name}</span>
                         </td>
                         <td className="py-3 pr-4">
                           <div className="flex items-center gap-2">
                             <div
-                              className="w-4 h-4 rounded-full border border-[#e8e8e8] flex-shrink-0"
+                              className="w-4 h-4 rounded-full border border-[var(--bd)] flex-shrink-0"
                               style={{ backgroundColor: item.variant.colorHex }}
                             />
-                            <span className="text-sm text-[#4b5563]">{item.variant.color}</span>
+                            <span className="text-sm text-[var(--t-body)]">{item.variant.color}</span>
                           </div>
                         </td>
                         <td className="py-3 pr-4 text-right">
-                          <span className="text-sm text-[#2d3436]">{item.systemQty}</span>
+                          <span className="text-sm text-[var(--t-heading)]">{item.systemQty}</span>
                         </td>
                         <td className="py-3 pr-4 text-right">
-                          <span className="text-sm font-medium text-[#2d3436]">{item.actualQty}</span>
+                          <span className="text-sm font-medium text-[var(--t-heading)]">{item.actualQty}</span>
                         </td>
                         <td className="py-3 pr-4 text-right">
-                          <span className={`text-sm font-medium ${item.difference > 0 ? 'text-[#15803d]' : item.difference < 0 ? 'text-[#dc2626]' : 'text-[#6b7280]'}`}>
+                          <span className={`text-sm font-medium ${item.difference > 0 ? 'text-[var(--success)]' : item.difference < 0 ? 'text-[var(--danger)]' : 'text-[var(--t-muted)]'}`}>
                             {item.difference > 0 ? '+' : ''}{item.difference}
                           </span>
                         </td>
@@ -1183,7 +1183,7 @@ export function StockOpname() {
                               setDeleteItemId(item.id);
                               setDeleteItemDialogOpen(true);
                             }}
-                            className="p-1.5 rounded-md text-[#6b7280] hover:text-[#dc2626] hover:bg-[#dc2626]/5 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                            className="p-1.5 rounded-md text-[var(--t-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/5 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
                             title="Delete item"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -1196,11 +1196,11 @@ export function StockOpname() {
               </div>
             ) : (
               <div className="py-8 text-center">
-                <div className="w-12 h-12 rounded-full bg-[#f5f6fa] flex items-center justify-center mx-auto mb-3">
-                  <Search className="w-5 h-5 text-[#6b7280]" />
+                <div className="w-12 h-12 rounded-full bg-[var(--surface)] flex items-center justify-center mx-auto mb-3">
+                  <Search className="w-5 h-5 text-[var(--t-muted)]" />
                 </div>
-                <p className="text-sm text-[#6b7280]">No items counted yet.</p>
-                <p className="text-xs text-[#6b7280] mt-0.5">Search for a variant above and enter the actual count.</p>
+                <p className="text-sm text-[var(--t-muted)]">No items counted yet.</p>
+                <p className="text-xs text-[var(--t-muted)] mt-0.5">Search for a variant above and enter the actual count.</p>
               </div>
             )}
           </Card>
@@ -1210,7 +1210,7 @@ export function StockOpname() {
             <div className="flex flex-col sm:flex-row gap-3">
               <Button
                 onClick={() => setAdjustDialogOpen(true)}
-                className="bg-[#15803d] hover:bg-[#219a52] text-white gap-2 flex-1 sm:flex-none"
+                className="bg-[var(--success)] hover:bg-[var(--success-alt)] text-white gap-2 flex-1 sm:flex-none"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 Adjust Stock
@@ -1218,7 +1218,7 @@ export function StockOpname() {
               <Button
                 onClick={() => setCancelDialogOpen(true)}
                 variant="outline"
-                className="border-[#dc2626]/30 text-[#dc2626] hover:bg-[#dc2626]/5 gap-2 flex-1 sm:flex-none"
+                className="border-[var(--danger)]/30 text-[var(--danger)] hover:bg-[var(--danger)]/5 gap-2 flex-1 sm:flex-none"
               >
                 <XCircle className="w-4 h-4" />
                 Cancel Session
@@ -1237,7 +1237,7 @@ export function StockOpname() {
               This will update the system stock for all <strong>{sessionDetail?.items?.filter(i => !i.adjusted).length || 0}</strong> unadjusted item(s) to match the actual counted quantities.
               The session will be marked as <strong>Completed</strong> and cannot be edited afterward.
               <br /><br />
-              <span className="text-[#d97706] font-medium">This action cannot be undone.</span>
+              <span className="text-[var(--warning)] font-medium">This action cannot be undone.</span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1248,7 +1248,7 @@ export function StockOpname() {
                 handleAdjustStock();
               }}
               disabled={actionLoading}
-              className="bg-[#15803d] hover:bg-[#219a52] text-white"
+              className="bg-[var(--success)] hover:bg-[var(--success-alt)] text-white"
             >
               {actionLoading ? (
                 <>
@@ -1273,7 +1273,7 @@ export function StockOpname() {
               <br /><br />
               This will mark the session as cancelled. All counted items will be kept for record but stock will not be adjusted.
               <br /><br />
-              <span className="text-[#dc2626] font-medium">This action cannot be undone.</span>
+              <span className="text-[var(--danger)] font-medium">This action cannot be undone.</span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1284,7 +1284,7 @@ export function StockOpname() {
                 handleCancelSession();
               }}
               disabled={actionLoading}
-              className="bg-[#dc2626] hover:bg-[#b91c1c] text-white"
+              className="bg-[var(--danger)] hover:bg-[var(--danger-dark)] text-white"
             >
               {actionLoading ? (
                 <>
@@ -1316,7 +1316,7 @@ export function StockOpname() {
                 handleDeleteItem();
               }}
               disabled={actionLoading}
-              className="bg-[#dc2626] hover:bg-[#b91c1c] text-white"
+              className="bg-[var(--danger)] hover:bg-[var(--danger-dark)] text-white"
             >
               {actionLoading ? (
                 <>

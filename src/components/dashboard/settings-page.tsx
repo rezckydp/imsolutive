@@ -200,19 +200,19 @@ export function SettingsPage() {
     <div className="space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold text-[#2d3436]">Settings</h1>
-        <p className="text-sm text-[#4b5563] mt-1">Pengaturan dan konfigurasi sistem</p>
+        <h1 className="text-2xl font-bold text-[var(--t-heading)]">Settings</h1>
+        <p className="text-sm text-[var(--t-body)] mt-1">Pengaturan dan konfigurasi sistem</p>
       </div>
 
       {/* Info Card */}
-      <div className="bg-white rounded-xl shadow-sm p-6">
+      <div className="bg-[var(--card)] rounded-xl shadow-sm p-6">
         <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-xl bg-[#4a6741]/10 flex items-center justify-center flex-shrink-0">
-            <Settings className="w-6 h-6 text-[#4a6741]" />
+          <div className="w-12 h-12 rounded-xl bg-[var(--brand)]/10 flex items-center justify-center flex-shrink-0">
+            <Settings className="w-6 h-6 text-[var(--brand)]" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-[#2d3436] mb-1">Solutive Inventory System</h2>
-            <p className="text-sm text-[#4b5563] leading-relaxed">
+            <h2 className="text-lg font-semibold text-[var(--t-heading)] mb-1">Solutive Inventory System</h2>
+            <p className="text-sm text-[var(--t-body)] leading-relaxed">
               Sistem manajemen inventory dan produksi untuk workspace kamu.
               Kelola printer di menu <strong>3D Printer DB</strong> di sidebar.
             </p>
@@ -222,16 +222,16 @@ export function SettingsPage() {
 
       {/* Team Accounts — Admin only */}
       {currentUser?.role === 'ADMIN' && (
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-[#e8e8e8] flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-[#2d3436] flex items-center gap-2">
-              <Users className="w-4 h-4 text-[#4b5563]" />
+        <div className="bg-[var(--card)] rounded-xl shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-[var(--bd)] flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-[var(--t-heading)] flex items-center gap-2">
+              <Users className="w-4 h-4 text-[var(--t-body)]" />
               Team Accounts
             </h3>
             <Button
               size="sm"
               onClick={() => setAddOpen(true)}
-              className="h-8 rounded-lg bg-[#4a6741] hover:bg-[#3d5535] text-white text-xs gap-1.5"
+              className="h-8 rounded-lg bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white text-xs gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" />
               Tambah Akun
@@ -239,24 +239,24 @@ export function SettingsPage() {
           </div>
           <div className="p-2">
             {loadingAccounts ? (
-              <div className="flex items-center justify-center py-8 text-[#6b7280]">
+              <div className="flex items-center justify-center py-8 text-[var(--t-muted)]">
                 <Loader2 className="w-5 h-5 animate-spin" />
               </div>
             ) : (
               <table className="w-full">
                 <tbody>
                   {accounts.map((account) => (
-                    <tr key={account.id} className="border-b border-[#f0f0f0] last:border-0">
+                    <tr key={account.id} className="border-b border-[var(--surface-2)] last:border-0">
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-2">
                           {account.role === 'ADMIN' ? (
-                            <ShieldCheck className="w-4 h-4 text-[#4a6741] flex-shrink-0" />
+                            <ShieldCheck className="w-4 h-4 text-[var(--brand)] flex-shrink-0" />
                           ) : (
-                            <ShieldOff className="w-4 h-4 text-[#9ca3af] flex-shrink-0" />
+                            <ShieldOff className="w-4 h-4 text-[var(--t-subtle)] flex-shrink-0" />
                           )}
                           <div>
-                            <p className="text-sm font-medium text-[#2d3436]">{account.name || account.username}</p>
-                            <p className="text-[11px] text-[#6b7280]">@{account.username}</p>
+                            <p className="text-sm font-medium text-[var(--t-heading)]">{account.name || account.username}</p>
+                            <p className="text-[11px] text-[var(--t-muted)]">@{account.username}</p>
                           </div>
                         </div>
                       </td>
@@ -265,8 +265,8 @@ export function SettingsPage() {
                           variant="outline"
                           className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${
                             account.role === 'ADMIN'
-                              ? 'bg-[#4a6741]/10 text-[#4a6741] border-[#4a6741]/30'
-                              : 'bg-[#e8e8e8] text-[#4b5563] border-[#d1d5db]'
+                              ? 'bg-[var(--brand)]/10 text-[var(--brand)] border-[var(--brand)]/30'
+                              : 'bg-[var(--bd)] text-[var(--t-body)] border-[var(--bd-2)]'
                           }`}
                         >
                           {account.role === 'ADMIN' ? 'Admin' : 'Staff'}
@@ -277,8 +277,8 @@ export function SettingsPage() {
                           variant="outline"
                           className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${
                             account.isActive
-                              ? 'bg-[#15803d]/10 text-[#15803d] border-[#15803d]/30'
-                              : 'bg-[#dc2626]/10 text-[#dc2626] border-[#dc2626]/30'
+                              ? 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/30'
+                              : 'bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]/30'
                           }`}
                         >
                           {account.isActive ? 'Aktif' : 'Nonaktif'}
@@ -288,7 +288,7 @@ export function SettingsPage() {
                         <button
                           onClick={() => openEdit(account)}
                           title="Edit akun"
-                          className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-[#4b5563] hover:bg-[#f5f6fa] transition-colors cursor-pointer"
+                          className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-[var(--t-body)] hover:bg-[var(--surface)] transition-colors cursor-pointer"
                         >
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
@@ -297,7 +297,7 @@ export function SettingsPage() {
                   ))}
                   {accounts.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="text-center py-6 text-sm text-[#6b7280]">
+                      <td colSpan={4} className="text-center py-6 text-sm text-[var(--t-muted)]">
                         Belum ada akun tim
                       </td>
                     </tr>
@@ -311,54 +311,54 @@ export function SettingsPage() {
 
       {/* Activity Log — Admin only */}
       {currentUser?.role === 'ADMIN' && (
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-[#e8e8e8]">
-            <h3 className="text-sm font-semibold text-[#2d3436] flex items-center gap-2">
-              <History className="w-4 h-4 text-[#4b5563]" />
+        <div className="bg-[var(--card)] rounded-xl shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-[var(--bd)]">
+            <h3 className="text-sm font-semibold text-[var(--t-heading)] flex items-center gap-2">
+              <History className="w-4 h-4 text-[var(--t-body)]" />
               Activity Log
             </h3>
           </div>
           <div className="overflow-x-auto">
             {loadingLogs ? (
-              <div className="flex items-center justify-center py-8 text-[#6b7280]">
+              <div className="flex items-center justify-center py-8 text-[var(--t-muted)]">
                 <Loader2 className="w-5 h-5 animate-spin" />
               </div>
             ) : (
               <table className="w-full min-w-[560px]">
                 <thead>
-                  <tr className="bg-[#f5f6fa]">
-                    <th className="text-left text-xs font-medium text-[#4b5563] py-2 px-3">Waktu</th>
-                    <th className="text-left text-xs font-medium text-[#4b5563] py-2 px-3">User</th>
-                    <th className="text-left text-xs font-medium text-[#4b5563] py-2 px-3">Aksi</th>
-                    <th className="text-left text-xs font-medium text-[#4b5563] py-2 px-3">Item</th>
-                    <th className="w-24 text-right text-xs font-medium text-[#4b5563] py-2 px-3">Restore</th>
+                  <tr className="bg-[var(--surface)]">
+                    <th className="text-left text-xs font-medium text-[var(--t-body)] py-2 px-3">Waktu</th>
+                    <th className="text-left text-xs font-medium text-[var(--t-body)] py-2 px-3">User</th>
+                    <th className="text-left text-xs font-medium text-[var(--t-body)] py-2 px-3">Aksi</th>
+                    <th className="text-left text-xs font-medium text-[var(--t-body)] py-2 px-3">Item</th>
+                    <th className="w-24 text-right text-xs font-medium text-[var(--t-body)] py-2 px-3">Restore</th>
                   </tr>
                 </thead>
                 <tbody>
                   {logs.map((entry) => (
-                    <tr key={entry.id} className="border-t border-[#f0f0f0]">
-                      <td className="py-2.5 px-3 text-xs text-[#6b7280] whitespace-nowrap">{formatLogTime(entry.createdAt)}</td>
-                      <td className="py-2.5 px-3 text-xs text-[#2d3436]">{entry.username}</td>
+                    <tr key={entry.id} className="border-t border-[var(--surface-2)]">
+                      <td className="py-2.5 px-3 text-xs text-[var(--t-muted)] whitespace-nowrap">{formatLogTime(entry.createdAt)}</td>
+                      <td className="py-2.5 px-3 text-xs text-[var(--t-heading)]">{entry.username}</td>
                       <td className="py-2.5 px-3">
                         <Badge
                           variant="outline"
                           className={`text-[10px] px-1.5 py-0 rounded-full font-semibold ${
                             entry.action === 'CREATE'
-                              ? 'bg-[#15803d]/10 text-[#15803d] border-[#15803d]/30'
+                              ? 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/30'
                               : entry.action === 'DELETE'
-                              ? 'bg-[#dc2626]/10 text-[#dc2626] border-[#dc2626]/30'
-                              : 'bg-[#2563eb]/10 text-[#2563eb] border-[#2563eb]/30'
+                              ? 'bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]/30'
+                              : 'bg-[var(--info)]/10 text-[var(--info)] border-[var(--info)]/30'
                           }`}
                         >
                           {entry.action}
                         </Badge>
                       </td>
-                      <td className="py-2.5 px-3 text-xs text-[#4b5563]">
-                        <span className="text-[#9ca3af]">{entry.entityType}</span> · {entry.entityLabel}
+                      <td className="py-2.5 px-3 text-xs text-[var(--t-body)]">
+                        <span className="text-[var(--t-subtle)]">{entry.entityType}</span> · {entry.entityLabel}
                       </td>
                       <td className="py-2.5 px-3 text-right">
                         {entry.restoredAt ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] text-[#15803d]">
+                          <span className="inline-flex items-center gap-1 text-[11px] text-[var(--success)]">
                             <CheckCircle2 className="w-3 h-3" /> Restored
                           </span>
                         ) : (
@@ -366,7 +366,7 @@ export function SettingsPage() {
                             onClick={() => handleRestore(entry)}
                             disabled={restoringId === entry.id}
                             title="Restore ke kondisi sebelumnya"
-                            className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-[#4a6741] hover:bg-[#4a6741]/10 transition-colors cursor-pointer disabled:opacity-50"
+                            className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-[var(--brand)] hover:bg-[var(--brand)]/10 transition-colors cursor-pointer disabled:opacity-50"
                           >
                             {restoringId === entry.id ? (
                               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -380,7 +380,7 @@ export function SettingsPage() {
                   ))}
                   {logs.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="text-center py-6 text-sm text-[#6b7280]">
+                      <td colSpan={5} className="text-center py-6 text-sm text-[var(--t-muted)]">
                         Belum ada aktivitas tercatat
                       </td>
                     </tr>
@@ -393,29 +393,29 @@ export function SettingsPage() {
       )}
 
       {/* Quick Info */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="px-5 py-3 border-b border-[#e8e8e8]">
-          <h3 className="text-sm font-semibold text-[#2d3436] flex items-center gap-2">
-            <Info className="w-4 h-4 text-[#4b5563]" />
+      <div className="bg-[var(--card)] rounded-xl shadow-sm overflow-hidden">
+        <div className="px-5 py-3 border-b border-[var(--bd)]">
+          <h3 className="text-sm font-semibold text-[var(--t-heading)] flex items-center gap-2">
+            <Info className="w-4 h-4 text-[var(--t-body)]" />
             Informasi Sistem
           </h3>
         </div>
         <div className="p-5 space-y-3">
-          <div className="flex items-center justify-between py-2 border-b border-[#f0f0f0]">
-            <span className="text-sm text-[#4b5563]">Versi</span>
-            <span className="text-sm font-medium text-[#2d3436]">1.0.0</span>
+          <div className="flex items-center justify-between py-2 border-b border-[var(--surface-2)]">
+            <span className="text-sm text-[var(--t-body)]">Versi</span>
+            <span className="text-sm font-medium text-[var(--t-heading)]">1.0.0</span>
           </div>
-          <div className="flex items-center justify-between py-2 border-b border-[#f0f0f0]">
-            <span className="text-sm text-[#4b5563]">Framework</span>
-            <span className="text-sm font-medium text-[#2d3436]">Next.js 16 + Prisma</span>
+          <div className="flex items-center justify-between py-2 border-b border-[var(--surface-2)]">
+            <span className="text-sm text-[var(--t-body)]">Framework</span>
+            <span className="text-sm font-medium text-[var(--t-heading)]">Next.js 16 + Prisma</span>
           </div>
-          <div className="flex items-center justify-between py-2 border-b border-[#f0f0f0]">
-            <span className="text-sm text-[#4b5563]">Database</span>
-            <span className="text-sm font-medium text-[#2d3436]">SQLite</span>
+          <div className="flex items-center justify-between py-2 border-b border-[var(--surface-2)]">
+            <span className="text-sm text-[var(--t-body)]">Database</span>
+            <span className="text-sm font-medium text-[var(--t-heading)]">SQLite</span>
           </div>
           <div className="flex items-center justify-between py-2">
-            <span className="text-sm text-[#4b5563]">Theme</span>
-            <span className="text-sm font-medium text-[#2d3436]">Light (Default)</span>
+            <span className="text-sm text-[var(--t-body)]">Theme</span>
+            <span className="text-sm font-medium text-[var(--t-heading)]">Light (Default)</span>
           </div>
         </div>
       </div>
@@ -424,24 +424,24 @@ export function SettingsPage() {
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="sm:max-w-[400px] rounded-xl">
           <DialogHeader>
-            <DialogTitle className="text-[#2d3436]">Tambah Akun Tim</DialogTitle>
+            <DialogTitle className="text-[var(--t-heading)]">Tambah Akun Tim</DialogTitle>
             <DialogDescription>Buat akun baru untuk anggota tim</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-[#2d3436]">Nama</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Nama</Label>
               <Input value={addName} onChange={(e) => setAddName(e.target.value)} placeholder="Nama tampilan" className="rounded-lg" />
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-[#2d3436]">Username</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Username</Label>
               <Input value={addUsername} onChange={(e) => setAddUsername(e.target.value)} placeholder="username login" className="rounded-lg" />
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-[#2d3436]">Password</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Password</Label>
               <Input type="password" value={addPassword} onChange={(e) => setAddPassword(e.target.value)} placeholder="minimal 6 karakter" className="rounded-lg" />
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-[#2d3436]">Role</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Role</Label>
               <Select value={addRole} onValueChange={(v) => setAddRole(v as 'ADMIN' | 'STAFF')}>
                 <SelectTrigger className="rounded-lg">
                   <SelectValue />
@@ -454,10 +454,10 @@ export function SettingsPage() {
             </div>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setAddOpen(false)} className="rounded-lg border-[#e8e8e8] text-[#4b5563]">
+            <Button variant="outline" onClick={() => setAddOpen(false)} className="rounded-lg border-[var(--bd)] text-[var(--t-body)]">
               Batal
             </Button>
-            <Button onClick={handleAdd} disabled={saving} className="rounded-lg bg-[#4a6741] hover:bg-[#3d5535] text-white">
+            <Button onClick={handleAdd} disabled={saving} className="rounded-lg bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white">
               {saving ? 'Menyimpan...' : 'Buat Akun'}
             </Button>
           </DialogFooter>
@@ -468,16 +468,16 @@ export function SettingsPage() {
       <Dialog open={!!editTarget} onOpenChange={() => setEditTarget(null)}>
         <DialogContent className="sm:max-w-[400px] rounded-xl">
           <DialogHeader>
-            <DialogTitle className="text-[#2d3436]">Edit Akun</DialogTitle>
+            <DialogTitle className="text-[var(--t-heading)]">Edit Akun</DialogTitle>
             <DialogDescription>@{editTarget?.username}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-[#2d3436]">Nama</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Nama</Label>
               <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="rounded-lg" />
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-[#2d3436]">Role</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Role</Label>
               <Select value={editRole} onValueChange={(v) => setEditRole(v as 'ADMIN' | 'STAFF')}>
                 <SelectTrigger className="rounded-lg">
                   <SelectValue />
@@ -489,11 +489,11 @@ export function SettingsPage() {
               </Select>
             </div>
             <div className="flex items-center justify-between py-1">
-              <Label className="text-sm font-medium text-[#2d3436]">Akun Aktif</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Akun Aktif</Label>
               <Switch checked={editActive} onCheckedChange={setEditActive} />
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-[#2d3436]">Reset Password</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Reset Password</Label>
               <Input
                 type="password"
                 value={editPassword}
@@ -504,10 +504,10 @@ export function SettingsPage() {
             </div>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setEditTarget(null)} className="rounded-lg border-[#e8e8e8] text-[#4b5563]">
+            <Button variant="outline" onClick={() => setEditTarget(null)} className="rounded-lg border-[var(--bd)] text-[var(--t-body)]">
               Batal
             </Button>
-            <Button onClick={handleSaveEdit} disabled={saving} className="rounded-lg bg-[#4a6741] hover:bg-[#3d5535] text-white">
+            <Button onClick={handleSaveEdit} disabled={saving} className="rounded-lg bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white">
               {saving ? 'Menyimpan...' : 'Simpan'}
             </Button>
           </DialogFooter>

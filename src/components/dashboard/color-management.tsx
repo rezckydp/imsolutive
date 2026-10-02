@@ -185,15 +185,15 @@ export function ColorManagement() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-[#2d3436]">Color Variant</h1>
-          <p className="text-sm text-[#4b5563] mt-1">
+          <h1 className="text-2xl font-bold text-[var(--t-heading)]">Color Variant</h1>
+          <p className="text-sm text-[var(--t-body)] mt-1">
             Manage colors for product variants
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button
             onClick={openAddDialog}
-            className="bg-[#4a6741] hover:bg-[#3d5535] text-white text-sm font-semibold rounded-lg flex items-center gap-2 h-10 px-4 shadow-sm cursor-pointer"
+            className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white text-sm font-semibold rounded-lg flex items-center gap-2 h-10 px-4 shadow-sm cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             Add Color
@@ -203,28 +203,28 @@ export function ColorManagement() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <p className="text-xs text-[#4b5563] font-medium">Total Colors</p>
-          <p className="text-xl font-bold text-[#2d3436] mt-1">{colors.length}</p>
+        <div className="bg-[var(--card)] rounded-xl shadow-sm p-4">
+          <p className="text-xs text-[var(--t-body)] font-medium">Total Colors</p>
+          <p className="text-xl font-bold text-[var(--t-heading)] mt-1">{colors.length}</p>
         </div>
-        <div className="bg-white rounded-xl shadow-sm p-4">
-          <p className="text-xs text-[#4a6741] font-medium">Active</p>
-          <p className="text-xl font-bold text-[#4a6741] mt-1">{activeCount}</p>
+        <div className="bg-[var(--card)] rounded-xl shadow-sm p-4">
+          <p className="text-xs text-[var(--brand)] font-medium">Active</p>
+          <p className="text-xl font-bold text-[var(--brand)] mt-1">{activeCount}</p>
         </div>
-        <div className="bg-white rounded-xl shadow-sm p-4 col-span-2 sm:col-span-1">
-          <p className="text-xs text-[#6b7280] font-medium">Inactive</p>
-          <p className="text-xl font-bold text-[#6b7280] mt-1">{inactiveCount}</p>
+        <div className="bg-[var(--card)] rounded-xl shadow-sm p-4 col-span-2 sm:col-span-1">
+          <p className="text-xs text-[var(--t-muted)] font-medium">Inactive</p>
+          <p className="text-xl font-bold text-[var(--t-muted)] mt-1">{inactiveCount}</p>
         </div>
       </div>
 
       {/* Search */}
       <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4b5563]" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--t-body)]" />
         <Input
           placeholder="Search colors..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-9 h-10 text-sm bg-white border-[#e8e8e8] rounded-lg"
+          className="pl-9 h-10 text-sm bg-[var(--card)] border-[var(--bd)] rounded-lg"
         />
       </div>
 
@@ -232,7 +232,7 @@ export function ColorManagement() {
       {loading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
           {[...Array(10)].map((_, i) => (
-            <div key={i} className="bg-white rounded-xl shadow-sm p-4">
+            <div key={i} className="bg-[var(--card)] rounded-xl shadow-sm p-4">
               <Skeleton className="h-16 w-full rounded-lg mb-3" />
               <Skeleton className="h-4 w-20 mb-1" />
               <Skeleton className="h-3 w-14" />
@@ -240,12 +240,12 @@ export function ColorManagement() {
           ))}
         </div>
       ) : filteredColors.length === 0 ? (
-        <div className="bg-white rounded-xl shadow-sm p-12 flex flex-col items-center justify-center">
-          <div className="w-16 h-16 rounded-full bg-[#f5f6fa] flex items-center justify-center mb-4">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#dc2626] via-[#f1c40f] to-[#2563eb]" />
+        <div className="bg-[var(--card)] rounded-xl shadow-sm p-12 flex flex-col items-center justify-center">
+          <div className="w-16 h-16 rounded-full bg-[var(--surface)] flex items-center justify-center mb-4">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--danger)] via-[var(--highlight)] to-[var(--info)]" />
           </div>
-          <h2 className="text-lg font-semibold text-[#2d3436] mb-1">No colors found</h2>
-          <p className="text-sm text-[#4b5563]">
+          <h2 className="text-lg font-semibold text-[var(--t-heading)] mb-1">No colors found</h2>
+          <p className="text-sm text-[var(--t-body)]">
             {search ? 'Try a different search' : 'Add your first color variant'}
           </p>
         </div>
@@ -254,7 +254,7 @@ export function ColorManagement() {
           {filteredColors.map((color) => (
             <div
               key={color.id}
-              className={`bg-white rounded-xl shadow-sm border border-[#e8e8e8] overflow-hidden transition-all hover:shadow-md group ${
+              className={`bg-[var(--card)] rounded-xl shadow-sm border border-[var(--bd)] overflow-hidden transition-all hover:shadow-md group ${
                 color.status === 'Inactive' ? 'opacity-50' : ''
               }`}
             >
@@ -269,7 +269,7 @@ export function ColorManagement() {
                     className={`text-[11px] px-1.5 py-0 rounded-full ${
                       color.status === 'Active'
                         ? 'bg-green-500/20 text-green-700 border-green-500/30'
-                        : 'bg-gray-500/20 text-gray-500 border-gray-500/30'
+                        : 'bg-[var(--t-muted)]/20 text-[var(--t-muted)] border-[var(--t-muted)]/30'
                     }`}
                     variant="outline"
                   >
@@ -288,7 +288,7 @@ export function ColorManagement() {
                 <div className="absolute bottom-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={() => handleToggleStatus(color)}
-                    className="p-1.5 rounded-md bg-white/90 hover:bg-white text-[#4b5563] hover:text-[#2d3436] transition-colors cursor-pointer"
+                    className="p-1.5 rounded-md bg-[var(--card)]/90 hover:bg-[var(--card)] text-[var(--t-body)] hover:text-[var(--t-heading)] transition-colors cursor-pointer"
                     title={color.status === 'Active' ? 'Deactivate' : 'Activate'}
                   >
                     {color.status === 'Active' ? (
@@ -299,14 +299,14 @@ export function ColorManagement() {
                   </button>
                   <button
                     onClick={() => openEditDialog(color)}
-                    className="p-1.5 rounded-md bg-white/90 hover:bg-white text-[#2563eb] transition-colors cursor-pointer"
+                    className="p-1.5 rounded-md bg-[var(--card)]/90 hover:bg-[var(--card)] text-[var(--info)] transition-colors cursor-pointer"
                     title="Edit"
                   >
                     <Pencil className="w-3 h-3" />
                   </button>
                   <button
                     onClick={() => setDeleteTarget(color)}
-                    className="p-1.5 rounded-md bg-white/90 hover:bg-white text-[#dc2626] transition-colors cursor-pointer"
+                    className="p-1.5 rounded-md bg-[var(--card)]/90 hover:bg-[var(--card)] text-[var(--danger)] transition-colors cursor-pointer"
                     title="Delete"
                   >
                     <Trash2 className="w-3 h-3" />
@@ -316,8 +316,8 @@ export function ColorManagement() {
 
               {/* Info */}
               <div className="p-3">
-                <p className="text-sm font-semibold text-[#2d3436] truncate">{color.name}</p>
-                <p className="text-[11px] text-[#6b7280] font-mono mt-0.5">{color.hexCode}</p>
+                <p className="text-sm font-semibold text-[var(--t-heading)] truncate">{color.name}</p>
+                <p className="text-[11px] text-[var(--t-muted)] font-mono mt-0.5">{color.hexCode}</p>
               </div>
             </div>
           ))}
@@ -328,8 +328,8 @@ export function ColorManagement() {
       <Dialog open={showAddDialog} onOpenChange={(open) => !open && setShowAddDialog(false)}>
         <DialogContent className="sm:max-w-md rounded-xl">
           <DialogHeader>
-            <DialogTitle className="text-[#2d3436]">Add New Color</DialogTitle>
-            <DialogDescription className="text-[#4b5563]">
+            <DialogTitle className="text-[var(--t-heading)]">Add New Color</DialogTitle>
+            <DialogDescription className="text-[var(--t-body)]">
               Add a new color variant option for products
             </DialogDescription>
           </DialogHeader>
@@ -338,56 +338,56 @@ export function ColorManagement() {
             {/* Color preview */}
             <div className="flex items-center gap-3">
               <div
-                className="w-12 h-12 rounded-xl border border-[#e8e8e8] shadow-inner"
+                className="w-12 h-12 rounded-xl border border-[var(--bd)] shadow-inner"
                 style={{ backgroundColor: formHexCode }}
               />
               <div>
-                <p className="text-sm font-medium text-[#2d3436]">{formName || 'Color Name'}</p>
-                <p className="text-xs text-[#6b7280] font-mono">{formHexCode}</p>
+                <p className="text-sm font-medium text-[var(--t-heading)]">{formName || 'Color Name'}</p>
+                <p className="text-xs text-[var(--t-muted)] font-mono">{formHexCode}</p>
               </div>
             </div>
 
             {/* Name */}
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-[#2d3436]">Color Name *</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Color Name *</Label>
               <Input
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
                 placeholder="e.g. Dusty Pink"
-                className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg"
+                className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg"
               />
             </div>
 
             {/* Hex Code */}
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-[#2d3436]">Hex Code</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Hex Code</Label>
               <div className="flex items-center gap-2">
                 <Input
                   value={formHexCode}
                   onChange={(e) => setFormHexCode(e.target.value)}
                   placeholder="#636e72"
-                  className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg font-mono flex-1"
+                  className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg font-mono flex-1"
                 />
                 <input
                   type="color"
                   value={formHexCode}
                   onChange={(e) => setFormHexCode(e.target.value)}
-                  className="w-10 h-10 rounded-lg border border-[#e8e8e8] cursor-pointer p-0.5"
+                  className="w-10 h-10 rounded-lg border border-[var(--bd)] cursor-pointer p-0.5"
                 />
               </div>
             </div>
 
             {/* Sort Order */}
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-[#2d3436]">Sort Order</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Sort Order</Label>
               <Input
                 type="number"
                 min={1}
                 value={formSortOrder}
                 onChange={(e) => setFormSortOrder(parseInt(e.target.value) || 0)}
-                className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg w-24"
+                className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg w-24"
               />
-              <p className="text-[11px] text-[#6b7280]">Lower number = shown first in dropdown</p>
+              <p className="text-[11px] text-[var(--t-muted)]">Lower number = shown first in dropdown</p>
             </div>
           </div>
 
@@ -395,14 +395,14 @@ export function ColorManagement() {
             <Button
               variant="outline"
               onClick={() => setShowAddDialog(false)}
-              className="text-sm rounded-lg px-4 h-10 border-[#e8e8e8] cursor-pointer"
+              className="text-sm rounded-lg px-4 h-10 border-[var(--bd)] cursor-pointer"
             >
               Cancel
             </Button>
             <Button
               onClick={handleCreate}
               disabled={saving || !formName.trim()}
-              className="bg-[#4a6741] hover:bg-[#3d5535] text-white text-sm font-semibold rounded-lg px-5 h-10 disabled:opacity-50"
+              className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white text-sm font-semibold rounded-lg px-5 h-10 disabled:opacity-50"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Add Color'}
             </Button>
@@ -414,8 +414,8 @@ export function ColorManagement() {
       <Dialog open={!!editColor} onOpenChange={(open) => !open && setEditColor(null)}>
         <DialogContent className="sm:max-w-md rounded-xl">
           <DialogHeader>
-            <DialogTitle className="text-[#2d3436]">Edit Color</DialogTitle>
-            <DialogDescription className="text-[#4b5563]">
+            <DialogTitle className="text-[var(--t-heading)]">Edit Color</DialogTitle>
+            <DialogDescription className="text-[var(--t-body)]">
               Update color details
             </DialogDescription>
           </DialogHeader>
@@ -424,46 +424,46 @@ export function ColorManagement() {
             {/* Color preview */}
             <div className="flex items-center gap-3">
               <div
-                className="w-12 h-12 rounded-xl border border-[#e8e8e8] shadow-inner"
+                className="w-12 h-12 rounded-xl border border-[var(--bd)] shadow-inner"
                 style={{ backgroundColor: formHexCode }}
               />
               <div>
-                <p className="text-sm font-medium text-[#2d3436]">{formName || 'Color Name'}</p>
-                <p className="text-xs text-[#6b7280] font-mono">{formHexCode}</p>
+                <p className="text-sm font-medium text-[var(--t-heading)]">{formName || 'Color Name'}</p>
+                <p className="text-xs text-[var(--t-muted)] font-mono">{formHexCode}</p>
               </div>
             </div>
 
             {/* Name */}
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-[#2d3436]">Color Name *</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Color Name *</Label>
               <Input
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
-                className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg"
+                className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg"
               />
             </div>
 
             {/* Hex Code */}
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-[#2d3436]">Hex Code</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Hex Code</Label>
               <div className="flex items-center gap-2">
                 <Input
                   value={formHexCode}
                   onChange={(e) => setFormHexCode(e.target.value)}
-                  className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg font-mono flex-1"
+                  className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg font-mono flex-1"
                 />
                 <input
                   type="color"
                   value={formHexCode}
                   onChange={(e) => setFormHexCode(e.target.value)}
-                  className="w-10 h-10 rounded-lg border border-[#e8e8e8] cursor-pointer p-0.5"
+                  className="w-10 h-10 rounded-lg border border-[var(--bd)] cursor-pointer p-0.5"
                 />
               </div>
             </div>
 
             {/* Status */}
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-[#2d3436]">Status</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Status</Label>
               <div className="flex items-center gap-2">
                 {['Active', 'Inactive'].map((s) => (
                   <button
@@ -472,9 +472,9 @@ export function ColorManagement() {
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
                       formStatus === s
                         ? s === 'Active'
-                          ? 'bg-[#4a6741]/10 border-[#4a6741]/30 text-[#4a6741]'
-                          : 'bg-gray-100 border-gray-300 text-gray-500'
-                        : 'bg-white border-[#e8e8e8] text-[#4b5563] hover:bg-[#f5f6fa]'
+                          ? 'bg-[var(--brand)]/10 border-[var(--brand)]/30 text-[var(--brand)]'
+                          : 'bg-[var(--surface-2)] border-[var(--bd-2)] text-[var(--t-muted)]'
+                        : 'bg-[var(--card)] border-[var(--bd)] text-[var(--t-body)] hover:bg-[var(--surface)]'
                     }`}
                   >
                     {s === 'Active' ? '✓ Active' : '○ Inactive'}
@@ -485,13 +485,13 @@ export function ColorManagement() {
 
             {/* Sort Order */}
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-[#2d3436]">Sort Order</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Sort Order</Label>
               <Input
                 type="number"
                 min={1}
                 value={formSortOrder}
                 onChange={(e) => setFormSortOrder(parseInt(e.target.value) || 0)}
-                className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg w-24"
+                className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg w-24"
               />
             </div>
           </div>
@@ -500,14 +500,14 @@ export function ColorManagement() {
             <Button
               variant="outline"
               onClick={() => setEditColor(null)}
-              className="text-sm rounded-lg px-4 h-10 border-[#e8e8e8] cursor-pointer"
+              className="text-sm rounded-lg px-4 h-10 border-[var(--bd)] cursor-pointer"
             >
               Cancel
             </Button>
             <Button
               onClick={handleUpdate}
               disabled={saving || !formName.trim()}
-              className="bg-[#4a6741] hover:bg-[#3d5535] text-white text-sm font-semibold rounded-lg px-5 h-10 disabled:opacity-50"
+              className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white text-sm font-semibold rounded-lg px-5 h-10 disabled:opacity-50"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Changes'}
             </Button>
@@ -519,26 +519,26 @@ export function ColorManagement() {
       <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <DialogContent className="sm:max-w-sm rounded-xl">
           <DialogHeader>
-            <DialogTitle className="text-[#2d3436]">Delete Color</DialogTitle>
-            <DialogDescription className="text-[#4b5563]">
+            <DialogTitle className="text-[var(--t-heading)]">Delete Color</DialogTitle>
+            <DialogDescription className="text-[var(--t-body)]">
               Are you sure you want to delete this color?
             </DialogDescription>
           </DialogHeader>
 
           {deleteTarget && (
-            <div className="flex items-center gap-3 p-3 bg-[#f5f6fa] rounded-lg">
+            <div className="flex items-center gap-3 p-3 bg-[var(--surface)] rounded-lg">
               <div
-                className="w-10 h-10 rounded-lg border border-[#e8e8e8]"
+                className="w-10 h-10 rounded-lg border border-[var(--bd)]"
                 style={{ backgroundColor: deleteTarget.hexCode }}
               />
               <div>
-                <p className="text-sm font-medium text-[#2d3436]">{deleteTarget.name}</p>
-                <p className="text-[11px] text-[#6b7280] font-mono">{deleteTarget.hexCode}</p>
+                <p className="text-sm font-medium text-[var(--t-heading)]">{deleteTarget.name}</p>
+                <p className="text-[11px] text-[var(--t-muted)] font-mono">{deleteTarget.hexCode}</p>
               </div>
             </div>
           )}
 
-          <p className="text-xs text-[#dc2626]">
+          <p className="text-xs text-[var(--danger)]">
             Products that use this color won&apos;t be affected — only the color option will be removed from the dropdown.
           </p>
 
@@ -546,14 +546,14 @@ export function ColorManagement() {
             <Button
               variant="outline"
               onClick={() => setDeleteTarget(null)}
-              className="text-sm rounded-lg px-4 h-10 border-[#e8e8e8] cursor-pointer"
+              className="text-sm rounded-lg px-4 h-10 border-[var(--bd)] cursor-pointer"
             >
               Cancel
             </Button>
             <Button
               onClick={handleDelete}
               disabled={deleting}
-              className="bg-[#dc2626] hover:bg-[#b91c1c] text-white text-sm font-semibold rounded-lg px-5 h-10 disabled:opacity-50"
+              className="bg-[var(--danger)] hover:bg-[var(--danger-dark)] text-white text-sm font-semibold rounded-lg px-5 h-10 disabled:opacity-50"
             >
               {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Delete'}
             </Button>

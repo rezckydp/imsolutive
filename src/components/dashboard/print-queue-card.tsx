@@ -38,13 +38,13 @@ interface PrintQueueCardProps {
 function getStatusStyle(status: string) {
   switch (status) {
     case 'Priority':
-      return 'bg-[#dc2626] text-white border-0';
+      return 'bg-[var(--danger)] text-white border-0';
     case 'Urgent':
-      return 'bg-[#b91c1c] text-white border-0';
+      return 'bg-[var(--danger-dark)] text-white border-0';
     case 'Normal':
-      return 'bg-[#d97706] text-white border-0';
+      return 'bg-[var(--warning)] text-white border-0';
     default:
-      return 'bg-gray-100 text-gray-700';
+      return 'bg-[var(--surface-2)] text-[var(--t-body)]';
   }
 }
 
@@ -58,7 +58,7 @@ function SkeletonRows() {
   return (
     <>
       {[...Array(5)].map((_, i) => (
-        <tr key={i} className="border-t border-[#f0f0f0]">
+        <tr key={i} className="border-t border-[var(--surface-2)]">
           <td className="py-2.5 px-3">
             <Skeleton className="h-4 w-16" />
           </td>
@@ -153,28 +153,28 @@ export function PrintQueueCard({ items = [], loading = false, onRemoveItem, onUp
     <Card className="rounded-xl shadow-sm border-0">
       <CardHeader className="pb-3 px-4 pt-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-semibold text-[#2d3436]">Print Queue</CardTitle>
+          <CardTitle className="text-sm font-semibold text-[var(--t-heading)]">Print Queue</CardTitle>
           <button
             onClick={() => setSortAsc(!sortAsc)}
-            className="flex items-center gap-1 px-1.5 py-1 rounded-md hover:bg-[#f0f0f0] transition-colors cursor-pointer"
+            className="flex items-center gap-1 px-1.5 py-1 rounded-md hover:bg-[var(--surface-2)] transition-colors cursor-pointer"
             title={sortAsc ? 'Sorted: Priority first' : 'Sorted: Default order'}
           >
-            <ArrowUpDown className="w-3.5 h-3.5 text-[#4b5563]" />
-            <span className="text-[11px] text-[#4b5563] font-medium">
+            <ArrowUpDown className="w-3.5 h-3.5 text-[var(--t-body)]" />
+            <span className="text-[11px] text-[var(--t-body)] font-medium">
               {sortAsc ? 'Urgency' : 'Default'}
             </span>
           </button>
         </div>
       </CardHeader>
       <CardContent className="px-4 pb-4 pt-0">
-        <div className="rounded-lg border border-[#e8e8e8] overflow-x-auto -webkit-overflow-scrolling-touch">
+        <div className="rounded-lg border border-[var(--bd)] overflow-x-auto -webkit-overflow-scrolling-touch">
           <table className="w-full min-w-[450px]">
             <thead>
-              <tr className="bg-[#f5f6fa]">
-                <th className="text-left text-xs font-medium text-[#4b5563] py-2 px-3">Product</th>
-                <th className="text-left text-xs font-medium text-[#4b5563] py-2 px-3">Color</th>
-                <th className="text-right text-xs font-medium text-[#4b5563] py-2 px-3">Qty</th>
-                <th className="text-left text-xs font-medium text-[#4b5563] py-2 px-3">Status</th>
+              <tr className="bg-[var(--surface)]">
+                <th className="text-left text-xs font-medium text-[var(--t-body)] py-2 px-3">Product</th>
+                <th className="text-left text-xs font-medium text-[var(--t-body)] py-2 px-3">Color</th>
+                <th className="text-right text-xs font-medium text-[var(--t-body)] py-2 px-3">Qty</th>
+                <th className="text-left text-xs font-medium text-[var(--t-body)] py-2 px-3">Status</th>
                 <th className="w-16"></th>
               </tr>
             </thead>
@@ -183,7 +183,7 @@ export function PrintQueueCard({ items = [], loading = false, onRemoveItem, onUp
                 <SkeletonRows />
               ) : sortedItems.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-6 text-sm text-[#4b5563]">
+                  <td colSpan={5} className="text-center py-6 text-sm text-[var(--t-body)]">
                     No items in queue
                   </td>
                 </tr>
@@ -191,13 +191,13 @@ export function PrintQueueCard({ items = [], loading = false, onRemoveItem, onUp
                 sortedItems.map((item) => (
                   <tr
                     key={item.id}
-                    className="border-t border-[#f0f0f0] hover:bg-[#fafafa] transition-colors"
+                    className="border-t border-[var(--surface-2)] hover:bg-[var(--surface-hover)] transition-colors"
                   >
                     <td className="py-2.5 px-3">
-                      <span className="text-sm font-semibold text-[#2d3436] bg-[#f0f0f0] px-1.5 py-0.5 rounded">
+                      <span className="text-sm font-semibold text-[var(--t-heading)] bg-[var(--surface-2)] px-1.5 py-0.5 rounded">
                         {item.sku}
                       </span>
-                      <p className="text-[11px] text-[#6b7280] mt-0.5 truncate max-w-[80px]">{item.name}</p>
+                      <p className="text-[11px] text-[var(--t-muted)] mt-0.5 truncate max-w-[80px]">{item.name}</p>
                     </td>
                     <td className="py-2.5 px-3">
                       <div className="flex items-center gap-2">
@@ -206,9 +206,9 @@ export function PrintQueueCard({ items = [], loading = false, onRemoveItem, onUp
                           style={{ backgroundColor: item.colorHex }}
                         />
                         <div className="min-w-0">
-                          <span className="text-sm text-[#4b5563]">{item.color}{item.type ? ` - ${item.type}` : ''}</span>
+                          <span className="text-sm text-[var(--t-body)]">{item.color}{item.type ? ` - ${item.type}` : ''}</span>
                           {item.note && (
-                            <p className="text-[11px] text-[#d97706] font-medium truncate max-w-[100px]" title={item.note}>
+                            <p className="text-[11px] text-[var(--warning)] font-medium truncate max-w-[100px]" title={item.note}>
                               {item.note}
                             </p>
                           )}
@@ -226,12 +226,12 @@ export function PrintQueueCard({ items = [], loading = false, onRemoveItem, onUp
                           min="1"
                           autoFocus
                           disabled={updatingId === item.id}
-                          className="h-7 w-16 text-sm text-right bg-white border border-[#4a6741]/30 focus-visible:ring-1 focus-visible:ring-[#4a6741] px-2"
+                          className="h-7 w-16 text-sm text-right bg-[var(--card)] border border-[var(--brand)]/30 focus-visible:ring-1 focus-visible:ring-[var(--brand)] px-2"
                         />
                       ) : (
                         <button
                           onClick={() => startEditQty(item.id, item.qty)}
-                          className="text-sm text-[#2d3436] font-medium hover:text-[#4a6741] hover:underline cursor-pointer transition-colors"
+                          className="text-sm text-[var(--t-heading)] font-medium hover:text-[var(--brand)] hover:underline cursor-pointer transition-colors"
                         >
                           {updatingId === item.id ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin inline" />
@@ -253,13 +253,13 @@ export function PrintQueueCard({ items = [], loading = false, onRemoveItem, onUp
                         <SelectContent>
                           <SelectItem value="Priority">
                             <span className="flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-[#dc2626]" />
+                              <span className="w-2 h-2 rounded-full bg-[var(--danger)]" />
                               Priority
                             </span>
                           </SelectItem>
                           <SelectItem value="Normal">
                             <span className="flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-[#d97706]" />
+                              <span className="w-2 h-2 rounded-full bg-[var(--warning)]" />
                               Normal
                             </span>
                           </SelectItem>
@@ -271,7 +271,7 @@ export function PrintQueueCard({ items = [], loading = false, onRemoveItem, onUp
                         <button
                           onClick={() => handleSendToProduction(item)}
                           disabled={sendingToProductionId === item.id}
-                          className="p-1.5 rounded-md bg-[#4a6741]/10 hover:bg-[#4a6741]/20 text-[#4a6741] transition-colors cursor-pointer disabled:opacity-50"
+                          className="p-1.5 rounded-md bg-[var(--brand)]/10 hover:bg-[var(--brand)]/20 text-[var(--brand)] transition-colors cursor-pointer disabled:opacity-50"
                           title="Send to Production"
                         >
                           {sendingToProductionId === item.id ? (
@@ -282,9 +282,9 @@ export function PrintQueueCard({ items = [], loading = false, onRemoveItem, onUp
                         </button>
                         <button
                           onClick={() => onRemoveItem?.(item.id)}
-                          className="p-1 rounded hover:bg-[#f5f6fa] transition-colors cursor-pointer"
+                          className="p-1 rounded hover:bg-[var(--surface)] transition-colors cursor-pointer"
                         >
-                          <X className="w-3.5 h-3.5 text-[#4b5563] hover:text-[#dc2626]" />
+                          <X className="w-3.5 h-3.5 text-[var(--t-body)] hover:text-[var(--danger)]" />
                         </button>
                       </div>
                     </td>

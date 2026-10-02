@@ -47,7 +47,7 @@ function SkeletonRows() {
   return (
     <>
       {[...Array(5)].map((_, i) => (
-        <tr key={i} className="border-t border-[#f0f0f0]">
+        <tr key={i} className="border-t border-[var(--surface-2)]">
           <td className="py-2.5 px-3">
             <Skeleton className="h-4 w-16" />
           </td>
@@ -175,9 +175,9 @@ export function InProductionCard({ items = [], loading = false, onComplete, onSe
     <Card className="rounded-xl shadow-sm border-0">
       <CardHeader className="pb-3 px-4 pt-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-semibold text-[#2d3436]">In Production</CardTitle>
+          <CardTitle className="text-sm font-semibold text-[var(--t-heading)]">In Production</CardTitle>
           {printers.length > 0 && (
-            <div className="flex items-center gap-1 text-[11px] text-[#6b7280]">
+            <div className="flex items-center gap-1 text-[11px] text-[var(--t-muted)]">
               <PrinterIcon className="w-3 h-3" />
               {workingPrinters.length} printer aktif
             </div>
@@ -185,16 +185,16 @@ export function InProductionCard({ items = [], loading = false, onComplete, onSe
         </div>
       </CardHeader>
       <CardContent className="px-4 pb-4 pt-0">
-        <div className="rounded-lg border border-[#e8e8e8] overflow-x-auto -webkit-overflow-scrolling-touch">
+        <div className="rounded-lg border border-[var(--bd)] overflow-x-auto -webkit-overflow-scrolling-touch">
           <table className="w-full min-w-[580px]">
             <thead>
-              <tr className="bg-[#f5f6fa]">
-                <th className="text-left text-xs font-medium text-[#4b5563] py-2 px-3">Product</th>
-                <th className="text-left text-xs font-medium text-[#4b5563] py-2 px-3">Color</th>
-                <th className="text-right text-xs font-medium text-[#4b5563] py-2 px-3">Qty</th>
-                <th className="text-left text-xs font-medium text-[#4b5563] py-2 px-3">Mulai</th>
-                <th className="text-left text-xs font-medium text-[#4b5563] py-2 px-3">Printer</th>
-                <th className="w-[76px] text-center text-xs font-medium text-[#4b5563] py-2 px-1">Actions</th>
+              <tr className="bg-[var(--surface)]">
+                <th className="text-left text-xs font-medium text-[var(--t-body)] py-2 px-3">Product</th>
+                <th className="text-left text-xs font-medium text-[var(--t-body)] py-2 px-3">Color</th>
+                <th className="text-right text-xs font-medium text-[var(--t-body)] py-2 px-3">Qty</th>
+                <th className="text-left text-xs font-medium text-[var(--t-body)] py-2 px-3">Mulai</th>
+                <th className="text-left text-xs font-medium text-[var(--t-body)] py-2 px-3">Printer</th>
+                <th className="w-[76px] text-center text-xs font-medium text-[var(--t-body)] py-2 px-1">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -202,7 +202,7 @@ export function InProductionCard({ items = [], loading = false, onComplete, onSe
                 <SkeletonRows />
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-6 text-sm text-[#4b5563]">
+                  <td colSpan={6} className="text-center py-6 text-sm text-[var(--t-body)]">
                     No items in production
                   </td>
                 </tr>
@@ -210,13 +210,13 @@ export function InProductionCard({ items = [], loading = false, onComplete, onSe
                 items.map((item) => (
                   <tr
                     key={item.id}
-                    className="border-t border-[#f0f0f0] hover:bg-[#fafafa] transition-colors"
+                    className="border-t border-[var(--surface-2)] hover:bg-[var(--surface-hover)] transition-colors"
                   >
                     <td className="py-2.5 px-3">
-                      <span className="text-sm font-semibold text-[#2d3436] bg-[#f0f0f0] px-1.5 py-0.5 rounded">
+                      <span className="text-sm font-semibold text-[var(--t-heading)] bg-[var(--surface-2)] px-1.5 py-0.5 rounded">
                         {item.sku}
                       </span>
-                      <p className="text-[11px] text-[#6b7280] mt-0.5 truncate max-w-[80px]">{item.name}</p>
+                      <p className="text-[11px] text-[var(--t-muted)] mt-0.5 truncate max-w-[80px]">{item.name}</p>
                     </td>
                     <td className="py-2.5 px-3">
                       <div className="flex items-center gap-2">
@@ -225,26 +225,26 @@ export function InProductionCard({ items = [], loading = false, onComplete, onSe
                           style={{ backgroundColor: item.colorHex }}
                         />
                         <div className="min-w-0">
-                          <span className="text-sm text-[#4b5563]">{item.color}{item.type ? ` - ${item.type}` : ''}</span>
+                          <span className="text-sm text-[var(--t-body)]">{item.color}{item.type ? ` - ${item.type}` : ''}</span>
                           {item.note && (
-                            <p className="text-[11px] text-[#d97706] font-medium truncate max-w-[100px]" title={item.note}>
+                            <p className="text-[11px] text-[var(--warning)] font-medium truncate max-w-[100px]" title={item.note}>
                               {item.note}
                             </p>
                           )}
                         </div>
                       </div>
                     </td>
-                    <td className="py-2.5 px-3 text-right text-sm text-[#2d3436] font-medium">
+                    <td className="py-2.5 px-3 text-right text-sm text-[var(--t-heading)] font-medium">
                       {item.qty}
                     </td>
                     <td className="py-2.5 px-3" title={formatExactTime(item.createdAt)}>
-                      <span className="text-xs text-[#4b5563] whitespace-nowrap">{formatClockTime(item.createdAt)}</span>
+                      <span className="text-xs text-[var(--t-body)] whitespace-nowrap">{formatClockTime(item.createdAt)}</span>
                     </td>
                     <td className="py-2.5 px-3">
                       {updatingPrinterId === item.id ? (
                         <div className="flex items-center gap-1">
-                          <Loader2 className="w-3 h-3 animate-spin text-[#d97706]" />
-                          <span className="text-[11px] text-[#6b7280]">Updating...</span>
+                          <Loader2 className="w-3 h-3 animate-spin text-[var(--warning)]" />
+                          <span className="text-[11px] text-[var(--t-muted)]">Updating...</span>
                         </div>
                       ) : allPrintersAvailable ? (
                         <Select
@@ -257,26 +257,26 @@ export function InProductionCard({ items = [], loading = false, onComplete, onSe
                             }
                           }}
                         >
-                          <SelectTrigger className="h-7 text-[11px] bg-[#f1c40f]/10 border-[#f1c40f]/30 rounded-full px-2 py-0 w-auto min-w-[90px] max-w-[120px] focus:ring-1 focus:ring-[#f1c40f]/40 hover:bg-[#f1c40f]/20 transition-colors">
+                          <SelectTrigger className="h-7 text-[11px] bg-[var(--highlight)]/10 border-[var(--highlight)]/30 rounded-full px-2 py-0 w-auto min-w-[90px] max-w-[120px] focus:ring-1 focus:ring-[var(--highlight)]/40 hover:bg-[var(--highlight)]/20 transition-colors">
                             <SelectValue placeholder="Pilih Printer">
                               {item.assignedTo ? (
                                 <span className="flex items-center gap-1 truncate">
-                                  <Check className="w-2.5 h-2.5 text-[#4a6741] flex-shrink-0" />
+                                  <Check className="w-2.5 h-2.5 text-[var(--brand)] flex-shrink-0" />
                                   <span className="truncate">{item.assignedTo}</span>
                                 </span>
                               ) : (
-                                <span className="text-[#6b7280] truncate">Pilih Printer</span>
+                                <span className="text-[var(--t-muted)] truncate">Pilih Printer</span>
                               )}
                             </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="__none__">
-                              <span className="text-[#6b7280] italic">— Tanpa Printer —</span>
+                              <span className="text-[var(--t-muted)] italic">— Tanpa Printer —</span>
                             </SelectItem>
                             {workingPrinters.map((printer) => (
                               <SelectItem key={printer.id} value={printer.name}>
                                 <span className="flex items-center gap-2">
-                                  <span className="w-2 h-2 rounded-full flex-shrink-0 bg-[#15803d]" />
+                                  <span className="w-2 h-2 rounded-full flex-shrink-0 bg-[var(--success)]" />
                                   <span className="truncate">{printer.name}</span>
                                 </span>
                               </SelectItem>
@@ -286,10 +286,10 @@ export function InProductionCard({ items = [], loading = false, onComplete, onSe
                       ) : (
                         <Badge
                           variant="outline"
-                          className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-[#f1c40f]/10 text-[#2d3436] border-[#f1c40f]/30 gap-1"
+                          className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-[var(--highlight)]/10 text-[var(--t-heading)] border-[var(--highlight)]/30 gap-1"
                         >
                           {item.assignedTo || (
-                            <span className="text-[#6b7280]">—</span>
+                            <span className="text-[var(--t-muted)]">—</span>
                           )}
                         </Badge>
                       )}
@@ -299,7 +299,7 @@ export function InProductionCard({ items = [], loading = false, onComplete, onSe
                         <button
                           onClick={() => handleSendBack(item)}
                           disabled={sendingBackId === item.id}
-                          className="p-1.5 rounded-md bg-[#e67e22]/10 hover:bg-[#e67e22]/20 text-[#e67e22] transition-colors cursor-pointer disabled:opacity-60"
+                          className="p-1.5 rounded-md bg-[var(--accent-orange)]/10 hover:bg-[var(--accent-orange)]/20 text-[var(--accent-orange)] transition-colors cursor-pointer disabled:opacity-60"
                           title="Send back to Print Queue"
                         >
                           {sendingBackId === item.id ? (
@@ -311,7 +311,7 @@ export function InProductionCard({ items = [], loading = false, onComplete, onSe
                         <button
                           onClick={() => handleComplete(item.id)}
                           disabled={completingId === item.id || sendingBackId === item.id}
-                          className="p-1.5 rounded-md bg-[#4a6741] hover:bg-[#3d5535] text-white transition-colors cursor-pointer disabled:opacity-60"
+                          className="p-1.5 rounded-md bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white transition-colors cursor-pointer disabled:opacity-60"
                           title="Mark as completed"
                         >
                           {completingId === item.id ? (

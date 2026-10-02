@@ -146,7 +146,7 @@ function AddProductionDialog({ open, onOpenChange, products, printers, onCreated
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px] rounded-xl">
         <DialogHeader>
-          <DialogTitle className="text-[#2d3436]">Add Production Item</DialogTitle>
+          <DialogTitle className="text-[var(--t-heading)]">Add Production Item</DialogTitle>
           <DialogDescription>
             Record a new production task. Stock will increase when marked as completed.
           </DialogDescription>
@@ -155,7 +155,7 @@ function AddProductionDialog({ open, onOpenChange, products, printers, onCreated
         <div className="space-y-4 py-2">
           {/* Product Select */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium text-[#2d3436]">Product</Label>
+            <Label className="text-sm font-medium text-[var(--t-heading)]">Product</Label>
             <Select value={selectedProductId} onValueChange={setSelectedProductId}>
               <SelectTrigger className="rounded-lg">
                 <SelectValue placeholder="Select product..." />
@@ -163,7 +163,7 @@ function AddProductionDialog({ open, onOpenChange, products, printers, onCreated
               <SelectContent>
                 {products.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
-                    <span className="font-semibold text-[#4a6741]">{p.sku}</span> — {p.name}
+                    <span className="font-semibold text-[var(--brand)]">{p.sku}</span> — {p.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -173,7 +173,7 @@ function AddProductionDialog({ open, onOpenChange, products, printers, onCreated
           {/* Variant Select */}
           {selectedProduct && selectedProduct.variants.length > 0 && (
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-[#2d3436]">Color Variant</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Color Variant</Label>
               <Select value={selectedVariantId} onValueChange={setSelectedVariantId}>
                 <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Select variant..." />
@@ -187,7 +187,7 @@ function AddProductionDialog({ open, onOpenChange, products, printers, onCreated
                           style={{ backgroundColor: v.colorHex }}
                         />
                         <span>{v.color}{v.type ? ` - ${v.type}` : ''}</span>
-                        <span className="text-xs text-[#6b7280]">(stock: {v.qty})</span>
+                        <span className="text-xs text-[var(--t-muted)]">(stock: {v.qty})</span>
                       </div>
                     </SelectItem>
                   ))}
@@ -198,7 +198,7 @@ function AddProductionDialog({ open, onOpenChange, products, printers, onCreated
 
           {/* Quantity */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium text-[#2d3436]">Quantity</Label>
+            <Label className="text-sm font-medium text-[var(--t-heading)]">Quantity</Label>
             <Input
               type="number"
               min={1}
@@ -211,7 +211,7 @@ function AddProductionDialog({ open, onOpenChange, products, printers, onCreated
 
           {/* Assigned To (Printer) */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium text-[#2d3436]">Printer</Label>
+            <Label className="text-sm font-medium text-[var(--t-heading)]">Printer</Label>
             {printers.length > 0 ? (
               <Select value={assignedTo} onValueChange={setAssignedTo}>
                 <SelectTrigger className="rounded-lg">
@@ -223,7 +223,7 @@ function AddProductionDialog({ open, onOpenChange, products, printers, onCreated
                     .map((p) => (
                       <SelectItem key={p.id} value={p.name}>
                         <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-[#15803d] flex-shrink-0" />
+                          <span className="w-2 h-2 rounded-full bg-[var(--success)] flex-shrink-0" />
                           {p.name}
                         </div>
                       </SelectItem>
@@ -245,14 +245,14 @@ function AddProductionDialog({ open, onOpenChange, products, printers, onCreated
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="rounded-lg border-[#e8e8e8] text-[#4b5563]"
+            className="rounded-lg border-[var(--bd)] text-[var(--t-body)]"
           >
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={submitting || !selectedVariantId}
-            className="rounded-lg bg-[#4a6741] hover:bg-[#3d5535] text-white"
+            className="rounded-lg bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white"
           >
             {submitting ? 'Adding...' : 'Add Production'}
           </Button>
@@ -264,7 +264,7 @@ function AddProductionDialog({ open, onOpenChange, products, printers, onCreated
 
 function TableSkeleton() {
   return (
-    <tr className="border-t border-[#f0f0f0]">
+    <tr className="border-t border-[var(--surface-2)]">
       <td className="py-3 px-4"><Skeleton className="h-4 w-24" /></td>
       <td className="py-3 px-4"><Skeleton className="h-4 w-20" /></td>
       <td className="py-3 px-4 text-right"><Skeleton className="h-4 w-8 ml-auto" /></td>
@@ -412,14 +412,14 @@ export function ProductionManagement() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#2d3436]">Production Management</h1>
-          <p className="text-sm text-[#4b5563] mt-1">
+          <h1 className="text-2xl font-bold text-[var(--t-heading)]">Production Management</h1>
+          <p className="text-sm text-[var(--t-body)] mt-1">
             Track production tasks and add stock when completed
           </p>
         </div>
         <Button
           onClick={() => setAddOpen(true)}
-          className="rounded-lg bg-[#4a6741] hover:bg-[#3d5535] text-white gap-2"
+          className="rounded-lg bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white gap-2"
         >
           <Plus className="w-4 h-4" />
           Add Production
@@ -430,34 +430,34 @@ export function ProductionManagement() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="rounded-xl shadow-sm border-0">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#4a6741]/10 flex items-center justify-center flex-shrink-0">
-              <Factory className="w-5 h-5 text-[#4a6741]" />
+            <div className="w-10 h-10 rounded-full bg-[var(--brand)]/10 flex items-center justify-center flex-shrink-0">
+              <Factory className="w-5 h-5 text-[var(--brand)]" />
             </div>
             <div>
-              <p className="text-xs text-[#4b5563] font-medium">Total Items</p>
-              <p className="text-xl font-bold text-[#2d3436]">{items.length}</p>
+              <p className="text-xs text-[var(--t-body)] font-medium">Total Items</p>
+              <p className="text-xl font-bold text-[var(--t-heading)]">{items.length}</p>
             </div>
           </CardContent>
         </Card>
         <Card className="rounded-xl shadow-sm border-0">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#d97706]/10 flex items-center justify-center flex-shrink-0">
-              <Clock className="w-5 h-5 text-[#d97706]" />
+            <div className="w-10 h-10 rounded-full bg-[var(--warning)]/10 flex items-center justify-center flex-shrink-0">
+              <Clock className="w-5 h-5 text-[var(--warning)]" />
             </div>
             <div>
-              <p className="text-xs text-[#4b5563] font-medium">In Progress</p>
-              <p className="text-xl font-bold text-[#d97706]">{inProgressCount}</p>
+              <p className="text-xs text-[var(--t-body)] font-medium">In Progress</p>
+              <p className="text-xl font-bold text-[var(--warning)]">{inProgressCount}</p>
             </div>
           </CardContent>
         </Card>
         <Card className="rounded-xl shadow-sm border-0">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#15803d]/10 flex items-center justify-center flex-shrink-0">
-              <CheckCircle2 className="w-5 h-5 text-[#15803d]" />
+            <div className="w-10 h-10 rounded-full bg-[var(--success)]/10 flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 className="w-5 h-5 text-[var(--success)]" />
             </div>
             <div>
-              <p className="text-xs text-[#4b5563] font-medium">Completed</p>
-              <p className="text-xl font-bold text-[#15803d]">{completedCount}</p>
+              <p className="text-xs text-[var(--t-body)] font-medium">Completed</p>
+              <p className="text-xl font-bold text-[var(--success)]">{completedCount}</p>
             </div>
           </CardContent>
         </Card>
@@ -468,12 +468,12 @@ export function ProductionManagement() {
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4b5563]" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--t-body)]" />
               <Input
                 placeholder="Search by SKU, name, color, assigned to..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 rounded-lg bg-[#f5f6fa] border-[#e8e8e8] text-sm"
+                className="pl-9 rounded-lg bg-[var(--surface)] border-[var(--bd)] text-sm"
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -493,18 +493,18 @@ export function ProductionManagement() {
       {/* Main Table */}
       <Card className="rounded-xl shadow-sm border-0">
         <CardContent className="p-0">
-          <div className="rounded-xl border border-[#e8e8e8] overflow-hidden">
+          <div className="rounded-xl border border-[var(--bd)] overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-[#f5f6fa]">
-                    <th className="text-left text-xs font-medium text-[#4b5563] py-3 px-4">Product</th>
-                    <th className="text-left text-xs font-medium text-[#4b5563] py-3 px-4">Color</th>
-                    <th className="text-right text-xs font-medium text-[#4b5563] py-3 px-4">Qty</th>
-                    <th className="text-left text-xs font-medium text-[#4b5563] py-3 px-4">Status</th>
-                    <th className="text-left text-xs font-medium text-[#4b5563] py-3 px-4">Printer</th>
-                    <th className="text-left text-xs font-medium text-[#4b5563] py-3 px-4">Date</th>
-                    <th className="text-right text-xs font-medium text-[#4b5563] py-3 px-4">Actions</th>
+                  <tr className="bg-[var(--surface)]">
+                    <th className="text-left text-xs font-medium text-[var(--t-body)] py-3 px-4">Product</th>
+                    <th className="text-left text-xs font-medium text-[var(--t-body)] py-3 px-4">Color</th>
+                    <th className="text-right text-xs font-medium text-[var(--t-body)] py-3 px-4">Qty</th>
+                    <th className="text-left text-xs font-medium text-[var(--t-body)] py-3 px-4">Status</th>
+                    <th className="text-left text-xs font-medium text-[var(--t-body)] py-3 px-4">Printer</th>
+                    <th className="text-left text-xs font-medium text-[var(--t-body)] py-3 px-4">Date</th>
+                    <th className="text-right text-xs font-medium text-[var(--t-body)] py-3 px-4">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -520,15 +520,15 @@ export function ProductionManagement() {
                     <tr>
                       <td colSpan={7} className="text-center py-10">
                         <div className="flex flex-col items-center gap-3">
-                          <div className="w-12 h-12 rounded-full bg-[#dc2626]/10 flex items-center justify-center">
-                            <X className="w-6 h-6 text-[#dc2626]" />
+                          <div className="w-12 h-12 rounded-full bg-[var(--danger)]/10 flex items-center justify-center">
+                            <X className="w-6 h-6 text-[var(--danger)]" />
                           </div>
-                          <p className="text-sm text-[#4b5563]">{error}</p>
+                          <p className="text-sm text-[var(--t-body)]">{error}</p>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={fetchItems}
-                            className="rounded-lg border-[#e8e8e8] text-[#4b5563]"
+                            className="rounded-lg border-[var(--bd)] text-[var(--t-body)]"
                           >
                             Retry
                           </Button>
@@ -539,10 +539,10 @@ export function ProductionManagement() {
                     <tr>
                       <td colSpan={7} className="text-center py-10">
                         <div className="flex flex-col items-center gap-3">
-                          <div className="w-12 h-12 rounded-full bg-[#f5f6fa] flex items-center justify-center">
-                            <Factory className="w-6 h-6 text-[#6b7280]" />
+                          <div className="w-12 h-12 rounded-full bg-[var(--surface)] flex items-center justify-center">
+                            <Factory className="w-6 h-6 text-[var(--t-muted)]" />
                           </div>
-                          <p className="text-sm text-[#4b5563]">
+                          <p className="text-sm text-[var(--t-body)]">
                             {items.length === 0
                               ? 'No production items yet. Click "Add Production" to start.'
                               : 'No items match your search.'}
@@ -551,7 +551,7 @@ export function ProductionManagement() {
                             <Button
                               onClick={() => setAddOpen(true)}
                               size="sm"
-                              className="rounded-lg bg-[#4a6741] hover:bg-[#3d5535] text-white"
+                              className="rounded-lg bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white"
                             >
                               <Plus className="w-4 h-4 mr-1" />
                               Add Production
@@ -564,13 +564,13 @@ export function ProductionManagement() {
                     filteredItems.map((item) => (
                       <tr
                         key={item.id}
-                        className="border-t border-[#f0f0f0] hover:bg-[#fafafa] transition-colors"
+                        className="border-t border-[var(--surface-2)] hover:bg-[var(--surface-hover)] transition-colors"
                       >
                         <td className="py-3 px-4">
-                          <span className="text-sm font-semibold text-[#4a6741] bg-[#f0f0f0] px-1.5 py-0.5 rounded">
+                          <span className="text-sm font-semibold text-[var(--brand)] bg-[var(--surface-2)] px-1.5 py-0.5 rounded">
                             {item.variant.product.sku}
                           </span>
-                          <p className="text-[11px] text-[#6b7280] mt-0.5 truncate max-w-[120px]">
+                          <p className="text-[11px] text-[var(--t-muted)] mt-0.5 truncate max-w-[120px]">
                             {item.variant.product.name}
                           </p>
                         </td>
@@ -580,18 +580,18 @@ export function ProductionManagement() {
                               className="w-3 h-3 rounded-full flex-shrink-0 border border-gray-300"
                               style={{ backgroundColor: item.variant.colorHex }}
                             />
-                            <span className="text-sm text-[#4b5563]">{item.variant.color}{item.variant.type ? ` - ${item.variant.type}` : ''}</span>
+                            <span className="text-sm text-[var(--t-body)]">{item.variant.color}{item.variant.type ? ` - ${item.variant.type}` : ''}</span>
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-right text-sm text-[#2d3436] font-medium">
+                        <td className="py-3 px-4 text-right text-sm text-[var(--t-heading)] font-medium">
                           {item.qty}
                         </td>
                         <td className="py-3 px-4">
                           <Badge
                             className={`text-[11px] px-2 py-0.5 rounded-full font-semibold gap-1 ${
                               item.status === 'Completed'
-                                ? 'bg-[#15803d]/10 text-[#15803d] border-[#15803d]/30'
-                                : 'bg-[#d97706]/10 text-[#d97706] border-[#d97706]/30'
+                                ? 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/30'
+                                : 'bg-[var(--warning)]/10 text-[var(--warning)] border-[var(--warning)]/30'
                             }`}
                             variant="outline"
                           >
@@ -605,19 +605,19 @@ export function ProductionManagement() {
                         </td>
                         <td className="py-3 px-4">
                           {item.assignedTo ? (
-                            <span className="text-xs text-[#2d3436] bg-[#f5f6fa] px-2 py-1 rounded-full">
+                            <span className="text-xs text-[var(--t-heading)] bg-[var(--surface)] px-2 py-1 rounded-full">
                               {item.assignedTo}
                             </span>
                           ) : (
-                            <span className="text-xs text-[#6b7280]">—</span>
+                            <span className="text-xs text-[var(--t-muted)]">—</span>
                           )}
                         </td>
                         <td className="py-3 px-4">
-                          <span className="text-xs text-[#6b7280]">
+                          <span className="text-xs text-[var(--t-muted)]">
                             {formatDate(item.createdAt)}
                           </span>
                           {item.completedAt && (
-                            <p className="text-[11px] text-[#15803d] mt-0.5">
+                            <p className="text-[11px] text-[var(--success)] mt-0.5">
                               ✓ {formatDate(item.completedAt)}
                             </p>
                           )}
@@ -629,21 +629,21 @@ export function ProductionManagement() {
                                 <button
                                   onClick={() => handleComplete(item.id)}
                                   title="Mark as Completed"
-                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-[#15803d] hover:bg-[#15803d]/10 transition-colors cursor-pointer"
+                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--success)] hover:bg-[var(--success)]/10 transition-colors cursor-pointer"
                                 >
                                   <CheckCircle2 className="w-4 h-4" />
                                 </button>
                                 <button
                                   onClick={() => setEditingItem(item)}
                                   title="Edit"
-                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-[#4b5563] hover:bg-[#f5f6fa] transition-colors cursor-pointer"
+                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--t-body)] hover:bg-[var(--surface)] transition-colors cursor-pointer"
                                 >
                                   <Pencil className="w-4 h-4" />
                                 </button>
                                 <button
                                   onClick={() => setDeleteId(item.id)}
                                   title="Delete"
-                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-[#dc2626] hover:bg-[#dc2626]/10 transition-colors cursor-pointer"
+                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-colors cursor-pointer"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </button>
@@ -653,14 +653,14 @@ export function ProductionManagement() {
                                 <button
                                   onClick={() => handleRevert(item.id)}
                                   title="Revert to In Progress"
-                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-[#d97706] hover:bg-[#d97706]/10 transition-colors cursor-pointer"
+                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--warning)] hover:bg-[var(--warning)]/10 transition-colors cursor-pointer"
                                 >
                                   <RotateCcw className="w-4 h-4" />
                                 </button>
                                 <button
                                   onClick={() => setDeleteId(item.id)}
                                   title="Delete"
-                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-[#dc2626] hover:bg-[#dc2626]/10 transition-colors cursor-pointer"
+                                  className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-colors cursor-pointer"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </button>
@@ -691,9 +691,9 @@ export function ProductionManagement() {
       <Dialog open={!!editingItem} onOpenChange={() => setEditingItem(null)}>
         <DialogContent className="sm:max-w-[400px] rounded-xl">
           <DialogHeader>
-            <DialogTitle className="text-[#2d3436]">Edit Production Item</DialogTitle>
+            <DialogTitle className="text-[var(--t-heading)]">Edit Production Item</DialogTitle>
             <DialogDescription>
-              <span className="font-semibold text-[#4a6741]">
+              <span className="font-semibold text-[var(--brand)]">
                 {editingItem?.variant.product.sku}
               </span>
               {' — '}
@@ -703,7 +703,7 @@ export function ProductionManagement() {
           {editingItem && (
             <div className="space-y-4 py-2">
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-[#2d3436]">Quantity</Label>
+                <Label className="text-sm font-medium text-[var(--t-heading)]">Quantity</Label>
                 <Input
                   type="number"
                   min={1}
@@ -715,7 +715,7 @@ export function ProductionManagement() {
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-[#2d3436]">Printer</Label>
+                <Label className="text-sm font-medium text-[var(--t-heading)]">Printer</Label>
                 {printers.length > 0 ? (
                   <Select value={editingItem.assignedTo} onValueChange={(val) =>
                     setEditingItem({ ...editingItem, assignedTo: val })
@@ -727,9 +727,9 @@ export function ProductionManagement() {
                       {printers.map((p) => (
                         <SelectItem key={p.id} value={p.name}>
                           <div className="flex items-center gap-2">
-                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${p.status === 'Working' ? 'bg-[#15803d]' : 'bg-[#d97706]'}`} />
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${p.status === 'Working' ? 'bg-[var(--success)]' : 'bg-[var(--warning)]'}`} />
                             {p.name}
-                            <span className="text-[11px] text-[#6b7280]">({p.status})</span>
+                            <span className="text-[11px] text-[var(--t-muted)]">({p.status})</span>
                           </div>
                         </SelectItem>
                       ))}
@@ -752,13 +752,13 @@ export function ProductionManagement() {
             <Button
               variant="outline"
               onClick={() => setEditingItem(null)}
-              className="rounded-lg border-[#e8e8e8] text-[#4b5563]"
+              className="rounded-lg border-[var(--bd)] text-[var(--t-body)]"
             >
               Cancel
             </Button>
             <Button
               onClick={handleEditSave}
-              className="rounded-lg bg-[#4a6741] hover:bg-[#3d5535] text-white"
+              className="rounded-lg bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white"
             >
               Save Changes
             </Button>
@@ -780,7 +780,7 @@ export function ProductionManagement() {
             <AlertDialogCancel className="rounded-lg">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="rounded-lg bg-[#dc2626] hover:bg-[#b91c1c] text-white"
+              className="rounded-lg bg-[var(--danger)] hover:bg-[var(--danger-dark)] text-white"
             >
               Delete
             </AlertDialogAction>

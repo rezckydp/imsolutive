@@ -82,21 +82,21 @@ export function DateRangePicker({ value, onChange, maxDays = 366, allTimeLabel =
   return (
     <Popover open={open} onOpenChange={(o) => { setOpen(o); if (o) setDraft(value ?? undefined); }}>
       <PopoverTrigger asChild>
-        <button className="flex items-center gap-1.5 h-8 px-2.5 text-xs rounded-lg bg-white border border-[#e8e8e8] text-[#4b5563] hover:border-[#4a6741]/40 transition-colors cursor-pointer">
-          <CalendarIcon className="w-3.5 h-3.5 text-[#6b7280]" />
+        <button className="flex items-center gap-1.5 h-8 px-2.5 text-xs rounded-lg bg-[var(--card)] border border-[var(--bd)] text-[var(--t-body)] hover:border-[var(--brand)]/40 transition-colors cursor-pointer">
+          <CalendarIcon className="w-3.5 h-3.5 text-[var(--t-muted)]" />
           <span className="max-w-[160px] truncate">{label}</span>
-          <ChevronDown className="w-3 h-3 text-[#9ca3af]" />
+          <ChevronDown className="w-3 h-3 text-[var(--t-subtle)]" />
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-auto p-0 rounded-xl overflow-hidden">
         <div className="flex flex-col sm:flex-row">
           {/* Presets */}
-          <div className="flex sm:flex-col gap-0.5 p-2 border-b sm:border-b-0 sm:border-r border-[#f0f0f0] overflow-x-auto sm:w-[150px] flex-shrink-0">
+          <div className="flex sm:flex-col gap-0.5 p-2 border-b sm:border-b-0 sm:border-r border-[var(--surface-2)] overflow-x-auto sm:w-[150px] flex-shrink-0">
             {PRESETS().map((p) => (
               <button
                 key={p.label}
                 onClick={() => applyPreset(p.range())}
-                className="text-left text-xs px-2.5 py-1.5 rounded-lg text-[#4b5563] hover:bg-[#f5f6fa] hover:text-[#2d3436] transition-colors cursor-pointer whitespace-nowrap"
+                className="text-left text-xs px-2.5 py-1.5 rounded-lg text-[var(--t-body)] hover:bg-[var(--surface)] hover:text-[var(--t-heading)] transition-colors cursor-pointer whitespace-nowrap"
               >
                 {p.label}
               </button>
@@ -113,16 +113,16 @@ export function DateRangePicker({ value, onChange, maxDays = 366, allTimeLabel =
               defaultMonth={draft?.from ?? subMonths(startOfToday(), 1)}
               locale={idLocale}
             />
-            <div className="flex items-center justify-between px-2 pb-1 pt-1 border-t border-[#f0f0f0] mt-1">
-              <span className="text-[11px] text-[#6b7280] flex items-center gap-1">
+            <div className="flex items-center justify-between px-2 pb-1 pt-1 border-t border-[var(--surface-2)] mt-1">
+              <span className="text-[11px] text-[var(--t-muted)] flex items-center gap-1">
                 <CalendarIcon className="w-3 h-3" />
                 {value
                   ? `${format(value.from, 'd MMM yyyy', { locale: idLocale })} – ${format(value.to, 'd MMM yyyy', { locale: idLocale })} (${dayCount} hari)`
                   : 'Belum ada range dipilih'}
               </span>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-[#9ca3af]">Maks {maxDays} hari</span>
-                <Button variant="ghost" size="sm" onClick={handleReset} className="h-6 text-[11px] px-2 text-[#4a6741] hover:bg-[#4a6741]/10">
+                <span className="text-[10px] text-[var(--t-subtle)]">Maks {maxDays} hari</span>
+                <Button variant="ghost" size="sm" onClick={handleReset} className="h-6 text-[11px] px-2 text-[var(--brand)] hover:bg-[var(--brand)]/10">
                   Reset
                 </Button>
               </div>

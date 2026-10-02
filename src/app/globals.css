@@ -41,17 +41,17 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --color-brand: #4a6741;
+  --color-brand: var(--brand);
   --color-brand-light: #5a7d50;
-  --color-brand-dark: #3d5535;
-  --color-surface: #f5f6fa;
-  --color-surface-card: #ffffff;
-  --color-text-heading: #2d3436;
-  --color-text-body: #4b5563;
-  --color-status-red: #dc2626;
-  --color-status-orange: #d97706;
-  --color-status-yellow: #f1c40f;
-  --color-status-blue-border: #dfe6e9;
+  --color-brand-dark: var(--brand-dark);
+  --color-surface: var(--surface);
+  --color-surface-card: var(--card);
+  --color-text-heading: var(--t-heading);
+  --color-text-body: var(--t-body);
+  --color-status-red: var(--danger);
+  --color-status-orange: var(--warning);
+  --color-status-yellow: var(--highlight);
+  --color-status-blue-border: var(--bd-blue);
 }
 
 :root {
@@ -87,6 +87,116 @@
   --sidebar-accent-foreground: #2d3436;
   --sidebar-border: #e8e8e8;
   --sidebar-ring: #4a6741;
+
+  /* ============ Dashboard design tokens ============
+     Every hardcoded Tailwind arbitrary-value color across the dashboard
+     (text-[#2d3436], bg-[#f5f6fa], etc.) was replaced with var(--token)
+     referencing one of these — see .dark below for the night-mode values.
+     Light values here are the exact hex the app already used, so light
+     mode is pixel-identical to before this change. */
+  --t-heading: #2d3436;
+  --t-body: #4b5563;
+  --t-muted: #6b7280;
+  --t-subtle: #9ca3af;
+  --t-muted-2: #b2bec3;
+  --brand: #4a6741;
+  --brand-dark: #3d5535;
+  --bd: #e8e8e8;
+  --bd-2: #d1d5db;
+  --bd-3: #e0e0e0;
+  --bd-blue: #dfe6e9;
+  --surface: #f5f6fa;
+  --surface-2: #f0f0f0;
+  --surface-hover: #fafafa;
+  --surface-tint: #eef0f4;
+  --surface-tint-2: #f8fbff;
+  --surface-tint-3: #f8f9fb;
+  --surface-tint-4: #f0f5ff;
+  --danger: #dc2626;
+  --danger-dark: #b91c1c;
+  --danger-bg: #fef2f2;
+  --danger-bg-2: #fecaca;
+  --warning: #d97706;
+  --warning-dark: #b45309;
+  --warning-darker: #92400e;
+  --warning-light: #fbbf24;
+  --success: #15803d;
+  --success-alt: #219a52;
+  --info: #2563eb;
+  --info-dark: #1d4ed8;
+  --info-dark-alt: #2980b9;
+  --accent-purple: #7c3aed;
+  --accent-orange: #e67e22;
+  --highlight: #f1c40f;
+}
+
+.dark {
+  --background: #10151b;
+  --foreground: #e8ecef;
+  --card: #171d25;
+  --card-foreground: #e8ecef;
+  --popover: #171d25;
+  --popover-foreground: #e8ecef;
+  --primary: #5a8a4d;
+  --primary-foreground: #0d120f;
+  --secondary: #1f2730;
+  --secondary-foreground: #e8ecef;
+  --muted: #1f2730;
+  --muted-foreground: #9aa4b0;
+  --accent: #202833;
+  --accent-foreground: #e8ecef;
+  --destructive: #f87171;
+  --border: #2a3340;
+  --input: #1f2730;
+  --ring: #5a8a4d;
+  --chart-1: #5a8a4d;
+  --chart-2: #9aa4b0;
+  --chart-3: #f87171;
+  --chart-4: #fbbf24;
+  --chart-5: #facc15;
+  --sidebar: #171d25;
+  --sidebar-foreground: #e8ecef;
+  --sidebar-primary: #5a8a4d;
+  --sidebar-primary-foreground: #0d120f;
+  --sidebar-accent: #1f2730;
+  --sidebar-accent-foreground: #e8ecef;
+  --sidebar-border: #2a3340;
+  --sidebar-ring: #5a8a4d;
+
+  --t-heading: #eef1f3;
+  --t-body: #c3cad1;
+  --t-muted: #8b95a1;
+  --t-subtle: #6b7684;
+  --t-muted-2: #7a8591;
+  --brand: #5a8a4d;
+  --brand-dark: #6b9c5c;
+  --bd: #2a3340;
+  --bd-2: #3a4350;
+  --bd-3: #333d4a;
+  --bd-blue: #2d3a45;
+  --surface: #10151b;
+  --surface-2: #1b222b;
+  --surface-hover: #202933;
+  --surface-tint: #1c2530;
+  --surface-tint-2: #192530;
+  --surface-tint-3: #1b2128;
+  --surface-tint-4: #1a2535;
+  --danger: #f87171;
+  --danger-dark: #ef4444;
+  --danger-bg: #3f1d1d;
+  --danger-bg-2: #5c2626;
+  --warning: #fbbf24;
+  --warning-dark: #f59e0b;
+  --warning-darker: #d97706;
+  --warning-light: #fcd34d;
+  --success: #4ade80;
+  --success-alt: #34d399;
+  --info: #60a5fa;
+  --info-dark: #3b82f6;
+  --info-dark-alt: #2563eb;
+  --accent-purple: #a78bfa;
+  --accent-orange: #fb923c;
+  --highlight: #facc15;
 }
 
 @layer base {

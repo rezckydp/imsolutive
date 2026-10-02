@@ -121,9 +121,9 @@ const FALLBACK_COLORS = [
 // ============ HELPERS ============
 
 function getStockStatus(qty: number, minStock: number): { label: string; className: string } {
-  if (qty === 0) return { label: 'Out', className: 'bg-[#dc2626]/10 text-[#dc2626] border-[#dc2626]/30' };
-  if (qty < minStock) return { label: 'Low', className: 'bg-[#d97706]/10 text-[#d97706] border-[#d97706]/30' };
-  return { label: 'OK', className: 'bg-[#15803d]/10 text-[#15803d] border-[#15803d]/30' };
+  if (qty === 0) return { label: 'Out', className: 'bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]/30' };
+  if (qty < minStock) return { label: 'Low', className: 'bg-[var(--warning)]/10 text-[var(--warning)] border-[var(--warning)]/30' };
+  return { label: 'OK', className: 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/30' };
 }
 
 function getTotalStock(product: ProductData): number {
@@ -132,10 +132,10 @@ function getTotalStock(product: ProductData): number {
 
 function getProductTypeBadge(product: ProductData): { label: string; className: string } | null {
   if (product.parentProductId) {
-    return { label: 'Varian', className: 'bg-[#2563eb]/10 text-[#2563eb] border-[#2563eb]/30' };
+    return { label: 'Varian', className: 'bg-[var(--info)]/10 text-[var(--info)] border-[var(--info)]/30' };
   }
   if (product.childProducts && product.childProducts.length > 0) {
-    return { label: 'Master', className: 'bg-[#4a6741]/10 text-[#4a6741] border-[#4a6741]/30' };
+    return { label: 'Master', className: 'bg-[var(--brand)]/10 text-[var(--brand)] border-[var(--brand)]/30' };
   }
   return null;
 }
@@ -214,7 +214,7 @@ function InlineStockInput({
 
   return (
     <div className="flex items-center gap-1 justify-end">
-      {loading && <Loader2 className="w-3 h-3 animate-spin text-[#4a6741]" />}
+      {loading && <Loader2 className="w-3 h-3 animate-spin text-[var(--brand)]" />}
       <Input
         ref={inputRef}
         type="number"
@@ -224,7 +224,7 @@ function InlineStockInput({
         onKeyDown={handleKeyDown}
         onBlur={handleBlur}
         disabled={loading}
-        className="h-6 w-16 text-xs text-right bg-white border-[#4a6741] focus:border-[#4a6741] rounded px-1.5 py-0 ml-auto"
+        className="h-6 w-16 text-xs text-right bg-[var(--card)] border-[var(--brand)] focus:border-[var(--brand)] rounded px-1.5 py-0 ml-auto"
       />
     </div>
   );
@@ -731,14 +731,14 @@ export function StockManagement() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-[#2d3436]">Stock Management</h1>
-          <p className="text-sm text-[#4b5563] mt-1">Manage products & inventory</p>
+          <h1 className="text-2xl font-bold text-[var(--t-heading)]">Stock Management</h1>
+          <p className="text-sm text-[var(--t-body)] mt-1">Manage products & inventory</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant="outline"
             onClick={handleDownloadTemplate}
-            className="text-sm font-medium rounded-lg flex items-center gap-2 h-10 px-4 border-[#e8e8e8] hover:bg-[#f5f6fa] cursor-pointer"
+            className="text-sm font-medium rounded-lg flex items-center gap-2 h-10 px-4 border-[var(--bd)] hover:bg-[var(--surface)] cursor-pointer"
           >
             <Download className="w-4 h-4" />
             Download Template
@@ -747,7 +747,7 @@ export function StockManagement() {
             variant="outline"
             onClick={() => document.getElementById('import-excel-input')?.click()}
             disabled={importing}
-            className="text-sm font-medium rounded-lg flex items-center gap-2 h-10 px-4 border-[#e8e8e8] hover:bg-[#f5f6fa] cursor-pointer"
+            className="text-sm font-medium rounded-lg flex items-center gap-2 h-10 px-4 border-[var(--bd)] hover:bg-[var(--surface)] cursor-pointer"
           >
             {importing ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -766,14 +766,14 @@ export function StockManagement() {
           <Button
             variant="outline"
             onClick={() => setMergeDialogOpen(true)}
-            className="text-sm font-medium rounded-lg flex items-center gap-2 h-10 px-4 border-[#e8e8e8] hover:bg-[#f5f6fa] cursor-pointer"
+            className="text-sm font-medium rounded-lg flex items-center gap-2 h-10 px-4 border-[var(--bd)] hover:bg-[var(--surface)] cursor-pointer"
           >
             <Layers className="w-4 h-4" />
             Gabung ke Matrix
           </Button>
           <Button
             onClick={openAddDialog}
-            className="bg-[#4a6741] hover:bg-[#3d5535] text-white text-sm font-semibold rounded-lg flex items-center gap-2 h-10 px-4 shadow-sm cursor-pointer"
+            className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white text-sm font-semibold rounded-lg flex items-center gap-2 h-10 px-4 shadow-sm cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             Add Product
@@ -788,11 +788,11 @@ export function StockManagement() {
       />
 
       {/* Main Tab Switcher: Produk vs Booth Stock */}
-      <div className="flex items-center bg-[#f5f6fa] rounded-lg p-0.5 mb-4 w-fit">
+      <div className="flex items-center bg-[var(--surface)] rounded-lg p-0.5 mb-4 w-fit">
         <button
           onClick={() => setMainTab('produk')}
           className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-            mainTab === 'produk' ? 'bg-white text-[#4a6741] shadow-sm' : 'text-[#4b5563] hover:text-[#2d3436]'
+            mainTab === 'produk' ? 'bg-[var(--card)] text-[var(--brand)] shadow-sm' : 'text-[var(--t-body)] hover:text-[var(--t-heading)]'
           }`}
         >
           Produk
@@ -800,7 +800,7 @@ export function StockManagement() {
         <button
           onClick={() => setMainTab('booth')}
           className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-            mainTab === 'booth' ? 'bg-white text-[#4a6741] shadow-sm' : 'text-[#4b5563] hover:text-[#2d3436]'
+            mainTab === 'booth' ? 'bg-[var(--card)] text-[var(--brand)] shadow-sm' : 'text-[var(--t-body)] hover:text-[var(--t-heading)]'
           }`}
         >
           Booth Stock
@@ -812,26 +812,26 @@ export function StockManagement() {
       {mainTab === 'produk' && (
       <>
       {/* Search */}
-      <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
+      <div className="bg-[var(--card)] rounded-xl shadow-sm p-4 mb-4">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6b7280]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--t-muted)]" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by SKU or product name..."
-            className="pl-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg h-10"
+            className="pl-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg h-10"
           />
         </div>
       </div>
 
       {/* Product List */}
-      <div className="bg-white rounded-xl shadow-sm overflow-x-auto -webkit-overflow-scrolling-touch">
+      <div className="bg-[var(--card)] rounded-xl shadow-sm overflow-x-auto -webkit-overflow-scrolling-touch">
         {/* Table Header */}
-        <div className="grid grid-cols-[1.8fr_0.6fr_0.8fr_auto] gap-2 px-4 py-3 bg-[#f5f6fa] border-b border-[#e8e8e8] min-w-[450px]">
-          <span className="text-xs font-medium text-[#4b5563]">Product</span>
-          <span className="text-xs font-medium text-[#4b5563] text-center">Total Stock</span>
-          <span className="text-xs font-medium text-[#4b5563] text-center">Type</span>
-          <span className="text-xs font-medium text-[#4b5563] text-right">Action</span>
+        <div className="grid grid-cols-[1.8fr_0.6fr_0.8fr_auto] gap-2 px-4 py-3 bg-[var(--surface)] border-b border-[var(--bd)] min-w-[450px]">
+          <span className="text-xs font-medium text-[var(--t-body)]">Product</span>
+          <span className="text-xs font-medium text-[var(--t-body)] text-center">Total Stock</span>
+          <span className="text-xs font-medium text-[var(--t-body)] text-center">Type</span>
+          <span className="text-xs font-medium text-[var(--t-body)] text-right">Action</span>
         </div>
 
         {/* Loading */}
@@ -846,8 +846,8 @@ export function StockManagement() {
         {/* Empty */}
         {!loading && filteredMasters.length === 0 && (
           <div className="py-12 text-center">
-            <Package className="w-10 h-10 text-[#6b7280] mx-auto mb-3" />
-            <p className="text-sm text-[#6b7280]">
+            <Package className="w-10 h-10 text-[var(--t-muted)] mx-auto mb-3" />
+            <p className="text-sm text-[var(--t-muted)]">
               {search ? 'No products match your search' : 'No products yet'}
             </p>
           </div>
@@ -867,25 +867,25 @@ export function StockManagement() {
             <div key={master.id}>
               {/* Master / Standalone Row */}
               <div
-                className={`grid grid-cols-[1.8fr_0.6fr_0.8fr_auto] gap-2 px-4 py-3 border-b border-[#f0f0f0] hover:bg-[#fafafa] transition-colors items-center cursor-pointer ${hasChildren || hasVariants ? '' : ''}`}
+                className={`grid grid-cols-[1.8fr_0.6fr_0.8fr_auto] gap-2 px-4 py-3 border-b border-[var(--surface-2)] hover:bg-[var(--surface-hover)] transition-colors items-center cursor-pointer ${hasChildren || hasVariants ? '' : ''}`}
                 onClick={() => (hasChildren || hasVariants) && toggleExpand(master.id)}
               >
                 <div className="flex items-center gap-2 min-w-0">
                   {(hasChildren || hasVariants) && (
                     isExpanded
-                      ? <ChevronDown className="w-4 h-4 text-[#6b7280] flex-shrink-0" />
-                      : <ChevronRight className="w-4 h-4 text-[#6b7280] flex-shrink-0" />
+                      ? <ChevronDown className="w-4 h-4 text-[var(--t-muted)] flex-shrink-0" />
+                      : <ChevronRight className="w-4 h-4 text-[var(--t-muted)] flex-shrink-0" />
                   )}
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-semibold text-[#2d3436]">{master.name}</span>
+                      <span className="text-sm font-semibold text-[var(--t-heading)]">{master.name}</span>
                       {typeBadge && (
                         <Badge className={`text-[11px] px-1.5 py-0 rounded-full font-semibold ${typeBadge.className}`} variant="outline">
                           {typeBadge.label}
                         </Badge>
                       )}
                     </div>
-                    <span className="text-xs text-[#4b5563] truncate block">{master.sku}</span>
+                    <span className="text-xs text-[var(--t-body)] truncate block">{master.sku}</span>
                     {hasVariants && !isExpanded && (
                       <div className="flex -space-x-1 mt-1">
                         {master.variants!.slice(0, 5).map((v) => (
@@ -897,14 +897,14 @@ export function StockManagement() {
                           />
                         ))}
                         {master.variants!.length > 5 && (
-                          <span className="text-[11px] text-[#6b7280] ml-1">+{master.variants!.length - 5}</span>
+                          <span className="text-[11px] text-[var(--t-muted)] ml-1">+{master.variants!.length - 5}</span>
                         )}
                       </div>
                     )}
                   </div>
                 </div>
                 <div className="text-center">
-                  <span className={`text-sm font-bold ${totalStock === 0 ? 'text-[#dc2626]' : totalStock < master.minStock ? 'text-[#d97706]' : 'text-[#2d3436]'}`}>
+                  <span className={`text-sm font-bold ${totalStock === 0 ? 'text-[var(--danger)]' : totalStock < master.minStock ? 'text-[var(--warning)]' : 'text-[var(--t-heading)]'}`}>
                     {totalStock}
                   </span>
                 </div>
@@ -914,20 +914,20 @@ export function StockManagement() {
                       {typeBadge.label}
                     </Badge>
                   ) : (
-                    <span className="text-[11px] text-[#6b7280]">Standalone</span>
+                    <span className="text-[11px] text-[var(--t-muted)]">Standalone</span>
                   )}
                 </div>
                 <div className="flex items-center gap-2 justify-end" onClick={(e) => e.stopPropagation()}>
                   <button
                     onClick={() => openEdit(master)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#4a6741] bg-[#4a6741]/5 hover:bg-[#4a6741]/10 rounded-lg transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--brand)] bg-[var(--brand)]/5 hover:bg-[var(--brand)]/10 rounded-lg transition-colors cursor-pointer"
                   >
                     <Pencil className="w-3 h-3" />
                     Edit
                   </button>
                   <button
                     onClick={() => setDeleteTarget(master)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#dc2626] bg-[#dc2626]/5 hover:bg-[#dc2626]/10 rounded-lg transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--danger)] bg-[var(--danger)]/5 hover:bg-[var(--danger)]/10 rounded-lg transition-colors cursor-pointer"
                   >
                     <Trash2 className="w-3 h-3" />
                     Delete
@@ -937,7 +937,7 @@ export function StockManagement() {
 
               {/* Expanded: Child Variant Products (SKU Varian) */}
               {isExpanded && hasChildren && (
-                <div className="border-b border-[#f0f0f0]">
+                <div className="border-b border-[var(--surface-2)]">
                   {children.map((child) => {
                     const childStock = getTotalStock(child);
                     const childTypeBadge = getProductTypeBadge(child);
@@ -947,21 +947,21 @@ export function StockManagement() {
                     return (
                       <div
                         key={child.id}
-                        className="grid grid-cols-[1.8fr_0.6fr_0.8fr_auto] gap-2 px-4 py-2.5 pl-10 bg-[#f8fbff] border-b border-[#f0f0f0] hover:bg-[#f0f5ff] transition-colors items-center cursor-pointer"
+                        className="grid grid-cols-[1.8fr_0.6fr_0.8fr_auto] gap-2 px-4 py-2.5 pl-10 bg-[var(--surface-tint-2)] border-b border-[var(--surface-2)] hover:bg-[var(--surface-tint-4)] transition-colors items-center cursor-pointer"
                         onClick={() => childHasVariants && toggleExpand(child.id)}
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          <Link2 className="w-3.5 h-3.5 text-[#2563eb] flex-shrink-0" />
+                          <Link2 className="w-3.5 h-3.5 text-[var(--info)] flex-shrink-0" />
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-medium text-[#2d3436]">{child.name}</span>
+                              <span className="text-sm font-medium text-[var(--t-heading)]">{child.name}</span>
                               {childTypeBadge && (
                                 <Badge className={`text-[11px] px-1.5 py-0 rounded-full font-semibold ${childTypeBadge.className}`} variant="outline">
                                   {childTypeBadge.label}
                                 </Badge>
                               )}
                             </div>
-                            <span className="text-xs text-[#4b5563] truncate block">{child.sku}</span>
+                            <span className="text-xs text-[var(--t-body)] truncate block">{child.sku}</span>
                             {childHasVariants && !expandedIds.has(child.id) && (
                               <div className="flex -space-x-1 mt-1">
                                 {child.variants!.slice(0, 5).map((v) => (
@@ -973,17 +973,17 @@ export function StockManagement() {
                                   />
                                 ))}
                                 {child.variants!.length > 5 && (
-                                  <span className="text-[11px] text-[#6b7280] ml-1">+{child.variants!.length - 5}</span>
+                                  <span className="text-[11px] text-[var(--t-muted)] ml-1">+{child.variants!.length - 5}</span>
                                 )}
                               </div>
                             )}
                           </div>
                         </div>
                         <div className="text-center">
-                          <span className={`text-sm font-bold ${childStock === 0 ? 'text-[#dc2626]' : childStock < child.minStock ? 'text-[#d97706]' : 'text-[#2d3436]'}`}>
+                          <span className={`text-sm font-bold ${childStock === 0 ? 'text-[var(--danger)]' : childStock < child.minStock ? 'text-[var(--warning)]' : 'text-[var(--t-heading)]'}`}>
                             {childStock}
                           </span>
-                          {!childEditable && <div className="text-[11px] text-[#2563eb]">synced</div>}
+                          {!childEditable && <div className="text-[11px] text-[var(--info)]">synced</div>}
                         </div>
                         <div className="text-center">
                           {childTypeBadge ? (
@@ -991,20 +991,20 @@ export function StockManagement() {
                               {childTypeBadge.label}
                             </Badge>
                           ) : (
-                            <span className="text-[11px] text-[#6b7280]">Varian</span>
+                            <span className="text-[11px] text-[var(--t-muted)]">Varian</span>
                           )}
                         </div>
                         <div className="flex items-center gap-2 justify-end" onClick={(e) => e.stopPropagation()}>
                           <button
                             onClick={() => openEdit(child)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#4a6741] bg-[#4a6741]/5 hover:bg-[#4a6741]/10 rounded-lg transition-colors cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--brand)] bg-[var(--brand)]/5 hover:bg-[var(--brand)]/10 rounded-lg transition-colors cursor-pointer"
                           >
                             <Pencil className="w-3 h-3" />
                             Edit
                           </button>
                           <button
                             onClick={() => setDeleteTarget(child)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#dc2626] bg-[#dc2626]/5 hover:bg-[#dc2626]/10 rounded-lg transition-colors cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--danger)] bg-[var(--danger)]/5 hover:bg-[var(--danger)]/10 rounded-lg transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-3 h-3" />
                             Delete
@@ -1018,11 +1018,11 @@ export function StockManagement() {
 
               {/* Expanded: Variant Details (Master/Standalone) */}
               {isExpanded && hasVariants && editable && (
-                <div className="bg-[#fafafa] border-b border-[#f0f0f0] px-6 py-3">
+                <div className="bg-[var(--surface-hover)] border-b border-[var(--surface-2)] px-6 py-3">
                   <div className="grid grid-cols-[1fr_1fr_0.6fr] gap-2 mb-2 px-2">
-                    <span className="text-[11px] font-medium text-[#6b7280]">Variant</span>
-                    <span className="text-[11px] font-medium text-[#6b7280] text-right">Stock</span>
-                    <span className="text-[11px] font-medium text-[#6b7280] text-center">Status</span>
+                    <span className="text-[11px] font-medium text-[var(--t-muted)]">Variant</span>
+                    <span className="text-[11px] font-medium text-[var(--t-muted)] text-right">Stock</span>
+                    <span className="text-[11px] font-medium text-[var(--t-muted)] text-center">Status</span>
                   </div>
                   {master.variants!.map((variant) => {
                     const cs = getStockStatus(variant.qty, master.minStock);
@@ -1034,22 +1034,22 @@ export function StockManagement() {
                     return (
                       <div
                         key={variant.id}
-                        className="grid grid-cols-[1fr_1fr_0.6fr] gap-2 px-2 py-1.5 items-center rounded-lg hover:bg-white transition-colors"
+                        className="grid grid-cols-[1fr_1fr_0.6fr] gap-2 px-2 py-1.5 items-center rounded-lg hover:bg-[var(--card)] transition-colors"
                       >
                         <div className="flex items-center gap-2">
                           {hasColor ? (
                             <div
-                              className="w-5 h-5 rounded-full border border-[#e8e8e8] flex-shrink-0 shadow-sm"
+                              className="w-5 h-5 rounded-full border border-[var(--bd)] flex-shrink-0 shadow-sm"
                               style={{ backgroundColor: variant.colorHex }}
                             />
                           ) : null}
                           {hasType ? (
-                            <Badge className="text-[11px] px-1.5 py-0 rounded-full bg-[#4a6741]/10 text-[#4a6741] border-[#4a6741]/30 font-medium" variant="outline">
+                            <Badge className="text-[11px] px-1.5 py-0 rounded-full bg-[var(--brand)]/10 text-[var(--brand)] border-[var(--brand)]/30 font-medium" variant="outline">
                               <Tags className="w-2.5 h-2.5 mr-0.5" />
                               {variant.type}
                             </Badge>
                           ) : null}
-                          <span className="text-xs text-[#2d3436] font-medium">{label}</span>
+                          <span className="text-xs text-[var(--t-heading)] font-medium">{label}</span>
                         </div>
                         {isEditing ? (
                           <InlineStockInput
@@ -1073,10 +1073,10 @@ export function StockManagement() {
                               })
                             }
                           >
-                            <span className={`text-xs font-semibold ${variant.qty === 0 ? 'text-[#dc2626]' : 'text-[#2d3436]'}`}>
+                            <span className={`text-xs font-semibold ${variant.qty === 0 ? 'text-[var(--danger)]' : 'text-[var(--t-heading)]'}`}>
                               {variant.qty}
                             </span>
-                            <Pencil className="w-2.5 h-2.5 text-[#6b7280] opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <Pencil className="w-2.5 h-2.5 text-[var(--t-muted)] opacity-0 group-hover:opacity-100 transition-opacity" />
                           </div>
                         )}
                         <div className="text-center">
@@ -1092,11 +1092,11 @@ export function StockManagement() {
 
               {/* Expanded: Variant Details (Child Variant — read-only stock) */}
               {isExpanded && hasVariants && !editable && (
-                <div className="bg-[#fafafa] border-b border-[#f0f0f0] px-6 py-3">
+                <div className="bg-[var(--surface-hover)] border-b border-[var(--surface-2)] px-6 py-3">
                   <div className="grid grid-cols-[1fr_1fr_0.6fr] gap-2 mb-2 px-2">
-                    <span className="text-[11px] font-medium text-[#6b7280]">Variant</span>
-                    <span className="text-[11px] font-medium text-[#6b7280] text-right">Stock</span>
-                    <span className="text-[11px] font-medium text-[#6b7280] text-center">Status</span>
+                    <span className="text-[11px] font-medium text-[var(--t-muted)]">Variant</span>
+                    <span className="text-[11px] font-medium text-[var(--t-muted)] text-right">Stock</span>
+                    <span className="text-[11px] font-medium text-[var(--t-muted)] text-center">Status</span>
                   </div>
                   {master.variants!.map((variant) => {
                     const cs = getStockStatus(variant.qty, master.minStock);
@@ -1106,28 +1106,28 @@ export function StockManagement() {
                     return (
                       <div
                         key={variant.id}
-                        className="grid grid-cols-[1fr_1fr_0.6fr] gap-2 px-2 py-1.5 items-center rounded-lg hover:bg-white transition-colors"
+                        className="grid grid-cols-[1fr_1fr_0.6fr] gap-2 px-2 py-1.5 items-center rounded-lg hover:bg-[var(--card)] transition-colors"
                       >
                         <div className="flex items-center gap-2">
                           {hasColor ? (
                             <div
-                              className="w-5 h-5 rounded-full border border-[#e8e8e8] flex-shrink-0 shadow-sm"
+                              className="w-5 h-5 rounded-full border border-[var(--bd)] flex-shrink-0 shadow-sm"
                               style={{ backgroundColor: variant.colorHex }}
                             />
                           ) : null}
                           {hasType ? (
-                            <Badge className="text-[11px] px-1.5 py-0 rounded-full bg-[#4a6741]/10 text-[#4a6741] border-[#4a6741]/30 font-medium" variant="outline">
+                            <Badge className="text-[11px] px-1.5 py-0 rounded-full bg-[var(--brand)]/10 text-[var(--brand)] border-[var(--brand)]/30 font-medium" variant="outline">
                               <Tags className="w-2.5 h-2.5 mr-0.5" />
                               {variant.type}
                             </Badge>
                           ) : null}
-                          <span className="text-xs text-[#2d3436] font-medium">{label}</span>
+                          <span className="text-xs text-[var(--t-heading)] font-medium">{label}</span>
                         </div>
                         <div className="flex items-center gap-1 justify-end">
-                          <span className={`text-xs font-semibold ${variant.qty === 0 ? 'text-[#dc2626]' : 'text-[#2d3436]'}`}>
+                          <span className={`text-xs font-semibold ${variant.qty === 0 ? 'text-[var(--danger)]' : 'text-[var(--t-heading)]'}`}>
                             {variant.qty}
                           </span>
-                          <span className="text-[11px] text-[#2563eb] ml-1">synced</span>
+                          <span className="text-[11px] text-[var(--info)] ml-1">synced</span>
                         </div>
                         <div className="text-center">
                           <Badge className={`text-[11px] px-1.5 py-0 rounded-full font-semibold ${cs.className}`} variant="outline">
@@ -1150,11 +1150,11 @@ export function StockManagement() {
       <Dialog open={showAddDialog} onOpenChange={(open) => !open && setShowAddDialog(false)}>
         <DialogContent className="sm:max-w-2xl rounded-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-[#2d3436] flex items-center gap-2">
-              <Plus className="w-5 h-5 text-[#4a6741]" />
+            <DialogTitle className="text-[var(--t-heading)] flex items-center gap-2">
+              <Plus className="w-5 h-5 text-[var(--brand)]" />
               Add New Product
             </DialogTitle>
-            <DialogDescription className="text-[#4b5563]">
+            <DialogDescription className="text-[var(--t-body)]">
               Buat produk baru dengan varian warna dan/atau type.
             </DialogDescription>
           </DialogHeader>
@@ -1162,7 +1162,7 @@ export function StockManagement() {
           <div className="space-y-4">
             {/* Product Type */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-[#2d3436]">Product Type</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Product Type</Label>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
@@ -1176,8 +1176,8 @@ export function StockManagement() {
                   }}
                   className={`p-3 rounded-lg border-2 text-left transition-all cursor-pointer ${
                     newProduct.productType === 'standalone'
-                      ? 'border-[#4a6741] bg-[#4a6741]/5'
-                      : 'border-[#e8e8e8] hover:border-[#b2bec3]'
+                      ? 'border-[var(--brand)] bg-[var(--brand)]/5'
+                      : 'border-[var(--bd)] hover:border-[var(--t-muted-2)]'
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-1">
@@ -1186,7 +1186,7 @@ export function StockManagement() {
                       Standalone
                     </span>
                   </div>
-                  <span className="text-[11px] text-[#6b7280]">Stok independen per warna</span>
+                  <span className="text-[11px] text-[var(--t-muted)]">Stok independen per warna</span>
                 </button>
                 <button
                   type="button"
@@ -1198,8 +1198,8 @@ export function StockManagement() {
                   }}
                   className={`p-3 rounded-lg border-2 text-left transition-all cursor-pointer ${
                     newProduct.productType === 'variant'
-                      ? 'border-[#2563eb] bg-[#2563eb]/5'
-                      : 'border-[#e8e8e8] hover:border-[#b2bec3]'
+                      ? 'border-[var(--info)] bg-[var(--info)]/5'
+                      : 'border-[var(--bd)] hover:border-[var(--t-muted-2)]'
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-1">
@@ -1208,7 +1208,7 @@ export function StockManagement() {
                       Varian dari Master
                     </span>
                   </div>
-                  <span className="text-[11px] text-[#6b7280]">Stok sync dari Master SKU</span>
+                  <span className="text-[11px] text-[var(--t-muted)]">Stok sync dari Master SKU</span>
                 </button>
               </div>
             </div>
@@ -1216,9 +1216,9 @@ export function StockManagement() {
             {/* Master Selection (only for variant type) */}
             {newProduct.productType === 'variant' && (
               <div className="space-y-1.5">
-                <Label className="text-sm font-medium text-[#2d3436]">Master SKU *</Label>
+                <Label className="text-sm font-medium text-[var(--t-heading)]">Master SKU *</Label>
                 <Select value={newProduct.parentProductId} onValueChange={handleParentSelect}>
-                  <SelectTrigger className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg">
+                  <SelectTrigger className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg">
                     <SelectValue placeholder="Pilih Master SKU..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -1230,7 +1230,7 @@ export function StockManagement() {
                   </SelectContent>
                 </Select>
                 {newProduct.parentProductId && (
-                  <p className="text-[11px] text-[#2563eb] flex items-center gap-1">
+                  <p className="text-[11px] text-[var(--info)] flex items-center gap-1">
                     <Link2 className="w-3 h-3" />
                     Warna akan otomatis sync dari Master
                   </p>
@@ -1240,38 +1240,38 @@ export function StockManagement() {
 
             {/* SKU */}
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-[#2d3436]">
+              <Label className="text-sm font-medium text-[var(--t-heading)]">
                 {newProduct.productType === 'standalone' ? 'Master SKU *' : 'SKU Varian *'}
               </Label>
               <Input
                 value={newProduct.sku}
                 onChange={(e) => setNewProduct({ ...newProduct, sku: e.target.value })}
                 placeholder="e.g. GD002-GT6-PRO"
-                className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg"
+                className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg"
               />
             </div>
 
             {/* Name */}
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-[#2d3436]">Product Name *</Label>
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Product Name *</Label>
               <Input
                 value={newProduct.name}
                 onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
                 placeholder="e.g. Abstract Wave GT6"
-                className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg"
+                className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg"
               />
             </div>
 
             {/* Min Stock */}
             {newProduct.productType === 'standalone' && (
               <div className="space-y-1.5">
-                <Label className="text-sm font-medium text-[#2d3436]">Min Stock Level</Label>
+                <Label className="text-sm font-medium text-[var(--t-heading)]">Min Stock Level</Label>
                 <Input
                   type="number"
                   min={0}
                   value={newProduct.minStock}
                   onChange={(e) => setNewProduct({ ...newProduct, minStock: parseInt(e.target.value) || 0 })}
-                  className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg w-32"
+                  className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg w-32"
                 />
               </div>
             )}
@@ -1307,7 +1307,7 @@ export function StockManagement() {
                 !newProduct.name.trim() ||
                 (newProduct.productType === 'variant' && !newProduct.parentProductId)
               }
-              className="bg-[#4a6741] hover:bg-[#3d5535] text-white rounded-full px-5 disabled:opacity-50"
+              className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white rounded-full px-5 disabled:opacity-50"
             >
               {creating ? 'Creating...' : 'Add Product'}
             </Button>
@@ -1319,16 +1319,16 @@ export function StockManagement() {
       <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <DialogContent className="sm:max-w-sm rounded-xl">
           <DialogHeader>
-            <DialogTitle className="text-[#2d3436]">Delete Product</DialogTitle>
-            <DialogDescription className="text-[#4b5563]">
+            <DialogTitle className="text-[var(--t-heading)]">Delete Product</DialogTitle>
+            <DialogDescription className="text-[var(--t-body)]">
               Are you sure you want to delete <strong>{deleteTarget?.name}</strong> ({deleteTarget?.sku})?
               {deleteTarget?.childProducts && deleteTarget.childProducts.length > 0 && (
-                <span className="block mt-2 text-[#dc2626] font-medium">
+                <span className="block mt-2 text-[var(--danger)] font-medium">
                   ⚠️ This is a Master SKU. All {deleteTarget.childProducts.length} variant product(s) will also be deleted.
                 </span>
               )}
               {deleteTarget?.parentProductId && (
-                <span className="block mt-2 text-[#2563eb]">
+                <span className="block mt-2 text-[var(--info)]">
                   This will only remove this variant. The Master SKU and other variants will not be affected.
                 </span>
               )}
@@ -1347,7 +1347,7 @@ export function StockManagement() {
             <Button
               onClick={handleDelete}
               disabled={deleting}
-              className="bg-[#dc2626] hover:bg-[#b91c1c] text-white rounded-full px-5 disabled:opacity-50"
+              className="bg-[var(--danger)] hover:bg-[var(--danger-dark)] text-white rounded-full px-5 disabled:opacity-50"
             >
               {deleting ? 'Deleting...' : 'Delete'}
             </Button>
@@ -1362,20 +1362,20 @@ export function StockManagement() {
             <>
               <DialogHeader>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <DialogTitle className="text-[#2d3436]">Edit Product</DialogTitle>
+                  <DialogTitle className="text-[var(--t-heading)]">Edit Product</DialogTitle>
                   {isVariant && editProduct.parentProduct && (
-                    <Badge className="text-[11px] px-1.5 py-0 rounded-full bg-[#2563eb]/10 text-[#2563eb] border-[#2563eb]/30" variant="outline">
+                    <Badge className="text-[11px] px-1.5 py-0 rounded-full bg-[var(--info)]/10 text-[var(--info)] border-[var(--info)]/30" variant="outline">
                       <Link2 className="w-2.5 h-2.5 mr-1" />
                       Varian of {editProduct.parentProduct.sku}
                     </Badge>
                   )}
                   {isMaster && (
-                    <Badge className="text-[11px] px-1.5 py-0 rounded-full bg-[#4a6741]/10 text-[#4a6741] border-[#4a6741]/30" variant="outline">
+                    <Badge className="text-[11px] px-1.5 py-0 rounded-full bg-[var(--brand)]/10 text-[var(--brand)] border-[var(--brand)]/30" variant="outline">
                       Master SKU
                     </Badge>
                   )}
                 </div>
-                <DialogDescription className="text-[#4b5563]">
+                <DialogDescription className="text-[var(--t-body)]">
                   {isVariant
                     ? 'Edit variant product details. Stock is synced from Master.'
                     : isMaster
@@ -1386,12 +1386,12 @@ export function StockManagement() {
 
               {/* Master info banner for variant */}
               {isVariant && editProduct.parentProduct && (
-                <div className="p-3 rounded-lg bg-[#2563eb]/5 border border-[#2563eb]/20">
-                  <div className="flex items-center gap-2 text-xs text-[#2563eb] font-medium">
+                <div className="p-3 rounded-lg bg-[var(--info)]/5 border border-[var(--info)]/20">
+                  <div className="flex items-center gap-2 text-xs text-[var(--info)] font-medium">
                     <Layers className="w-4 h-4" />
                     Master: {editProduct.parentProduct.sku} — {editProduct.parentProduct.name}
                   </div>
-                  <p className="text-[11px] text-[#4b5563] mt-1">
+                  <p className="text-[11px] text-[var(--t-body)] mt-1">
                     Stok & warna di-sync otomatis dari Master SKU. Hanya nama & barcode yang bisa diedit.
                   </p>
                 </div>
@@ -1400,10 +1400,10 @@ export function StockManagement() {
               {/* Reparent: move this child SKU to a different Master */}
               {isVariant && editProduct.parentProduct && (
                 <div className="space-y-1.5">
-                  <Label className="text-sm font-medium text-[#2d3436]">Ganti SKU Induk</Label>
+                  <Label className="text-sm font-medium text-[var(--t-heading)]">Ganti SKU Induk</Label>
                   <div className="flex gap-2">
                     <Select value={reparentTargetSku} onValueChange={setReparentTargetSku}>
-                      <SelectTrigger className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg flex-1">
+                      <SelectTrigger className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg flex-1">
                         <SelectValue placeholder="Pilih Master SKU..." />
                       </SelectTrigger>
                       <SelectContent>
@@ -1419,12 +1419,12 @@ export function StockManagement() {
                       variant="outline"
                       disabled={!reparentTargetSku || reparentTargetSku === editProduct.parentProduct.sku}
                       onClick={() => setReparentConfirmOpen(true)}
-                      className="h-10 rounded-lg border-[#2563eb]/30 text-[#2563eb] hover:bg-[#2563eb]/10 flex-shrink-0"
+                      className="h-10 rounded-lg border-[var(--info)]/30 text-[var(--info)] hover:bg-[var(--info)]/10 flex-shrink-0"
                     >
                       Pindahkan
                     </Button>
                   </div>
-                  <p className="text-[11px] text-[#6b7280]">
+                  <p className="text-[11px] text-[var(--t-muted)]">
                     Pindah ke Master lain akan langsung nyamain stok, min stock, dan est. print ke Master baru itu.
                   </p>
                 </div>
@@ -1432,12 +1432,12 @@ export function StockManagement() {
 
               {/* Master sync info banner */}
               {isMaster && (
-                <div className="p-3 rounded-lg bg-[#4a6741]/5 border border-[#4a6741]/20">
-                  <div className="flex items-center gap-2 text-xs text-[#4a6741] font-medium">
+                <div className="p-3 rounded-lg bg-[var(--brand)]/5 border border-[var(--brand)]/20">
+                  <div className="flex items-center gap-2 text-xs text-[var(--brand)] font-medium">
                     <Layers className="w-4 h-4" />
                     Master SKU — {editProduct.childProducts?.length || 0} variant product(s) linked
                   </div>
-                  <p className="text-[11px] text-[#4b5563] mt-1">
+                  <p className="text-[11px] text-[var(--t-body)] mt-1">
                     Perubahan stok & warna akan otomatis sync ke semua SKU Varian di group ini.
                   </p>
                 </div>
@@ -1446,15 +1446,15 @@ export function StockManagement() {
               <div className="space-y-4">
                 {/* SKU */}
                 <div className="space-y-1.5">
-                  <Label className="text-sm font-medium text-[#2d3436]">{isMaster ? 'Master SKU *' : 'SKU Varian *'}</Label>
+                  <Label className="text-sm font-medium text-[var(--t-heading)]">{isMaster ? 'Master SKU *' : 'SKU Varian *'}</Label>
                   <Input
                     value={editSku}
                     onChange={(e) => setEditSku(e.target.value)}
                     placeholder="Enter SKU"
-                    className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg font-mono uppercase"
+                    className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg font-mono uppercase"
                   />
                   {editProduct.sku !== editSku.trim() && editSku.trim() && (
-                    <p className="text-[11px] text-[#d97706] flex items-center gap-1">
+                    <p className="text-[11px] text-[var(--warning)] flex items-center gap-1">
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
                       SKU will change from <span className="font-mono font-semibold">{editProduct.sku}</span> to <span className="font-mono font-semibold">{editSku.trim()}</span>
                     </p>
@@ -1463,11 +1463,11 @@ export function StockManagement() {
 
                 {/* Product Name */}
                 <div className="space-y-1.5">
-                  <Label className="text-sm font-medium text-[#2d3436]">Product Name *</Label>
+                  <Label className="text-sm font-medium text-[var(--t-heading)]">Product Name *</Label>
                   <Input
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
-                    className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg"
+                    className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg"
                   />
                 </div>
 
@@ -1475,22 +1475,22 @@ export function StockManagement() {
                 {!isVariant && (
                   <div className="flex gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-sm font-medium text-[#2d3436]">
+                      <Label className="text-sm font-medium text-[var(--t-heading)]">
                         Min Stock Level
-                        {isMaster && <span className="text-[11px] text-[#4a6741] ml-1.5 font-normal">(sync to variants)</span>}
+                        {isMaster && <span className="text-[11px] text-[var(--brand)] ml-1.5 font-normal">(sync to variants)</span>}
                       </Label>
                       <Input
                         type="number"
                         min={0}
                         value={editMinStock}
                         onChange={(e) => setEditMinStock(parseInt(e.target.value) || 0)}
-                        className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg w-32"
+                        className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg w-32"
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-sm font-medium text-[#2d3436]">
+                      <Label className="text-sm font-medium text-[var(--t-heading)]">
                         Est. Print (menit/pcs)
-                        {isMaster && <span className="text-[11px] text-[#4a6741] ml-1.5 font-normal">(sync to variants)</span>}
+                        {isMaster && <span className="text-[11px] text-[var(--brand)] ml-1.5 font-normal">(sync to variants)</span>}
                       </Label>
                       <Input
                         type="number"
@@ -1498,9 +1498,9 @@ export function StockManagement() {
                         value={editEstPrintMinutes}
                         onChange={(e) => setEditEstPrintMinutes(e.target.value)}
                         placeholder="e.g. 45"
-                        className="h-10 text-sm bg-[#f5f6fa] border-[#e8e8e8] rounded-lg w-32"
+                        className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg w-32"
                       />
-                      <p className="text-[11px] text-[#6b7280]">Buat estimasi durasi Print Queue</p>
+                      <p className="text-[11px] text-[var(--t-muted)]">Buat estimasi durasi Print Queue</p>
                     </div>
                   </div>
                 )}
@@ -1534,7 +1534,7 @@ export function StockManagement() {
                 <Button
                   onClick={handleSave}
                   disabled={saving || !editSku.trim() || !editName.trim()}
-                  className="bg-[#4a6741] hover:bg-[#3d5535] text-white rounded-full px-5 disabled:opacity-50"
+                  className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white rounded-full px-5 disabled:opacity-50"
                 >
                   {saving ? 'Saving...' : 'Save Changes'}
                 </Button>
@@ -1548,14 +1548,14 @@ export function StockManagement() {
       <Dialog open={reparentConfirmOpen} onOpenChange={(open) => !open && setReparentConfirmOpen(false)}>
         <DialogContent className="sm:max-w-md rounded-xl">
           <DialogHeader>
-            <DialogTitle className="text-[#2d3436]">Pindahkan ke Master Baru?</DialogTitle>
-            <DialogDescription className="text-[#4b5563]">
+            <DialogTitle className="text-[var(--t-heading)]">Pindahkan ke Master Baru?</DialogTitle>
+            <DialogDescription className="text-[var(--t-body)]">
               {editProduct?.sku} akan dipindah dari{' '}
               <span className="font-semibold">{editProduct?.parentProduct?.sku}</span> ke{' '}
-              <span className="font-semibold text-[#2563eb]">{reparentTargetSku}</span>.
+              <span className="font-semibold text-[var(--info)]">{reparentTargetSku}</span>.
             </DialogDescription>
           </DialogHeader>
-          <div className="p-3 rounded-lg bg-[#d97706]/5 border border-[#d97706]/20 text-xs text-[#92400e]">
+          <div className="p-3 rounded-lg bg-[var(--warning)]/5 border border-[var(--warning)]/20 text-xs text-[var(--warning-darker)]">
             Stok, min stock, dan est. print produk ini akan <span className="font-semibold">langsung disamakan</span> ke Master baru (per warna yang cocok). Warna yang nggak ada di Master baru stoknya tetap seperti sekarang.
           </div>
           <DialogFooter className="gap-2">
@@ -1565,7 +1565,7 @@ export function StockManagement() {
             <Button
               onClick={handleReparent}
               disabled={reparenting}
-              className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white rounded-full px-5 disabled:opacity-50"
+              className="bg-[var(--info)] hover:bg-[var(--info-dark)] text-white rounded-full px-5 disabled:opacity-50"
             >
               {reparenting ? 'Memindahkan...' : 'Ya, Pindahkan'}
             </Button>

@@ -148,8 +148,8 @@ export function AddProductionDialog({ open, onOpenChange, onProductionAdded }: A
     <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
       <DialogContent className="sm:max-w-md rounded-xl">
         <DialogHeader>
-          <DialogTitle className="text-[#2d3436]">Add Production Item</DialogTitle>
-          <DialogDescription className="text-[#4b5563]">
+          <DialogTitle className="text-[var(--t-heading)]">Add Production Item</DialogTitle>
+          <DialogDescription className="text-[var(--t-body)]">
             Record a new production entry. Stock will be added when marked as completed.
           </DialogDescription>
         </DialogHeader>
@@ -157,30 +157,30 @@ export function AddProductionDialog({ open, onOpenChange, onProductionAdded }: A
         <div className="space-y-4">
           {/* Select Variant */}
           <div className="space-y-1.5">
-            <Label className="text-xs text-[#4b5563] font-medium">Product Variant</Label>
+            <Label className="text-xs text-[var(--t-body)] font-medium">Product Variant</Label>
             {loadingVariants ? (
-              <div className="h-9 bg-[#f0f0f0] rounded-md animate-pulse" />
+              <div className="h-9 bg-[var(--surface-2)] rounded-md animate-pulse" />
             ) : (
               <Select value={selectedVariantId} onValueChange={setSelectedVariantId}>
-                <SelectTrigger className="h-10 text-sm bg-[#f0f0f0] border-none focus:ring-1 focus:ring-[#4a6741]/30">
+                <SelectTrigger className="h-10 text-sm bg-[var(--surface-2)] border-none focus:ring-1 focus:ring-[var(--brand)]/30">
                   <SelectValue placeholder="Select a variant..." />
                 </SelectTrigger>
                 <SelectContent>
                   {variants.length === 0 ? (
-                    <div className="px-2 py-3 text-sm text-[#6b7280] text-center">
+                    <div className="px-2 py-3 text-sm text-[var(--t-muted)] text-center">
                       No variants found. Add products first.
                     </div>
                   ) : (
                     variants.map((v) => (
                       <SelectItem key={v.id} value={v.id}>
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-[#2d3436]">{v.product.sku}</span>
-                          <span className="text-[#4b5563]">·</span>
+                          <span className="font-semibold text-[var(--t-heading)]">{v.product.sku}</span>
+                          <span className="text-[var(--t-body)]">·</span>
                           <span
-                            className="w-3 h-3 rounded-full border border-[#e8e8e8] flex-shrink-0"
+                            className="w-3 h-3 rounded-full border border-[var(--bd)] flex-shrink-0"
                             style={{ backgroundColor: v.colorHex }}
                           />
-                          <span className="text-[#4b5563]">{v.color}{v.type ? ` - ${v.type}` : ''}</span>
+                          <span className="text-[var(--t-body)]">{v.color}{v.type ? ` - ${v.type}` : ''}</span>
                         </div>
                       </SelectItem>
                     ))
@@ -189,7 +189,7 @@ export function AddProductionDialog({ open, onOpenChange, onProductionAdded }: A
               </Select>
             )}
             {selectedVariant && (
-              <p className="text-[11px] text-[#6b7280]">
+              <p className="text-[11px] text-[var(--t-muted)]">
                 {selectedVariant.product.name} — {selectedVariant.color}{selectedVariant.type ? ` - ${selectedVariant.type}` : ''}
               </p>
             )}
@@ -197,33 +197,33 @@ export function AddProductionDialog({ open, onOpenChange, onProductionAdded }: A
 
           {/* Quantity */}
           <div className="space-y-1.5">
-            <Label className="text-xs text-[#4b5563] font-medium">Quantity to Produce</Label>
+            <Label className="text-xs text-[var(--t-body)] font-medium">Quantity to Produce</Label>
             <Input
               value={qty}
               onChange={(e) => setQty(e.target.value)}
               placeholder="Enter quantity"
               type="number"
               min="1"
-              className="h-10 text-sm bg-[#f0f0f0] border-none focus-visible:ring-1 focus-visible:ring-[#4a6741]/30"
+              className="h-10 text-sm bg-[var(--surface-2)] border-none focus-visible:ring-1 focus-visible:ring-[var(--brand)]/30"
             />
           </div>
 
           {/* Printer (Assigned To) */}
           <div className="space-y-1.5">
-            <Label className="text-xs text-[#4b5563] font-medium">Printer (optional)</Label>
+            <Label className="text-xs text-[var(--t-body)] font-medium">Printer (optional)</Label>
             {workingPrinters.length > 0 ? (
               <Select value={assignedTo || '__none__'} onValueChange={(val) => setAssignedTo(val === '__none__' ? '' : val)}>
-                <SelectTrigger className="h-10 text-sm bg-[#f0f0f0] border-none focus:ring-1 focus:ring-[#4a6741]/30">
+                <SelectTrigger className="h-10 text-sm bg-[var(--surface-2)] border-none focus:ring-1 focus:ring-[var(--brand)]/30">
                   <SelectValue placeholder="Select printer..." />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">
-                    <span className="text-[#6b7280] italic">— No Printer —</span>
+                    <span className="text-[var(--t-muted)] italic">— No Printer —</span>
                   </SelectItem>
                   {workingPrinters.map((printer) => (
                     <SelectItem key={printer.id} value={printer.name}>
                       <span className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-[#15803d]" />
+                        <span className="w-2 h-2 rounded-full bg-[var(--success)]" />
                         <span>{printer.name}</span>
                       </span>
                     </SelectItem>
@@ -235,7 +235,7 @@ export function AddProductionDialog({ open, onOpenChange, onProductionAdded }: A
                 value={assignedTo}
                 onChange={(e) => setAssignedTo(e.target.value)}
                 placeholder="Worker name (no printers available)"
-                className="h-10 text-sm bg-[#f0f0f0] border-none focus-visible:ring-1 focus-visible:ring-[#4a6741]/30"
+                className="h-10 text-sm bg-[var(--surface-2)] border-none focus-visible:ring-1 focus-visible:ring-[var(--brand)]/30"
               />
             )}
           </div>
@@ -253,7 +253,7 @@ export function AddProductionDialog({ open, onOpenChange, onProductionAdded }: A
           <Button
             onClick={handleSubmit}
             disabled={submitting || !selectedVariantId || !qty || parseInt(qty, 10) <= 0}
-            className="bg-[#4a6741] hover:bg-[#3d5535] text-white rounded-full px-5 disabled:opacity-50"
+            className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white rounded-full px-5 disabled:opacity-50"
           >
             {submitting ? 'Adding...' : 'Add to Production'}
           </Button>

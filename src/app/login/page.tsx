@@ -53,35 +53,35 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f6fa] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[var(--surface)] flex items-center justify-center p-4">
       <div className="w-full max-w-[400px]">
         {/* Brand Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-[#4a6741] flex items-center justify-center mb-4 shadow-lg shadow-[#4a6741]/20">
+          <div className="w-16 h-16 rounded-2xl bg-[var(--brand)] flex items-center justify-center mb-4 shadow-lg shadow-[var(--brand)]/20">
             <Package className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-[#4a6741] tracking-tight">Solutive</h1>
-          <p className="text-sm text-[#6b7280] mt-1">Inventory Management System</p>
+          <h1 className="text-2xl font-bold text-[var(--brand)] tracking-tight">Solutive</h1>
+          <p className="text-sm text-[var(--t-muted)] mt-1">Inventory Management System</p>
         </div>
 
         {/* Login Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-[#e8e8e8] p-6 md:p-8">
+        <div className="bg-[var(--card)] rounded-2xl shadow-sm border border-[var(--bd)] p-6 md:p-8">
           <div className="mb-6">
-            <h2 className="text-lg font-semibold text-[#2d3436]">Masuk ke Dashboard</h2>
-            <p className="text-sm text-[#6b7280] mt-1">Masukkan username dan password kamu</p>
+            <h2 className="text-lg font-semibold text-[var(--t-heading)]">Masuk ke Dashboard</h2>
+            <p className="text-sm text-[var(--t-muted)] mt-1">Masukkan username dan password kamu</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Error Message */}
             {error && (
-              <div className="bg-[#dc2626]/10 border border-[#dc2626]/20 rounded-xl px-4 py-3">
-                <p className="text-sm text-[#dc2626] font-medium">{error}</p>
+              <div className="bg-[var(--danger)]/10 border border-[var(--danger)]/20 rounded-xl px-4 py-3">
+                <p className="text-sm text-[var(--danger)] font-medium">{error}</p>
               </div>
             )}
 
             {/* Username */}
             <div className="space-y-2">
-              <label htmlFor="username" className="text-sm font-medium text-[#2d3436]">
+              <label htmlFor="username" className="text-sm font-medium text-[var(--t-heading)]">
                 Username
               </label>
               <input
@@ -92,13 +92,13 @@ export default function LoginPage() {
                 placeholder="Masukkan username"
                 autoComplete="username"
                 autoFocus
-                className="w-full h-11 px-4 rounded-xl border border-[#e8e8e8] bg-[#f5f6fa] text-sm text-[#2d3436] placeholder:text-[#9ca3af] focus:outline-none focus:ring-2 focus:ring-[#4a6741]/30 focus:border-[#4a6741]/50 transition-all"
+                className="w-full h-11 px-4 rounded-xl border border-[var(--bd)] bg-[var(--surface)] text-sm text-[var(--t-heading)] placeholder:text-[var(--t-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/30 focus:border-[var(--brand)]/50 transition-all"
               />
             </div>
 
             {/* Password */}
             <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium text-[#2d3436]">
+              <label htmlFor="password" className="text-sm font-medium text-[var(--t-heading)]">
                 Password
               </label>
               <div className="relative">
@@ -109,12 +109,12 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Masukkan password"
                   autoComplete="current-password"
-                  className="w-full h-11 px-4 pr-11 rounded-xl border border-[#e8e8e8] bg-[#f5f6fa] text-sm text-[#2d3436] placeholder:text-[#9ca3af] focus:outline-none focus:ring-2 focus:ring-[#4a6741]/30 focus:border-[#4a6741]/50 transition-all"
+                  className="w-full h-11 px-4 pr-11 rounded-xl border border-[var(--bd)] bg-[var(--surface)] text-sm text-[var(--t-heading)] placeholder:text-[var(--t-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--brand)]/30 focus:border-[var(--brand)]/50 transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[#9ca3af] hover:text-[#4b5563] transition-colors cursor-pointer"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--t-subtle)] hover:text-[var(--t-body)] transition-colors cursor-pointer"
                   tabIndex={-1}
                 >
                   {showPassword ? (
@@ -130,7 +130,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-11 rounded-xl bg-[#4a6741] hover:bg-[#3d5535] text-white text-sm font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm shadow-[#4a6741]/20"
+              className="w-full h-11 rounded-xl bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white text-sm font-semibold transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm shadow-[var(--brand)]/20"
             >
               {loading ? (
                 <>
@@ -145,7 +145,7 @@ export default function LoginPage() {
         </div>
 
         {/* Footer */}
-        <p className="text-center text-xs text-[#9ca3af] mt-6">
+        <p className="text-center text-xs text-[var(--t-subtle)] mt-6">
           Solutive Inventory Management
         </p>
       </div>
