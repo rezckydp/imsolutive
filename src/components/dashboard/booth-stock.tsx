@@ -15,6 +15,7 @@ import {
   Sparkles,
   GripVertical,
   Target,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -608,6 +609,7 @@ function KalenderProduksiTab() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [confirmGenerate, setConfirmGenerate] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [editingQty, setEditingQty] = useState<{ id: string; value: string } | null>(null);
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [sendTarget, setSendTarget] = useState<PlanCard | null>(null);
@@ -713,6 +715,21 @@ function KalenderProduksiTab() {
       setConfirmGenerate(true);
     } else {
       runGenerate();
+    }
+  };
+
+  const runSync = async () => {
+    setSyncing(true);
+    try {
+      const res = await fetch('/api/booth/plan/sync', { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Gagal sync stock');
+      setPlans(data.plans || []);
+      toast.success('Stock di-sync — jadwal yang udah diatur tetap aman');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Gagal sync stock');
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -827,9 +844,20 @@ function KalenderProduksiTab() {
           {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
           Hitung Kebutuhan
         </Button>
+        <Button
+          onClick={runSync}
+          disabled={syncing || !eventDate}
+          variant="outline"
+          title="Update angka kebutuhan dari stok terbaru tanpa mengubah susunan card"
+          className="border-[var(--bd)] text-[var(--t-body)] hover:bg-[var(--surface-2)] hover:text-[var(--t-heading)] gap-1.5"
+        >
+          {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+          Sync Stock
+        </Button>
       </div>
       <p className="text-xs text-[var(--t-muted)] -mt-2 mb-4">
         Total kebutuhan langsung ditaruh jadi 1 card di hari ini — kamu yang atur sendiri kapan & berapa banyak diproduksi tiap hari lewat geser card atau kirim sebagian ke Print Queue.
+        Butuh update angka doang tanpa bongkar susunan yang udah diatur? Pakai <strong className="text-[var(--t-body)] font-semibold">Sync Stock</strong>.
       </p>
 
       {loading ? (
