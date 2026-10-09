@@ -52,8 +52,57 @@ model Product {
   parentProduct   Product?   @relation("ProductGroup", fields: [parentProductId], references: [id], onDelete: Cascade)
   childProducts   Product[]  @relation("ProductGroup")
 
+  // Bundle Pricing Engine (pos-pricing-promo-spec.md) — produk yang masuk
+  // sini dihitung per Kategori Bundle di POS (gabung dengan produk lain di
+  // kategori yang sama), bukan pakai ProductVariant.price satuan lagi. Null
+  // = produk normal, tetap pakai harga per-varian seperti biasa.
+  bundleCategoryId String?
+  bundleCategory   BundleCategory? @relation(fields: [bundleCategoryId], references: [id])
+
   variants ProductVariant[]
   parts    Part[]
+}
+
+// Bundle Pricing Engine — kategori yang produknya boleh dicampur dalam 1
+// paket (mis. semua model Charging Stand dihitung sama). Lihat
+// pos-pricing-promo-spec.md.
+model BundleCategory {
+  id            String   @id @default(cuid())
+  code          String   @unique // "STAND", "DISPLAY" — kode internal, stabil, dipakai algoritma
+  name          String   // "Charging Stand" — label tampilan di panel admin & grid POS
+  normalPrice   Int      // harga acuan per pcs, buat hitung "Kamu Hemat" di struk
+  bulkMinQty    Int?     // ambang qty buat bulk tier (mis. 4). Null = kategori ini nggak punya bulk tier
+  bulkUnitPrice Int?     // harga per pcs kalau bulkMinQty kepenuhi
+  bulkTierName  String?  // nama marketing tier bulk di struk, mis. "Squad" -> "Squad (4)". Null -> fallback ke `name`
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  products     Product[]
+  requirements BundlePackageRequirement[]
+}
+
+// Paket harga flat (Single/Couple/Finisher/dst) — butuh qty tertentu dari 1
+// atau lebih BundleCategory sekaligus.
+model BundlePackage {
+  id        String   @id @default(cuid())
+  code      String   @unique // "STAND_SINGLE", "FINISHER", dst
+  name      String   // "Single Stand", "Finisher"
+  price     Int      // harga flat paket ini
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  requirements BundlePackageRequirement[]
+}
+
+model BundlePackageRequirement {
+  id         String @id @default(cuid())
+  packageId  String
+  package    BundlePackage  @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   BundleCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  qty        Int // qty dari kategori ini yang dibutuhkan per 1 paket
+
+  @@unique([packageId, categoryId])
 }
 
 model ProductVariant {
@@ -116,6 +165,13 @@ model Order {
   totalAmount    Int?    // subtotal - discountAmount, Rupiah
   cashReceived   Int?    // Cash only — persisted so reprints can still show kembalian
 
+  // Bundle Pricing Engine snapshot (pos-pricing-promo-spec.md) — JSON string
+  // { lines: BundleLine[], normalTotal: number, savings: number }, dibekukan
+  // persis seperti yang dihitung saat checkout. Null kalau transaksi ini
+  // nggak ada item kategori bundle sama sekali. Kalau config harga diubah
+  // belakangan di panel admin, histori transaksi lama TIDAK ikut berubah.
+  bundlePricingSnapshot String?
+
   orderItems OrderItem[]
 }
 
@@ -126,7 +182,13 @@ model OrderItem {
   qty       Int
   status    String   @default("Not Ready") // Ready, Not Ready, In Queue
   note      String   @default("")         // Custom color note (e.g. "Req. Color: Navy Blue")
-  unitPrice Int?     // POS only — snapshot of Product.price at time of sale (Rupiah)
+  unitPrice Int?     // POS only — snapshot of Product.price (atau BundleCategory.normalPrice kalau item bundle) at time of sale (Rupiah)
+  // POS only — pendapatan yang dialokasikan ke item ini, buat laporan omzet
+  // per SKU. Untuk item non-bundle sama dengan unitPrice × qty. Untuk item
+  // kategori bundle, dialokasikan pro-rata dari harga normal (lihat
+  // pos-pricing-promo-spec.md bagian 6) karena harga paketnya nggak nempel
+  // ke 1 SKU doang.
+  allocatedRevenue Int?
   createdAt DateTime @default(now())
 
   order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)

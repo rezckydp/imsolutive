@@ -50,6 +50,9 @@ export async function GET(request: NextRequest) {
             select: { id: true, sku: true, name: true },
             orderBy: { sku: "asc" },
           },
+          bundleCategory: {
+            select: { id: true, code: true, name: true, normalPrice: true },
+          },
           variants: { orderBy: [{ type: "asc" }, { color: "asc" }] },
           parts: {
             orderBy: { sortOrder: "asc" },

@@ -17,6 +17,7 @@ import {
   Printer,
   MessageCircle,
   History,
+  Sparkles,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -48,8 +49,23 @@ import { lookupBarcode } from '@/components/dashboard/barcode-scanner';
 import { DateRangePicker, type SimpleDateRange } from '@/components/dashboard/date-range-picker';
 import { ThemeToggle } from '@/components/dashboard/theme-toggle';
 import { format } from 'date-fns';
+import {
+  calculateBundlePrice,
+  getUpsellHints,
+  type FixedPackage,
+  type BulkTier,
+  type BundlePriceResult,
+  type UpsellHint,
+} from '@/lib/bundle-pricing';
 
 // ============ TYPES ============
+
+interface PosBundleCategory {
+  id: string;
+  code: string;
+  name: string;
+  normalPrice: number;
+}
 
 interface PosVariant {
   id: string;
@@ -65,6 +81,7 @@ interface PosProduct {
   sku: string;
   name: string;
   isBoothEnabled: boolean;
+  bundleCategory: PosBundleCategory | null;
   variants: PosVariant[];
 }
 
@@ -78,6 +95,16 @@ interface CartItem {
   unitPrice: number;
   qty: number;
   stockQty: number;
+  // Set when this item's Product belongs to a Bundle Category — priced by
+  // the DP engine below, not unitPrice × qty (pos-pricing-promo-spec.md).
+  categoryCode: string | null;
+  categoryName: string | null;
+}
+
+interface BundleConfigData {
+  categories: Array<{ id: string; code: string; name: string; normalPrice: number; bulkMinQty: number | null; bulkUnitPrice: number | null }>;
+  packages: FixedPackage[];
+  bulkTiers: BulkTier[];
 }
 
 interface PosSettingsData {
@@ -97,7 +124,7 @@ interface ReceiptOrderItem {
   id: string;
   qty: number;
   unitPrice: number | null;
-  variant: { color: string; type: string; product: { sku: string; name: string } };
+  variant: { color: string; type: string; product: { sku: string; name: string; bundleCategoryId: string | null } };
 }
 
 interface ReceiptOrder {
@@ -109,7 +136,23 @@ interface ReceiptOrder {
   subtotalAmount: number | null;
   totalAmount: number | null;
   cashReceived: number | null;
+  bundlePricingSnapshot: string | null;
   orderItems: ReceiptOrderItem[];
+}
+
+interface BundleSnapshot {
+  lines: Array<{ code: string; name: string; packageCount: number; unitPrice: number; subtotal: number }>;
+  normalTotal: number;
+  savings: number;
+}
+
+function parseBundleSnapshot(order: ReceiptOrder): BundleSnapshot | null {
+  if (!order.bundlePricingSnapshot) return null;
+  try {
+    return JSON.parse(order.bundlePricingSnapshot);
+  } catch {
+    return null;
+  }
 }
 
 interface HistorySummary {
@@ -128,6 +171,10 @@ function formatRupiah(n: number): string {
 }
 
 function buildReceiptLines(order: ReceiptOrder, settings: PosSettingsData | null): string[] {
+  const bundle = parseBundleSnapshot(order);
+  const bundleItems = order.orderItems.filter((i) => i.variant.product.bundleCategoryId != null);
+  const plainItems = order.orderItems.filter((i) => i.variant.product.bundleCategoryId == null);
+
   const lines: string[] = [];
   lines.push(settings?.storeName || 'Solutive');
   if (settings?.storeAddress) lines.push(settings.storeAddress);
@@ -135,14 +182,30 @@ function buildReceiptLines(order: ReceiptOrder, settings: PosSettingsData | null
   lines.push(new Date(order.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }));
   lines.push(order.orderNo);
   lines.push('--------------------------------');
-  for (const item of order.orderItems) {
+
+  // Bundle package lines first (pos-pricing-promo-spec.md bagian 5) — these
+  // are what the customer actually paid for, not the raw per-SKU items.
+  if (bundle) {
+    for (const line of bundle.lines) {
+      lines.push(line.name);
+      lines.push(`  ${line.packageCount} x ${formatRupiah(line.unitPrice)} = ${formatRupiah(line.subtotal)}`);
+    }
+  }
+  // Items outside any bundle category still show normal per-line math.
+  for (const item of plainItems) {
     const label = getVariantLabel(item.variant.color, item.variant.type);
     lines.push(`${item.variant.product.sku}${label ? ' - ' + label : ''}`);
     const unitPrice = item.unitPrice || 0;
     lines.push(`  ${item.qty} x ${formatRupiah(unitPrice)} = ${formatRupiah(unitPrice * item.qty)}`);
   }
+
   lines.push('--------------------------------');
   lines.push(`Subtotal: ${formatRupiah(order.subtotalAmount || 0)}`);
+  if (bundle) {
+    const normalSubtotal = bundle.normalTotal + plainItems.reduce((s, i) => s + (i.unitPrice || 0) * i.qty, 0);
+    lines.push(`Harga normal: ${formatRupiah(normalSubtotal)}`);
+    if (bundle.savings > 0) lines.push(`Kamu hemat: ${formatRupiah(bundle.savings)}`);
+  }
   if (order.discountAmount > 0) lines.push(`Diskon: -${formatRupiah(order.discountAmount)}`);
   lines.push(`TOTAL: ${formatRupiah(order.totalAmount || 0)}`);
   lines.push(`Bayar: ${order.paymentMethod || '-'}`);
@@ -150,6 +213,18 @@ function buildReceiptLines(order: ReceiptOrder, settings: PosSettingsData | null
     lines.push(`Tunai: ${formatRupiah(order.cashReceived)}`);
     lines.push(`Kembali: ${formatRupiah(order.cashReceived - (order.totalAmount || 0))}`);
   }
+
+  // Physical rincian — stock/reference only, no price math (already paid
+  // for as part of the package lines above).
+  if (bundle && bundleItems.length > 0) {
+    lines.push('--------------------------------');
+    lines.push('Rincian item:');
+    for (const item of bundleItems) {
+      const label = getVariantLabel(item.variant.color, item.variant.type);
+      lines.push(`- ${item.variant.product.sku}${label ? ' ' + label : ''} x${item.qty}`);
+    }
+  }
+
   const footer = settings?.receiptFooter ?? 'Terima kasih!';
   if (footer.trim()) {
     lines.push('');
@@ -211,19 +286,25 @@ async function fetchProductsList(params: string): Promise<PosProduct[]> {
   const res = await fetch(`/api/products?${params}`);
   if (!res.ok) return [];
   const data = await res.json();
-  return (data.products || []).map((p: { id: string; sku: string; name: string; isBoothEnabled?: boolean; variants?: PosVariant[] }) => ({
+  return (data.products || []).map((p: { id: string; sku: string; name: string; isBoothEnabled?: boolean; bundleCategory?: PosBundleCategory | null; variants?: PosVariant[] }) => ({
     id: p.id,
     sku: p.sku,
     name: p.name,
     isBoothEnabled: p.isBoothEnabled ?? false,
+    bundleCategory: p.bundleCategory ?? null,
     variants: p.variants || [],
   }));
 }
 
-// A product's displayed price on the grid card — variants can now each have
-// their own price (variant-matrix-spec.md), so a product with priced
-// variants that differ shows a range/"mulai dari" instead of one number.
+// A product's displayed price on the grid card. Bundle-category products
+// (pos-pricing-promo-spec.md) are priced per-category, not per-variant — one
+// flat normalPrice applies to every color/type. Non-bundle products can
+// still have each variant priced independently (variant-matrix-spec.md), so
+// a range/"mulai dari" shows when they differ.
 function priceRangeOf(product: PosProduct): { min: number; max: number } | null {
+  if (product.bundleCategory) {
+    return { min: product.bundleCategory.normalPrice, max: product.bundleCategory.normalPrice };
+  }
   const prices = product.variants.map((v) => v.price).filter((p): p is number => p != null);
   if (prices.length === 0) return null;
   return { min: Math.min(...prices), max: Math.max(...prices) };
@@ -235,6 +316,7 @@ export default function PosPage() {
   const [activeTab, setActiveTab] = useState<'kasir' | 'riwayat'>('kasir');
 
   const [products, setProducts] = useState<PosProduct[]>([]);
+  const [bundleConfig, setBundleConfig] = useState<BundleConfigData | null>(null);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [search, setSearch] = useState('');
   const [barcodeInput, setBarcodeInput] = useState('');
@@ -328,11 +410,17 @@ export default function PosPage() {
     }
   }, []);
 
+  const fetchBundleConfig = useCallback(async () => {
+    const res = await fetch('/api/bundle/config');
+    if (res.ok) setBundleConfig(await res.json());
+  }, []);
+
   useEffect(() => {
     fetchProducts();
     fetchSettings();
     fetchRecentTransactions();
-  }, [fetchProducts, fetchSettings, fetchRecentTransactions]);
+    fetchBundleConfig();
+  }, [fetchProducts, fetchSettings, fetchRecentTransactions, fetchBundleConfig]);
 
   useEffect(() => {
     barcodeRef.current?.focus();
@@ -347,8 +435,51 @@ export default function PosPage() {
     return products.filter((p) => p.sku.toLowerCase().includes(q) || p.name.toLowerCase().includes(q));
   }, [products, search]);
 
-  const subtotal = useMemo(() => cart.reduce((sum, item) => sum + item.unitPrice * item.qty, 0), [cart]);
-  const total = Math.max(0, subtotal - discountAmount);
+  // Bundle-category items (pos-pricing-promo-spec.md) are grouped by
+  // category code and priced by the DP engine, recalculated live on every
+  // cart change — a client-side preview only; the server independently
+  // recomputes and validates this at checkout.
+  const qtyByCategory = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const item of cart) {
+      if (item.categoryCode) map[item.categoryCode] = (map[item.categoryCode] ?? 0) + item.qty;
+    }
+    return map;
+  }, [cart]);
+
+  const normalPriceByCategory = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const c of bundleConfig?.categories ?? []) map[c.code] = c.normalPrice;
+    return map;
+  }, [bundleConfig]);
+
+  const categoryNameByCode = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const c of bundleConfig?.categories ?? []) map[c.code] = c.name;
+    return map;
+  }, [bundleConfig]);
+
+  const bundleCalc: BundlePriceResult | null = useMemo(() => {
+    if (!bundleConfig || Object.keys(qtyByCategory).length === 0) return null;
+    return calculateBundlePrice(qtyByCategory, bundleConfig.packages, bundleConfig.bulkTiers, normalPriceByCategory);
+  }, [bundleConfig, qtyByCategory, normalPriceByCategory]);
+
+  const upsellHints: UpsellHint[] = useMemo(() => {
+    if (!bundleConfig || Object.keys(qtyByCategory).length === 0) return [];
+    return getUpsellHints(qtyByCategory, bundleConfig.packages, bundleConfig.bulkTiers, normalPriceByCategory, categoryNameByCode);
+  }, [bundleConfig, qtyByCategory, normalPriceByCategory, categoryNameByCode]);
+
+  const plainSubtotal = useMemo(
+    () => cart.reduce((sum, item) => sum + (item.categoryCode ? 0 : item.unitPrice * item.qty), 0),
+    [cart]
+  );
+  // "Subtotal" shown to the kasir is the reference total as if no bundle
+  // discount applied — bundleCalc.savings is broken out as its own line, so
+  // every cart row's displayed price × qty still sums to this number.
+  const subtotal = plainSubtotal + (bundleCalc?.normalTotal ?? 0);
+  const bundleSavings = bundleCalc?.savings ?? 0;
+  const actualSubtotal = plainSubtotal + (bundleCalc?.total ?? 0);
+  const total = Math.max(0, actualSubtotal - discountAmount);
   const cashReceivedNum = cashReceived.trim() ? parseInt(cashReceived, 10) : null;
   const change = paymentMethod === 'Cash' && cashReceivedNum != null ? cashReceivedNum - total : null;
   const canCheckout = cart.length > 0 && paymentMethod !== null && !checkingOut;
@@ -356,7 +487,8 @@ export default function PosPage() {
   // ============ CART ============
 
   const addToCart = useCallback((product: PosProduct, variant: PosVariant) => {
-    if (variant.price == null) {
+    const category = product.bundleCategory;
+    if (!category && variant.price == null) {
       toast.error(`${product.sku} — ${getVariantLabel(variant.color, variant.type)} belum punya harga jual — isi dulu di Stock Management`);
       return;
     }
@@ -374,9 +506,11 @@ export default function PosPage() {
           color: variant.color,
           colorHex: variant.colorHex,
           type: variant.type,
-          unitPrice: variant.price!,
+          unitPrice: category ? category.normalPrice : variant.price!,
           qty: 1,
           stockQty: variant.qty,
+          categoryCode: category?.code ?? null,
+          categoryName: category?.name ?? null,
         },
       ];
     });
@@ -387,7 +521,9 @@ export default function PosPage() {
       toast.error(`${product.sku} belum punya varian`);
       return;
     }
-    if (product.variants.every((v) => v.price == null)) {
+    // Bundle-category products always have a price (BundleCategory.normalPrice
+    // is required), so only plain products can be missing one.
+    if (!product.bundleCategory && product.variants.every((v) => v.price == null)) {
       toast.error(`${product.sku} belum punya harga jual — isi dulu di Stock Management`);
       return;
     }
@@ -737,7 +873,14 @@ export default function PosPage() {
                 <div key={item.variantId} className="flex items-center gap-2 py-2 border-b border-[var(--surface-2)] last:border-0">
                   <span className="w-3 h-3 rounded-full border border-[var(--bd)] flex-shrink-0" style={{ backgroundColor: item.colorHex }} />
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-[var(--t-heading)] truncate">{item.sku}</p>
+                    <p className="text-xs font-semibold text-[var(--t-heading)] truncate flex items-center gap-1">
+                      {item.sku}
+                      {item.categoryName && (
+                        <span className="text-[9px] font-semibold px-1 py-0 rounded bg-[var(--brand)]/10 text-[var(--brand)] flex-shrink-0">
+                          {item.categoryName}
+                        </span>
+                      )}
+                    </p>
                     <p className="text-[11px] text-[var(--t-muted)] truncate">
                       {getVariantLabel(item.color, item.type)} · {formatRupiah(item.unitPrice)}
                     </p>
@@ -770,6 +913,16 @@ export default function PosPage() {
               ))
             )}
           </div>
+
+          {/* Upsell hint — "tambah 1 item cuma +Xrb" (pos-pricing-promo-spec.md bagian 4) */}
+          {upsellHints.length > 0 && (
+            <div className="px-4 pb-2">
+              <div className="flex items-start gap-1.5 bg-[var(--brand)]/10 text-[var(--brand)] rounded-lg px-2.5 py-2 text-[11px] font-medium">
+                <Sparkles className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                <span>{upsellHints[0].message}</span>
+              </div>
+            </div>
+          )}
 
           <div className="border-t border-[var(--bd)] px-4 py-3 space-y-3">
             {/* Discount */}
@@ -810,6 +963,12 @@ export default function PosPage() {
                 <span>Subtotal</span>
                 <span>{formatRupiah(subtotal)}</span>
               </div>
+              {bundleSavings > 0 && (
+                <div className="flex justify-between text-[var(--success)]">
+                  <span>Hemat Paket</span>
+                  <span>-{formatRupiah(bundleSavings)}</span>
+                </div>
+              )}
               {discountAmount > 0 && (
                 <div className="flex justify-between text-[var(--warning)]">
                   <span>Diskon</span>
@@ -1040,20 +1199,57 @@ export default function PosPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto space-y-2 py-2">
-            {detailOrder?.orderItems.map((item) => (
-              <div key={item.id} className="flex items-center justify-between text-sm py-1.5 border-b border-[var(--surface-2)] last:border-0">
-                <div className="min-w-0">
-                  <p className="font-medium text-[var(--t-heading)] truncate">{item.variant.product.sku}</p>
-                  <p className="text-[11px] text-[var(--t-muted)]">
-                    {getVariantLabel(item.variant.color, item.variant.type)} · {item.qty} x {formatRupiah(item.unitPrice || 0)}
-                  </p>
-                </div>
-                <span className="font-semibold text-[var(--t-heading)] flex-shrink-0">{formatRupiah((item.unitPrice || 0) * item.qty)}</span>
-              </div>
-            ))}
+            {detailOrder && (() => {
+              const bundle = parseBundleSnapshot(detailOrder);
+              const bundleItems = detailOrder.orderItems.filter((i) => i.variant.product.bundleCategoryId != null);
+              const plainItems = detailOrder.orderItems.filter((i) => i.variant.product.bundleCategoryId == null);
+              return (
+                <>
+                  {bundle?.lines.map((line) => (
+                    <div key={line.code} className="flex items-center justify-between text-sm py-1.5 border-b border-[var(--surface-2)] last:border-0">
+                      <div className="min-w-0">
+                        <p className="font-medium text-[var(--t-heading)] truncate">{line.name}</p>
+                        <p className="text-[11px] text-[var(--t-muted)]">{line.packageCount} x {formatRupiah(line.unitPrice)}</p>
+                      </div>
+                      <span className="font-semibold text-[var(--t-heading)] flex-shrink-0">{formatRupiah(line.subtotal)}</span>
+                    </div>
+                  ))}
+                  {plainItems.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between text-sm py-1.5 border-b border-[var(--surface-2)] last:border-0">
+                      <div className="min-w-0">
+                        <p className="font-medium text-[var(--t-heading)] truncate">{item.variant.product.sku}</p>
+                        <p className="text-[11px] text-[var(--t-muted)]">
+                          {getVariantLabel(item.variant.color, item.variant.type)} · {item.qty} x {formatRupiah(item.unitPrice || 0)}
+                        </p>
+                      </div>
+                      <span className="font-semibold text-[var(--t-heading)] flex-shrink-0">{formatRupiah((item.unitPrice || 0) * item.qty)}</span>
+                    </div>
+                  ))}
+                  {bundle && bundleItems.length > 0 && (
+                    <div className="pt-1">
+                      <p className="text-[11px] font-medium text-[var(--t-muted)] mb-1">Rincian item:</p>
+                      {bundleItems.map((item) => (
+                        <p key={item.id} className="text-[11px] text-[var(--t-muted)]">
+                          - {item.variant.product.sku} {getVariantLabel(item.variant.color, item.variant.type)} x{item.qty}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
           {detailOrder && (
             <div className="border-t border-[var(--bd)] pt-3 space-y-1 text-sm">
+              {parseBundleSnapshot(detailOrder) && (() => {
+                const bundle = parseBundleSnapshot(detailOrder)!;
+                return bundle.savings > 0 ? (
+                  <div className="flex justify-between text-[var(--success)]">
+                    <span>Kamu Hemat</span>
+                    <span>{formatRupiah(bundle.savings)}</span>
+                  </div>
+                ) : null;
+              })()}
               <div className="flex justify-between text-[var(--t-muted)]">
                 <span>Subtotal</span>
                 <span>{formatRupiah(detailOrder.subtotalAmount || 0)}</span>
@@ -1128,7 +1324,8 @@ export default function PosPage() {
           </DialogHeader>
           <div className="space-y-1.5 max-h-[50vh] overflow-y-auto">
             {variantPickerProduct?.variants.map((variant) => {
-              const noPrice = variant.price == null;
+              const category = variantPickerProduct.bundleCategory;
+              const noPrice = !category && variant.price == null;
               return (
                 <button
                   key={variant.id}
@@ -1146,7 +1343,7 @@ export default function PosPage() {
                   {noPrice ? (
                     <span className="text-[11px] font-medium text-[var(--danger)]">Belum ada harga</span>
                   ) : (
-                    <span className="text-xs font-semibold text-[var(--brand)]">{formatRupiah(variant.price!)}</span>
+                    <span className="text-xs font-semibold text-[var(--brand)]">{formatRupiah(category ? category.normalPrice : variant.price!)}</span>
                   )}
                   <span className={`text-xs font-medium ${variant.qty === 0 ? 'text-[var(--danger)]' : 'text-[var(--t-muted)]'}`}>
                     Stok: {variant.qty}
@@ -1304,7 +1501,14 @@ function ProductCard({ product, onClick }: { product: PosProduct; onClick: () =>
       onClick={onClick}
       className={`text-left rounded-xl border transition-all cursor-pointer p-3 bg-[var(--card)] border-[var(--bd)] hover:shadow-md ${noPrice ? 'opacity-60' : ''}`}
     >
-      <p className="font-semibold text-[var(--t-heading)] truncate text-sm">{product.sku}</p>
+      <p className="font-semibold text-[var(--t-heading)] truncate text-sm flex items-center gap-1">
+        {product.sku}
+        {product.bundleCategory && (
+          <span className="text-[9px] font-semibold px-1 py-0 rounded bg-[var(--brand)]/10 text-[var(--brand)] flex-shrink-0">
+            {product.bundleCategory.name}
+          </span>
+        )}
+      </p>
       <p className="text-[11px] text-[var(--t-muted)] truncate mb-1.5">{product.name}</p>
       {noPrice ? (
         <Badge className="text-[10px] px-1.5 py-0 rounded-full bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]/30 gap-1" variant="outline">
