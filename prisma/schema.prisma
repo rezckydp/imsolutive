@@ -173,11 +173,13 @@ model Order {
   // belakangan di panel admin, histori transaksi lama TIDAK ikut berubah.
   bundlePricingSnapshot String?
 
-  // Data customer (pos-preorder-addon-spec.md) — SELALU opsional, cuma
-  // relevan & cuma ditampilkan di UI kalau transaksi punya >=1 item PO.
-  // Satu pembeli = satu data, walau item PO-nya lebih dari satu baris.
+  // Data customer — SELALU opsional & SELALU tampil di kasir (bukan cuma
+  // pas ada item PO), request revisi dari pos-preorder-addon-spec.md
+  // bagian 2 yang tadinya cuma nongol kalau ada PO. Satu pembeli = satu
+  // data, walau item PO-nya lebih dari satu baris.
   customerName  String?
   customerPhone String?
+  notes         String? // catatan bebas kasir, mis. permintaan khusus pembeli
 
   orderItems OrderItem[]
 }

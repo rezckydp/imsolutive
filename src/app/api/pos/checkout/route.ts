@@ -57,6 +57,7 @@ export async function POST(request: NextRequest) {
       cashReceived,
       customerName,
       customerPhone,
+      notes,
     }: {
       items: CheckoutItem[];
       discountAmount?: number;
@@ -64,6 +65,7 @@ export async function POST(request: NextRequest) {
       cashReceived?: number;
       customerName?: string;
       customerPhone?: string;
+      notes?: string;
     } = body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -223,10 +225,12 @@ export async function POST(request: NextRequest) {
         bundlePricingSnapshot: bundleResult
           ? JSON.stringify({ lines: bundleResult.lines, normalTotal: bundleResult.normalTotal, savings: bundleResult.savings })
           : null,
-        // Always optional (pos-preorder-addon-spec.md bagian 2/7) — never
-        // required even when items are tagged PO.
+        // Always optional and always collectable from the cashier, not
+        // gated behind the PO tag — revised from the original spec which
+        // only surfaced these when an item was marked PO.
         customerName: customerName?.trim() || null,
         customerPhone: customerPhone?.trim() || null,
+        notes: notes?.trim() || null,
         orderItems: {
           create: itemsData.map((d) => ({
             variantId: d.variantId,
