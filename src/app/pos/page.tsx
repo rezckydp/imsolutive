@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
+import { jsPDF } from 'jspdf';
 import {
   Search,
   Plus,
@@ -25,7 +26,6 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -345,13 +345,62 @@ function normalizePhone(input: string): string | null {
   return `62${digits}`;
 }
 
-function sendReceiptWhatsApp(order: ReceiptOrder, settings: PosSettingsData | null, phone: string) {
+// Struk sebagai PDF kecil (lebar ngikut setting kertas thermal) — dipakai
+// buat share via WA dan buat download manual di Riwayat.
+function buildReceiptPdfBlob(order: ReceiptOrder, settings: PosSettingsData | null): Blob {
+  const widthMm = settings?.paperWidthMm === 80 ? 80 : 58;
+  const lines = buildReceiptLines(order, settings);
+  const fontSize = 8;
+  const lineHeightMm = 4;
+  const marginMm = 4;
+  const heightMm = marginMm * 2 + lines.length * lineHeightMm;
+  const doc = new jsPDF({ unit: 'mm', format: [widthMm, heightMm] });
+  doc.setFont('courier', 'normal');
+  doc.setFontSize(fontSize);
+  let y = marginMm;
+  for (const line of lines) {
+    doc.text(line, marginMm, y);
+    y += lineHeightMm;
+  }
+  return doc.output('blob');
+}
+
+// Kirim struk sebagai PDF via WhatsApp. Kalau browser/OS-nya dukung Web
+// Share API dengan file (sebagian besar browser desktop modern + semua
+// mobile), ini langsung buka share sheet dengan PDF ter-attach — kasir
+// tinggal pilih WhatsApp & kontaknya. Kalau nggak didukung, nggak ada cara
+// resmi (tanpa WhatsApp Business API) buat nge-attach file otomatis ke
+// nomor tertentu lewat link wa.me biasa — jadi PDF-nya didownload dan
+// WhatsApp dibuka dengan teks siap kirim, kasir lampirkan manual.
+async function sendReceiptPdfWhatsApp(order: ReceiptOrder, settings: PosSettingsData | null, phone: string) {
   const normalized = normalizePhone(phone);
   if (!normalized) {
     toast.error('Nomor WhatsApp tidak valid');
     return;
   }
-  const text = buildReceiptLines(order, settings).join('\n');
+  const blob = buildReceiptPdfBlob(order, settings);
+  const fileName = `Struk-${order.orderNo}.pdf`;
+  const text = `Struk ${order.orderNo} — ${settings?.storeName || 'Solutive'}`;
+
+  try {
+    const file = new File([blob], fileName, { type: 'application/pdf' });
+    if (navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ files: [file], text });
+      return;
+    }
+  } catch {
+    // Dibatalkan kasir atau share gagal — lanjut ke fallback manual di bawah.
+  }
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  toast.message('PDF struk didownload — lampirkan manual di chat WhatsApp yang baru dibuka');
   window.open(`https://wa.me/${normalized}?text=${encodeURIComponent(text)}`, '_blank');
 }
 
@@ -406,8 +455,6 @@ export default function PosPage() {
   const barcodeRef = useRef<HTMLInputElement>(null);
 
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [discountAmount, setDiscountAmount] = useState(0);
-  const [discountInput, setDiscountInput] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'QRIS' | null>(null);
   const [cashReceived, setCashReceived] = useState('');
   const [checkingOut, setCheckingOut] = useState(false);
@@ -422,6 +469,7 @@ export default function PosPage() {
 
   const [successData, setSuccessData] = useState<ReceiptOrder | null>(null);
   const [waPhone, setWaPhone] = useState('');
+  const [sendingWa, setSendingWa] = useState(false);
   const [recentTransactions, setRecentTransactions] = useState<ReceiptOrder[]>([]);
 
   const [variantPickerProduct, setVariantPickerProduct] = useState<PosProduct | null>(null);
@@ -432,9 +480,7 @@ export default function PosPage() {
   const [editStoreAddress, setEditStoreAddress] = useState('');
   const [editStorePhone, setEditStorePhone] = useState('');
   const [editReceiptFooter, setEditReceiptFooter] = useState('');
-  const [editAutoPrint, setEditAutoPrint] = useState(true);
   const [editPaperWidth, setEditPaperWidth] = useState<58 | 80>(58);
-  const [editDiscountPresets, setEditDiscountPresets] = useState('');
   const [editCashPresets, setEditCashPresets] = useState('');
   const [savingSettings, setSavingSettings] = useState(false);
 
@@ -447,6 +493,9 @@ export default function PosPage() {
   const [detailOrder, setDetailOrder] = useState<ReceiptOrder | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ReceiptOrder | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [waSendTarget, setWaSendTarget] = useState<ReceiptOrder | null>(null);
+  const [waSendPhone, setWaSendPhone] = useState('');
+  const [sendingWaHistory, setSendingWaHistory] = useState(false);
 
   const fetchHistory = useCallback(async () => {
     setLoadingHistory(true);
@@ -525,7 +574,6 @@ export default function PosPage() {
     barcodeRef.current?.focus();
   }, []);
 
-  const discountPresets = useMemo(() => (settings ? parsePresetList(settings.discountPresets) : []), [settings]);
   const cashPresets = useMemo(() => (settings ? parsePresetList(settings.cashPresets) : []), [settings]);
 
   const filteredProducts = useMemo(() => {
@@ -596,8 +644,7 @@ export default function PosPage() {
   // every cart row's displayed price × qty still sums to this number.
   const subtotal = plainSubtotal + (bundleCalc?.normalTotal ?? 0) + addOnTotal;
   const bundleSavings = bundleCalc?.savings ?? 0;
-  const actualSubtotal = plainSubtotal + (bundleCalc?.total ?? 0) + addOnTotal;
-  const total = Math.max(0, actualSubtotal - discountAmount);
+  const total = plainSubtotal + (bundleCalc?.total ?? 0) + addOnTotal;
   const cashReceivedNum = cashReceived.trim() ? parseInt(cashReceived, 10) : null;
   const change = paymentMethod === 'Cash' && cashReceivedNum != null ? cashReceivedNum - total : null;
   const canCheckout = cart.length > 0 && paymentMethod !== null && !checkingOut;
@@ -732,17 +779,15 @@ export default function PosPage() {
   };
 
   const clearCart = useCallback(() => {
-    if (cart.length === 0 && !paymentMethod && !discountAmount) return;
+    if (cart.length === 0 && !paymentMethod) return;
     setCart([]);
-    setDiscountAmount(0);
-    setDiscountInput('');
     setPaymentMethod(null);
     setCashReceived('');
     setCustomerName('');
     setCustomerPhone('');
     setOrderNotes('');
     toast.message('Keranjang dikosongkan');
-  }, [cart.length, paymentMethod, discountAmount]);
+  }, [cart.length, paymentMethod]);
 
   // ============ BARCODE SCAN ============
 
@@ -806,7 +851,6 @@ export default function PosPage() {
             isPreOrder: i.isPreOrder,
             addOns: i.addOns.map((a) => ({ addOnId: a.addOnId, value: a.value })),
           })),
-          discountAmount,
           paymentMethod,
           cashReceived: cashReceivedNum ?? undefined,
           customerName: customerName.trim() || undefined,
@@ -818,10 +862,8 @@ export default function PosPage() {
       if (!res.ok) throw new Error(data.error || 'Gagal memproses transaksi');
 
       setSuccessData(data.order);
-      setWaPhone('');
+      setWaPhone(data.order.customerPhone || '');
       setCart([]);
-      setDiscountAmount(0);
-      setDiscountInput('');
       setPaymentMethod(null);
       setCashReceived('');
       setCustomerName('');
@@ -829,10 +871,7 @@ export default function PosPage() {
       setOrderNotes('');
       fetchProducts();
       fetchRecentTransactions();
-      // Print immediately — no extra click needed unless turned off in Settings.
-      if (settings?.autoPrintReceipt ?? true) {
-        printReceipt(data.order, settings);
-      }
+      // Struk sekarang dikirim via WA dari Success dialog, bukan auto-print.
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Gagal memproses transaksi');
     } finally {
@@ -862,6 +901,24 @@ export default function PosPage() {
     }
   };
 
+  // ============ KIRIM WA (RIWAYAT / QUICK REPRINT / DETAIL) ============
+
+  const openWaSendDialog = (order: ReceiptOrder) => {
+    setWaSendPhone(order.customerPhone || '');
+    setWaSendTarget(order);
+  };
+
+  const confirmWaSend = async () => {
+    if (!waSendTarget || !waSendPhone.trim()) return;
+    setSendingWaHistory(true);
+    try {
+      await sendReceiptPdfWhatsApp(waSendTarget, settings, waSendPhone);
+      setWaSendTarget(null);
+    } finally {
+      setSendingWaHistory(false);
+    }
+  };
+
   // ============ KEYBOARD SHORTCUTS ============
 
   useEffect(() => {
@@ -879,7 +936,7 @@ export default function PosPage() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canCheckout, cart, discountAmount, paymentMethod, cashReceived]);
+  }, [canCheckout, cart, paymentMethod, cashReceived]);
 
   // ============ SETTINGS DIALOG ============
 
@@ -889,9 +946,7 @@ export default function PosPage() {
     setEditStoreAddress(settings.storeAddress || '');
     setEditStorePhone(settings.storePhone || '');
     setEditReceiptFooter(settings.receiptFooter ?? 'Terima kasih!');
-    setEditAutoPrint(settings.autoPrintReceipt ?? true);
     setEditPaperWidth(settings.paperWidthMm === 80 ? 80 : 58);
-    setEditDiscountPresets(parsePresetList(settings.discountPresets).join(', '));
     setEditCashPresets(parsePresetList(settings.cashPresets).join(', '));
     setSettingsOpen(true);
   };
@@ -899,10 +954,6 @@ export default function PosPage() {
   const saveSettings = async () => {
     setSavingSettings(true);
     try {
-      const discountList = editDiscountPresets
-        .split(',')
-        .map((s) => parseInt(s.trim(), 10))
-        .filter((n) => !isNaN(n) && n > 0);
       const cashList = editCashPresets
         .split(',')
         .map((s) => parseInt(s.trim(), 10))
@@ -916,9 +967,7 @@ export default function PosPage() {
           storeAddress: editStoreAddress,
           storePhone: editStorePhone,
           receiptFooter: editReceiptFooter,
-          autoPrintReceipt: editAutoPrint,
           paperWidthMm: editPaperWidth,
-          discountPresets: discountList,
           cashPresets: cashList,
         }),
       });
@@ -987,6 +1036,13 @@ export default function PosPage() {
             <div key={tx.id} className="flex items-center gap-1.5 bg-[var(--surface)] rounded-full pl-3 pr-1.5 py-1 flex-shrink-0">
               <span className="text-[11px] font-semibold text-[var(--t-heading)]">{tx.orderNo}</span>
               <span className="text-[11px] text-[var(--t-muted)]">{formatRupiah(tx.totalAmount || 0)}</span>
+              <button
+                onClick={() => openWaSendDialog(tx)}
+                title="Kirim struk via WA"
+                className="w-5 h-5 rounded-full bg-[var(--card)] hover:bg-[var(--bd)] flex items-center justify-center cursor-pointer"
+              >
+                <MessageCircle className="w-3 h-3 text-[var(--success)]" />
+              </button>
               <button
                 onClick={() => printReceipt(tx, settings)}
                 title="Cetak ulang"
@@ -1195,38 +1251,6 @@ export default function PosPage() {
           )}
 
           <div className="border-t border-[var(--bd)] px-4 py-3 space-y-3">
-            {/* Discount */}
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-[var(--t-body)]">Diskon (Rp)</Label>
-              <Input
-                type="number"
-                min={0}
-                value={discountInput}
-                onChange={(e) => {
-                  setDiscountInput(e.target.value);
-                  setDiscountAmount(parseInt(e.target.value, 10) || 0);
-                }}
-                placeholder="0"
-                className="h-9 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg"
-              />
-              {discountPresets.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {discountPresets.map((preset) => (
-                    <button
-                      key={preset}
-                      onClick={() => {
-                        setDiscountAmount(preset);
-                        setDiscountInput(String(preset));
-                      }}
-                      className="text-[11px] px-2 py-1 rounded-full bg-[var(--brand)]/10 text-[var(--brand)] hover:bg-[var(--brand)]/20 cursor-pointer font-medium"
-                    >
-                      {formatRupiah(preset)}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
             {/* Totals */}
             <div className="space-y-1 text-sm">
               <div className="flex justify-between text-[var(--t-muted)]">
@@ -1237,12 +1261,6 @@ export default function PosPage() {
                 <div className="flex justify-between text-[var(--success)]">
                   <span>Hemat Paket</span>
                   <span>-{formatRupiah(bundleSavings)}</span>
-                </div>
-              )}
-              {discountAmount > 0 && (
-                <div className="flex justify-between text-[var(--warning)]">
-                  <span>Diskon</span>
-                  <span>-{formatRupiah(discountAmount)}</span>
                 </div>
               )}
               <div className="flex justify-between text-base font-bold text-[var(--t-heading)] pt-1 border-t border-[var(--surface-2)]">
@@ -1471,6 +1489,16 @@ export default function PosPage() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
+                                openWaSendDialog(order);
+                              }}
+                              title="Kirim struk via WA"
+                              className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-[var(--success)] hover:bg-[var(--success)]/10 transition-colors cursor-pointer"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 printReceipt(order, settings);
                               }}
                               title="Cetak ulang"
@@ -1631,10 +1659,17 @@ export default function PosPage() {
               Tutup
             </Button>
             <Button
+              variant="outline"
               onClick={() => detailOrder && printReceipt(detailOrder, settings)}
+              className="rounded-lg border-[var(--bd)] text-[var(--t-body)] gap-1.5"
+            >
+              <Printer className="w-3.5 h-3.5" /> Cetak
+            </Button>
+            <Button
+              onClick={() => detailOrder && openWaSendDialog(detailOrder)}
               className="rounded-lg bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white gap-1.5"
             >
-              <Printer className="w-3.5 h-3.5" /> Cetak Ulang
+              <MessageCircle className="w-3.5 h-3.5" /> Kirim WA
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1667,6 +1702,36 @@ export default function PosPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ============ KIRIM WA DIALOG ============ */}
+      <Dialog open={!!waSendTarget} onOpenChange={(o) => !o && setWaSendTarget(null)}>
+        <DialogContent className="sm:max-w-[380px] rounded-xl">
+          <DialogHeader>
+            <DialogTitle className="text-[var(--t-heading)]">Kirim Struk via WA</DialogTitle>
+            <DialogDescription>
+              {waSendTarget?.orderNo} — PDF struk dikirim ke nomor ini lewat WhatsApp.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            autoFocus
+            value={waSendPhone}
+            onChange={(e) => setWaSendPhone(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && confirmWaSend()}
+            placeholder="08xxxxxxxxxx"
+            className="h-10 rounded-lg"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWaSendTarget(null)} className="rounded-lg">Batal</Button>
+            <Button
+              onClick={confirmWaSend}
+              disabled={!waSendPhone.trim() || sendingWaHistory}
+              className="rounded-lg bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white gap-1.5"
+            >
+              {sendingWaHistory ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />} Kirim
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ============ VARIANT PICKER DIALOG ============ */}
       <Dialog open={!!variantPickerProduct} onOpenChange={() => setVariantPickerProduct(null)}>
@@ -1768,30 +1833,37 @@ export default function PosPage() {
               )}
             </div>
 
-            <Button
-              onClick={() => successData && printReceipt(successData, settings)}
-              variant="outline"
-              className="w-full h-10 rounded-lg border-[var(--bd)] text-[var(--t-heading)] gap-2"
-            >
-              <Printer className="w-4 h-4" /> Print Struk
-            </Button>
-
             <div className="w-full flex gap-2">
               <Input
                 value={waPhone}
                 onChange={(e) => setWaPhone(e.target.value)}
-                placeholder="08xxxxxxxxxx (opsional)"
+                placeholder="08xxxxxxxxxx"
                 className="h-10 text-sm rounded-lg"
               />
               <Button
-                onClick={() => successData && sendReceiptWhatsApp(successData, settings, waPhone)}
-                disabled={!waPhone.trim()}
-                variant="outline"
-                className="h-10 rounded-lg border-[var(--bd)] text-[var(--success)] flex-shrink-0 gap-1.5 px-3"
+                onClick={async () => {
+                  if (!successData || !waPhone.trim()) return;
+                  setSendingWa(true);
+                  try {
+                    await sendReceiptPdfWhatsApp(successData, settings, waPhone);
+                  } finally {
+                    setSendingWa(false);
+                  }
+                }}
+                disabled={!waPhone.trim() || sendingWa}
+                className="h-10 rounded-lg bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white flex-shrink-0 gap-1.5 px-3"
               >
-                <MessageCircle className="w-4 h-4" /> Kirim
+                {sendingWa ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageCircle className="w-4 h-4" />} Kirim WA
               </Button>
             </div>
+
+            <Button
+              onClick={() => successData && printReceipt(successData, settings)}
+              variant="outline"
+              className="w-full h-9 rounded-lg border-[var(--bd)] text-[var(--t-muted)] gap-2 text-xs"
+            >
+              <Printer className="w-3.5 h-3.5" /> Print Struk (opsional)
+            </Button>
           </div>
           <Button onClick={() => setSuccessData(null)} className="w-full h-10 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white rounded-lg">
             Transaksi Baru
@@ -1829,13 +1901,6 @@ export default function PosPage() {
                 className="rounded-lg"
               />
             </div>
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-[var(--bd)] px-3 py-2.5">
-              <div>
-                <p className="text-sm font-medium text-[var(--t-heading)]">Print Otomatis</p>
-                <p className="text-xs text-[var(--t-muted)]">Langsung print struk begitu transaksi berhasil, tanpa klik konfirmasi lagi</p>
-              </div>
-              <Switch checked={editAutoPrint} onCheckedChange={setEditAutoPrint} />
-            </div>
             <div className="space-y-1.5">
               <Label className="text-sm font-medium text-[var(--t-heading)]">Lebar Kertas Struk</Label>
               <div className="grid grid-cols-2 gap-2">
@@ -1851,10 +1916,6 @@ export default function PosPage() {
                   </button>
                 ))}
               </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-[var(--t-heading)]">Preset Diskon (Rp, pisah koma)</Label>
-              <Input value={editDiscountPresets} onChange={(e) => setEditDiscountPresets(e.target.value)} placeholder="10000, 20000, 50000" className="rounded-lg" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-sm font-medium text-[var(--t-heading)]">Preset Uang Cash (Rp, pisah koma)</Label>
