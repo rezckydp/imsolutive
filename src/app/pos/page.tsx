@@ -7,6 +7,7 @@ import {
   Plus,
   Minus,
   Trash2,
+  X,
   ScanBarcode,
   Settings as SettingsIcon,
   ShoppingCart,
@@ -85,8 +86,19 @@ interface PosProduct {
   variants: PosVariant[];
 }
 
+// Add-On eligible on this item (pos-preorder-addon-spec.md) — value is the
+// customer's custom text for TEXT-type add-ons, empty for NONE-type ones.
+interface CartAddOn {
+  addOnId: string;
+  code: string;
+  name: string;
+  value: string;
+  price: number;
+}
+
 interface CartItem {
   variantId: string;
+  productId: string;
   sku: string;
   productName: string;
   color: string;
@@ -99,12 +111,25 @@ interface CartItem {
   // the DP engine below, not unitPrice × qty (pos-pricing-promo-spec.md).
   categoryCode: string | null;
   categoryName: string | null;
+  // PO tag per ITEM, not per transaction — default false (ready stock).
+  isPreOrder: boolean;
+  addOns: CartAddOn[];
 }
 
 interface BundleConfigData {
   categories: Array<{ id: string; code: string; name: string; normalPrice: number; bulkMinQty: number | null; bulkUnitPrice: number | null }>;
   packages: FixedPackage[];
   bulkTiers: BulkTier[];
+}
+
+interface PosAddOnConfig {
+  id: string;
+  code: string;
+  name: string;
+  price: number;
+  inputType: 'NONE' | 'TEXT';
+  maxLength: number | null;
+  productIds: string[];
 }
 
 interface PosSettingsData {
@@ -120,10 +145,19 @@ interface PosSettingsData {
   cashPresets: string;
 }
 
+interface ReceiptOrderItemAddOn {
+  id: string;
+  value: string;
+  priceSnapshot: number;
+  addOn: { code: string; name: string };
+}
+
 interface ReceiptOrderItem {
   id: string;
   qty: number;
   unitPrice: number | null;
+  isPreOrder: boolean;
+  addOns: ReceiptOrderItemAddOn[];
   variant: { color: string; type: string; product: { sku: string; name: string; bundleCategoryId: string | null } };
 }
 
@@ -137,6 +171,8 @@ interface ReceiptOrder {
   totalAmount: number | null;
   cashReceived: number | null;
   bundlePricingSnapshot: string | null;
+  customerName: string | null;
+  customerPhone: string | null;
   orderItems: ReceiptOrderItem[];
 }
 
@@ -170,10 +206,19 @@ function formatRupiah(n: number): string {
   return `Rp ${n.toLocaleString('id-ID')}`;
 }
 
+function addOnLinesFor(item: ReceiptOrderItem): string[] {
+  return item.addOns.map((a) => {
+    const label = a.value ? `${a.addOn.name} "${a.value}"` : a.addOn.name;
+    return `  + ${label}${' '.repeat(Math.max(1, 20 - label.length))}${formatRupiah(a.priceSnapshot)}`;
+  });
+}
+
 function buildReceiptLines(order: ReceiptOrder, settings: PosSettingsData | null): string[] {
   const bundle = parseBundleSnapshot(order);
   const bundleItems = order.orderItems.filter((i) => i.variant.product.bundleCategoryId != null);
   const plainItems = order.orderItems.filter((i) => i.variant.product.bundleCategoryId == null);
+  const poItems = order.orderItems.filter((i) => i.isPreOrder);
+  const hasPreOrder = poItems.length > 0;
 
   const lines: string[] = [];
   lines.push(settings?.storeName || 'Solutive');
@@ -185,18 +230,23 @@ function buildReceiptLines(order: ReceiptOrder, settings: PosSettingsData | null
 
   // Bundle package lines first (pos-pricing-promo-spec.md bagian 5) — these
   // are what the customer actually paid for, not the raw per-SKU items.
+  // Add-ons on a bundled item print under "Rincian item" below instead,
+  // since that's the only place that item gets its own line.
   if (bundle) {
     for (const line of bundle.lines) {
       lines.push(line.name);
       lines.push(`  ${line.packageCount} x ${formatRupiah(line.unitPrice)} = ${formatRupiah(line.subtotal)}`);
     }
   }
-  // Items outside any bundle category still show normal per-line math.
+  // Items outside any bundle category still show normal per-line math,
+  // plus a "[PO]" tag and any add-on sub-lines (pos-preorder-addon-spec.md).
   for (const item of plainItems) {
     const label = getVariantLabel(item.variant.color, item.variant.type);
-    lines.push(`${item.variant.product.sku}${label ? ' - ' + label : ''}`);
     const unitPrice = item.unitPrice || 0;
-    lines.push(`  ${item.qty} x ${formatRupiah(unitPrice)} = ${formatRupiah(unitPrice * item.qty)}`);
+    const tag = item.isPreOrder ? '   [PO]' : '';
+    lines.push(`${item.variant.product.sku}${label ? ' - ' + label : ''}`);
+    lines.push(`  ${item.qty} x ${formatRupiah(unitPrice)} = ${formatRupiah(unitPrice * item.qty)}${tag}`);
+    lines.push(...addOnLinesFor(item));
   }
 
   lines.push('--------------------------------');
@@ -214,14 +264,36 @@ function buildReceiptLines(order: ReceiptOrder, settings: PosSettingsData | null
     lines.push(`Kembali: ${formatRupiah(order.cashReceived - (order.totalAmount || 0))}`);
   }
 
-  // Physical rincian — stock/reference only, no price math (already paid
-  // for as part of the package lines above).
+  // Physical rincian — stock/reference only, no price math for the item
+  // itself (already paid for as part of the package lines above) — but
+  // add-on sub-lines and the [PO] tag still need to show here since this
+  // is the only per-item line a bundled item gets.
   if (bundle && bundleItems.length > 0) {
     lines.push('--------------------------------');
     lines.push('Rincian item:');
     for (const item of bundleItems) {
       const label = getVariantLabel(item.variant.color, item.variant.type);
+      const tag = item.isPreOrder ? ' [PO]' : '';
+      lines.push(`- ${item.variant.product.sku}${label ? ' ' + label : ''} x${item.qty}${tag}`);
+      lines.push(...addOnLinesFor(item));
+    }
+  }
+
+  // PO summary + customer data — only printed when the transaction actually
+  // has PO items (pos-preorder-addon-spec.md bagian 6/7). hasPreOrder is
+  // derived here, never stored.
+  if (hasPreOrder) {
+    lines.push('--------------------------------');
+    lines.push('Item PO (butuh produksi):');
+    for (const item of poItems) {
+      const label = getVariantLabel(item.variant.color, item.variant.type);
       lines.push(`- ${item.variant.product.sku}${label ? ' ' + label : ''} x${item.qty}`);
+    }
+    if (order.customerName?.trim() || order.customerPhone?.trim()) {
+      lines.push('');
+      lines.push('Data Customer (PO):');
+      if (order.customerName?.trim()) lines.push(`- Nama : ${order.customerName.trim()}`);
+      if (order.customerPhone?.trim()) lines.push(`- WA   : ${order.customerPhone.trim()}`);
     }
   }
 
@@ -330,6 +402,13 @@ export default function PosPage() {
   const [cashReceived, setCashReceived] = useState('');
   const [checkingOut, setCheckingOut] = useState(false);
 
+  // PO & Add-On (pos-preorder-addon-spec.md)
+  const [addOnConfig, setAddOnConfig] = useState<PosAddOnConfig[]>([]);
+  const [addOnDialogTarget, setAddOnDialogTarget] = useState<{ variantId: string; addOn: PosAddOnConfig } | null>(null);
+  const [addOnValueInput, setAddOnValueInput] = useState('');
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+
   const [successData, setSuccessData] = useState<ReceiptOrder | null>(null);
   const [waPhone, setWaPhone] = useState('');
   const [recentTransactions, setRecentTransactions] = useState<ReceiptOrder[]>([]);
@@ -415,12 +494,18 @@ export default function PosPage() {
     if (res.ok) setBundleConfig(await res.json());
   }, []);
 
+  const fetchAddOnConfig = useCallback(async () => {
+    const res = await fetch('/api/addons/config');
+    if (res.ok) setAddOnConfig((await res.json()).addOns || []);
+  }, []);
+
   useEffect(() => {
     fetchProducts();
     fetchSettings();
     fetchRecentTransactions();
+    fetchAddOnConfig();
     fetchBundleConfig();
-  }, [fetchProducts, fetchSettings, fetchRecentTransactions, fetchBundleConfig]);
+  }, [fetchProducts, fetchSettings, fetchRecentTransactions, fetchBundleConfig, fetchAddOnConfig]);
 
   useEffect(() => {
     barcodeRef.current?.focus();
@@ -473,16 +558,28 @@ export default function PosPage() {
     () => cart.reduce((sum, item) => sum + (item.categoryCode ? 0 : item.unitPrice * item.qty), 0),
     [cart]
   );
+  // Add-ons are additive, flat per cart line (not × qty — see addToCart /
+  // checkout), always outside the bundle DP (pos-preorder-addon-spec.md).
+  const addOnTotal = useMemo(
+    () => cart.reduce((sum, item) => sum + item.addOns.reduce((s, a) => s + a.price, 0), 0),
+    [cart]
+  );
+  const hasPreOrderInCart = useMemo(() => cart.some((i) => i.isPreOrder), [cart]);
   // "Subtotal" shown to the kasir is the reference total as if no bundle
   // discount applied — bundleCalc.savings is broken out as its own line, so
   // every cart row's displayed price × qty still sums to this number.
-  const subtotal = plainSubtotal + (bundleCalc?.normalTotal ?? 0);
+  const subtotal = plainSubtotal + (bundleCalc?.normalTotal ?? 0) + addOnTotal;
   const bundleSavings = bundleCalc?.savings ?? 0;
-  const actualSubtotal = plainSubtotal + (bundleCalc?.total ?? 0);
+  const actualSubtotal = plainSubtotal + (bundleCalc?.total ?? 0) + addOnTotal;
   const total = Math.max(0, actualSubtotal - discountAmount);
   const cashReceivedNum = cashReceived.trim() ? parseInt(cashReceived, 10) : null;
   const change = paymentMethod === 'Cash' && cashReceivedNum != null ? cashReceivedNum - total : null;
   const canCheckout = cart.length > 0 && paymentMethod !== null && !checkingOut;
+
+  const eligibleAddOnsFor = useCallback(
+    (productId: string) => addOnConfig.filter((a) => a.productIds.includes(productId)),
+    [addOnConfig]
+  );
 
   // ============ CART ============
 
@@ -501,6 +598,7 @@ export default function PosPage() {
         ...prev,
         {
           variantId: variant.id,
+          productId: product.id,
           sku: product.sku,
           productName: product.name,
           color: variant.color,
@@ -511,6 +609,8 @@ export default function PosPage() {
           stockQty: variant.qty,
           categoryCode: category?.code ?? null,
           categoryName: category?.name ?? null,
+          isPreOrder: false,
+          addOns: [],
         },
       ];
     });
@@ -546,6 +646,65 @@ export default function PosPage() {
     setCart((prev) => prev.filter((i) => i.variantId !== variantId));
   };
 
+  const togglePreOrder = (variantId: string) => {
+    setCart((prev) => prev.map((i) => (i.variantId === variantId ? { ...i, isPreOrder: !i.isPreOrder } : i)));
+  };
+
+  // NONE-type add-ons (no text input) attach immediately on click. TEXT-type
+  // ones (Engrave) open a small dialog first — see addOnDialogTarget below.
+  const addAddOnDirect = (variantId: string, addOn: PosAddOnConfig) => {
+    setCart((prev) =>
+      prev.map((i) =>
+        i.variantId === variantId && !i.addOns.some((a) => a.addOnId === addOn.id)
+          ? { ...i, addOns: [...i.addOns, { addOnId: addOn.id, code: addOn.code, name: addOn.name, value: '', price: addOn.price }] }
+          : i
+      )
+    );
+  };
+
+  const openAddOnDialog = (variantId: string, addOn: PosAddOnConfig) => {
+    if (addOn.inputType === 'NONE') {
+      addAddOnDirect(variantId, addOn);
+      return;
+    }
+    setAddOnValueInput('');
+    setAddOnDialogTarget({ variantId, addOn });
+  };
+
+  const confirmAddOnDialog = () => {
+    if (!addOnDialogTarget) return;
+    const value = addOnValueInput.trim();
+    if (!value) {
+      toast.error('Isi teksnya dulu');
+      return;
+    }
+    if (addOnDialogTarget.addOn.maxLength != null && value.length > addOnDialogTarget.addOn.maxLength) {
+      toast.error(`Maksimal ${addOnDialogTarget.addOn.maxLength} karakter`);
+      return;
+    }
+    const { variantId, addOn } = addOnDialogTarget;
+    setCart((prev) =>
+      prev.map((i) =>
+        i.variantId === variantId
+          ? {
+              ...i,
+              addOns: [
+                ...i.addOns.filter((a) => a.addOnId !== addOn.id),
+                { addOnId: addOn.id, code: addOn.code, name: addOn.name, value, price: addOn.price },
+              ],
+            }
+          : i
+      )
+    );
+    setAddOnDialogTarget(null);
+  };
+
+  const removeAddOn = (variantId: string, addOnId: string) => {
+    setCart((prev) =>
+      prev.map((i) => (i.variantId === variantId ? { ...i, addOns: i.addOns.filter((a) => a.addOnId !== addOnId) } : i))
+    );
+  };
+
   const clearCart = useCallback(() => {
     if (cart.length === 0 && !paymentMethod && !discountAmount) return;
     setCart([]);
@@ -553,6 +712,8 @@ export default function PosPage() {
     setDiscountInput('');
     setPaymentMethod(null);
     setCashReceived('');
+    setCustomerName('');
+    setCustomerPhone('');
     toast.message('Keranjang dikosongkan');
   }, [cart.length, paymentMethod, discountAmount]);
 
@@ -612,10 +773,17 @@ export default function PosPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items: cart.map((i) => ({ variantId: i.variantId, qty: i.qty })),
+          items: cart.map((i) => ({
+            variantId: i.variantId,
+            qty: i.qty,
+            isPreOrder: i.isPreOrder,
+            addOns: i.addOns.map((a) => ({ addOnId: a.addOnId, value: a.value })),
+          })),
           discountAmount,
           paymentMethod,
           cashReceived: cashReceivedNum ?? undefined,
+          customerName: customerName.trim() || undefined,
+          customerPhone: customerPhone.trim() || undefined,
         }),
       });
       const data = await res.json();
@@ -628,6 +796,8 @@ export default function PosPage() {
       setDiscountInput('');
       setPaymentMethod(null);
       setCashReceived('');
+      setCustomerName('');
+      setCustomerPhone('');
       fetchProducts();
       fetchRecentTransactions();
       // Print immediately — no extra click needed unless turned off in Settings.
@@ -869,48 +1039,99 @@ export default function PosPage() {
             {cart.length === 0 ? (
               <p className="text-center text-sm text-[var(--t-muted)] py-10">Keranjang masih kosong</p>
             ) : (
-              cart.map((item) => (
-                <div key={item.variantId} className="flex items-center gap-2 py-2 border-b border-[var(--surface-2)] last:border-0">
-                  <span className="w-3 h-3 rounded-full border border-[var(--bd)] flex-shrink-0" style={{ backgroundColor: item.colorHex }} />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-[var(--t-heading)] truncate flex items-center gap-1">
-                      {item.sku}
-                      {item.categoryName && (
-                        <span className="text-[9px] font-semibold px-1 py-0 rounded bg-[var(--brand)]/10 text-[var(--brand)] flex-shrink-0">
-                          {item.categoryName}
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-[11px] text-[var(--t-muted)] truncate">
-                      {getVariantLabel(item.color, item.type)} · {formatRupiah(item.unitPrice)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1 flex-shrink-0">
+              cart.map((item) => {
+                const eligibleAddOns = eligibleAddOnsFor(item.productId);
+                const availableAddOns = eligibleAddOns.filter((a) => !item.addOns.some((x) => x.addOnId === a.id));
+                return (
+                <div key={item.variantId} className="py-2 border-b border-[var(--surface-2)] last:border-0">
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full border border-[var(--bd)] flex-shrink-0" style={{ backgroundColor: item.colorHex }} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-[var(--t-heading)] truncate flex items-center gap-1">
+                        {item.sku}
+                        {item.categoryName && (
+                          <span className="text-[9px] font-semibold px-1 py-0 rounded bg-[var(--brand)]/10 text-[var(--brand)] flex-shrink-0">
+                            {item.categoryName}
+                          </span>
+                        )}
+                        {item.isPreOrder && (
+                          <span className="text-[9px] font-semibold px-1 py-0 rounded bg-[var(--warning)]/10 text-[var(--warning)] flex-shrink-0">
+                            PO
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-[11px] text-[var(--t-muted)] truncate">
+                        {getVariantLabel(item.color, item.type)} · {formatRupiah(item.unitPrice)}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        onClick={() => updateCartQty(item.variantId, -1)}
+                        className="w-6 h-6 rounded-md bg-[var(--surface)] hover:bg-[var(--bd)] flex items-center justify-center cursor-pointer"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <span className="text-xs font-semibold w-5 text-center">{item.qty}</span>
+                      <button
+                        onClick={() => updateCartQty(item.variantId, 1)}
+                        className="w-6 h-6 rounded-md bg-[var(--surface)] hover:bg-[var(--bd)] flex items-center justify-center cursor-pointer"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <span className="text-xs font-semibold text-[var(--t-heading)] w-20 text-right flex-shrink-0">
+                      {formatRupiah(item.unitPrice * item.qty)}
+                    </span>
                     <button
-                      onClick={() => updateCartQty(item.variantId, -1)}
-                      className="w-6 h-6 rounded-md bg-[var(--surface)] hover:bg-[var(--bd)] flex items-center justify-center cursor-pointer"
+                      onClick={() => removeCartItem(item.variantId)}
+                      className="text-[var(--danger)] hover:bg-[var(--danger)]/10 rounded-md p-1 cursor-pointer flex-shrink-0"
                     >
-                      <Minus className="w-3 h-3" />
-                    </button>
-                    <span className="text-xs font-semibold w-5 text-center">{item.qty}</span>
-                    <button
-                      onClick={() => updateCartQty(item.variantId, 1)}
-                      className="w-6 h-6 rounded-md bg-[var(--surface)] hover:bg-[var(--bd)] flex items-center justify-center cursor-pointer"
-                    >
-                      <Plus className="w-3 h-3" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  <span className="text-xs font-semibold text-[var(--t-heading)] w-20 text-right flex-shrink-0">
-                    {formatRupiah(item.unitPrice * item.qty)}
-                  </span>
-                  <button
-                    onClick={() => removeCartItem(item.variantId)}
-                    className="text-[var(--danger)] hover:bg-[var(--danger)]/10 rounded-md p-1 cursor-pointer flex-shrink-0"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+
+                  {/* Add-on tags already attached to this line */}
+                  {item.addOns.length > 0 && (
+                    <div className="mt-1.5 ml-5 space-y-1">
+                      {item.addOns.map((a) => (
+                        <div key={a.addOnId} className="flex items-center justify-between text-[11px] text-[var(--t-body)] bg-[var(--surface)] rounded-md px-2 py-1">
+                          <span className="truncate">+ {a.name}{a.value ? ` "${a.value}"` : ''}</span>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <span className="text-[var(--t-muted)]">{formatRupiah(a.price)}</span>
+                            <button onClick={() => removeAddOn(item.variantId, a.addOnId)} className="text-[var(--danger)] cursor-pointer">
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* PO toggle + eligible add-on buttons */}
+                  <div className="mt-1.5 ml-5 flex flex-wrap items-center gap-1.5">
+                    <button
+                      onClick={() => togglePreOrder(item.variantId)}
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border cursor-pointer transition-colors ${
+                        item.isPreOrder
+                          ? 'bg-[var(--warning)] text-white border-[var(--warning)]'
+                          : 'bg-[var(--card)] text-[var(--t-muted)] border-[var(--bd)] hover:border-[var(--warning)] hover:text-[var(--warning)]'
+                      }`}
+                    >
+                      PO
+                    </button>
+                    {availableAddOns.map((a) => (
+                      <button
+                        key={a.id}
+                        onClick={() => openAddOnDialog(item.variantId, a)}
+                        className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-[var(--bd)] text-[var(--t-body)] hover:border-[var(--brand)] hover:text-[var(--brand)] cursor-pointer flex items-center gap-0.5"
+                      >
+                        <Plus className="w-2.5 h-2.5" /> {a.name}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              ))
+                );
+              })
             )}
           </div>
 
@@ -980,6 +1201,25 @@ export default function PosPage() {
                 <span>{formatRupiah(total)}</span>
               </div>
             </div>
+
+            {/* Data Customer — cuma muncul kalau ada item PO, tetap opsional (pos-preorder-addon-spec.md bagian 2) */}
+            {hasPreOrderInCart && (
+              <div className="space-y-1.5 bg-[var(--warning)]/10 rounded-lg p-2.5">
+                <Label className="text-xs font-medium text-[var(--warning)]">Data Customer (PO, opsional)</Label>
+                <Input
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="Nama pembeli"
+                  className="h-8 text-xs bg-[var(--card)] border-[var(--bd)] rounded-lg"
+                />
+                <Input
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  placeholder="08xxxxxxxxxx"
+                  className="h-8 text-xs bg-[var(--card)] border-[var(--bd)] rounded-lg"
+                />
+              </div>
+            )}
 
             {/* Payment method */}
             <div className="space-y-1.5">
@@ -1135,7 +1375,14 @@ export default function PosPage() {
                         className="border-t border-[var(--surface-2)] hover:bg-[var(--surface-hover)] transition-colors cursor-pointer"
                         onClick={() => setDetailOrder(order)}
                       >
-                        <td className="py-2.5 px-4 text-sm font-semibold text-[var(--t-heading)]">{order.orderNo}</td>
+                        <td className="py-2.5 px-4 text-sm font-semibold text-[var(--t-heading)]">
+                          <span className="flex items-center gap-1.5">
+                            {order.orderNo}
+                            {order.orderItems.some((i) => i.isPreOrder) && (
+                              <span className="text-[9px] font-semibold px-1 py-0 rounded bg-[var(--warning)]/10 text-[var(--warning)]">PO</span>
+                            )}
+                          </span>
+                        </td>
                         <td className="py-2.5 px-4 text-xs text-[var(--t-muted)]">
                           {new Date(order.createdAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
                         </td>
@@ -1215,24 +1462,64 @@ export default function PosPage() {
                     </div>
                   ))}
                   {plainItems.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between text-sm py-1.5 border-b border-[var(--surface-2)] last:border-0">
-                      <div className="min-w-0">
-                        <p className="font-medium text-[var(--t-heading)] truncate">{item.variant.product.sku}</p>
-                        <p className="text-[11px] text-[var(--t-muted)]">
-                          {getVariantLabel(item.variant.color, item.variant.type)} · {item.qty} x {formatRupiah(item.unitPrice || 0)}
-                        </p>
+                    <div key={item.id} className="py-1.5 border-b border-[var(--surface-2)] last:border-0">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="min-w-0">
+                          <p className="font-medium text-[var(--t-heading)] truncate flex items-center gap-1">
+                            {item.variant.product.sku}
+                            {item.isPreOrder && (
+                              <span className="text-[9px] font-semibold px-1 py-0 rounded bg-[var(--warning)]/10 text-[var(--warning)] flex-shrink-0">PO</span>
+                            )}
+                          </p>
+                          <p className="text-[11px] text-[var(--t-muted)]">
+                            {getVariantLabel(item.variant.color, item.variant.type)} · {item.qty} x {formatRupiah(item.unitPrice || 0)}
+                          </p>
+                        </div>
+                        <span className="font-semibold text-[var(--t-heading)] flex-shrink-0">{formatRupiah((item.unitPrice || 0) * item.qty)}</span>
                       </div>
-                      <span className="font-semibold text-[var(--t-heading)] flex-shrink-0">{formatRupiah((item.unitPrice || 0) * item.qty)}</span>
+                      {item.addOns.map((a) => (
+                        <div key={a.id} className="flex items-center justify-between text-[11px] text-[var(--t-muted)] pl-2 mt-0.5">
+                          <span className="truncate">+ {a.addOn.name}{a.value ? ` "${a.value}"` : ''}</span>
+                          <span className="flex-shrink-0">{formatRupiah(a.priceSnapshot)}</span>
+                        </div>
+                      ))}
                     </div>
                   ))}
                   {bundle && bundleItems.length > 0 && (
                     <div className="pt-1">
                       <p className="text-[11px] font-medium text-[var(--t-muted)] mb-1">Rincian item:</p>
                       {bundleItems.map((item) => (
+                        <div key={item.id} className="mb-1">
+                          <p className="text-[11px] text-[var(--t-muted)] flex items-center gap-1">
+                            - {item.variant.product.sku} {getVariantLabel(item.variant.color, item.variant.type)} x{item.qty}
+                            {item.isPreOrder && (
+                              <span className="text-[9px] font-semibold px-1 py-0 rounded bg-[var(--warning)]/10 text-[var(--warning)] flex-shrink-0">PO</span>
+                            )}
+                          </p>
+                          {item.addOns.map((a) => (
+                            <div key={a.id} className="flex items-center justify-between text-[11px] text-[var(--t-muted)] pl-3">
+                              <span className="truncate">+ {a.addOn.name}{a.value ? ` "${a.value}"` : ''}</span>
+                              <span className="flex-shrink-0">{formatRupiah(a.priceSnapshot)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {detailOrder.orderItems.some((i) => i.isPreOrder) && (
+                    <div className="pt-2 border-t border-[var(--surface-2)] mt-1">
+                      <p className="text-[11px] font-medium text-[var(--warning)] mb-1">Item PO (butuh produksi):</p>
+                      {detailOrder.orderItems.filter((i) => i.isPreOrder).map((item) => (
                         <p key={item.id} className="text-[11px] text-[var(--t-muted)]">
                           - {item.variant.product.sku} {getVariantLabel(item.variant.color, item.variant.type)} x{item.qty}
                         </p>
                       ))}
+                      {(detailOrder.customerName?.trim() || detailOrder.customerPhone?.trim()) && (
+                        <div className="mt-1.5 text-[11px] text-[var(--t-body)]">
+                          {detailOrder.customerName?.trim() && <p>Nama: {detailOrder.customerName}</p>}
+                          {detailOrder.customerPhone?.trim() && <p>WA: {detailOrder.customerPhone}</p>}
+                        </div>
+                      )}
                     </div>
                   )}
                 </>
@@ -1352,6 +1639,40 @@ export default function PosPage() {
               );
             })}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ============ ADD-ON TEXT INPUT DIALOG ============ */}
+      <Dialog open={!!addOnDialogTarget} onOpenChange={(o) => !o && setAddOnDialogTarget(null)}>
+        <DialogContent className="sm:max-w-[380px] rounded-xl">
+          <DialogHeader>
+            <DialogTitle className="text-[var(--t-heading)]">+ {addOnDialogTarget?.addOn.name}</DialogTitle>
+            <DialogDescription>
+              Isi teks custom-nya — {formatRupiah(addOnDialogTarget?.addOn.price ?? 0)} tambahan per baris ini.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Input
+              autoFocus
+              value={addOnValueInput}
+              onChange={(e) => setAddOnValueInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && confirmAddOnDialog()}
+              maxLength={addOnDialogTarget?.addOn.maxLength ?? undefined}
+              placeholder='mis. "BUDI - 10K"'
+              className="h-10 rounded-lg"
+            />
+            {addOnDialogTarget?.addOn.maxLength != null && (
+              <p className="text-[11px] text-[var(--t-subtle)] text-right">
+                {addOnValueInput.length}/{addOnDialogTarget.addOn.maxLength}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddOnDialogTarget(null)} className="rounded-lg">Batal</Button>
+            <Button onClick={confirmAddOnDialog} className="rounded-lg bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white">
+              Tambah
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

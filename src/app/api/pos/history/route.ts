@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
       where,
       include: {
         orderItems: {
-          include: { variant: { include: { product: true } } },
+          include: { variant: { include: { product: true } }, addOns: { include: { addOn: true } } },
         },
       },
       orderBy: { createdAt: "desc" },

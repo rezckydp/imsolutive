@@ -41,6 +41,7 @@ import {
 import { getVariantLabel } from '@/lib/stock-sync';
 import { BoothStock } from '@/components/dashboard/booth-stock';
 import { BundlePricing } from '@/components/dashboard/bundle-pricing';
+import { AddOnManagement } from '@/components/dashboard/addon-management';
 import {
   VariantMatrixBuilder,
   buildVariantMatrixPayload,
@@ -234,7 +235,7 @@ function InlineStockInput({
 // ============ MAIN COMPONENT ============
 
 export function StockManagement() {
-  const [mainTab, setMainTab] = useState<'produk' | 'booth' | 'promo'>('produk');
+  const [mainTab, setMainTab] = useState<'produk' | 'booth' | 'promo' | 'addon'>('produk');
   const [products, setProducts] = useState<ProductData[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -814,10 +815,19 @@ export function StockManagement() {
         >
           Promo Harga
         </button>
+        <button
+          onClick={() => setMainTab('addon')}
+          className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+            mainTab === 'addon' ? 'bg-[var(--card)] text-[var(--brand)] shadow-sm' : 'text-[var(--t-body)] hover:text-[var(--t-heading)]'
+          }`}
+        >
+          Add-On
+        </button>
       </div>
 
       {mainTab === 'booth' && <BoothStock />}
       {mainTab === 'promo' && <BundlePricing />}
+      {mainTab === 'addon' && <AddOnManagement />}
 
       {mainTab === 'produk' && (
       <>
