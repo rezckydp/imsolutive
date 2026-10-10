@@ -171,6 +171,7 @@ interface ReceiptOrder {
   bundlePricingSnapshot: string | null;
   customerName: string | null;
   customerPhone: string | null;
+  notes: string | null;
   orderItems: ReceiptOrderItem[];
 }
 
@@ -277,9 +278,8 @@ function buildReceiptLines(order: ReceiptOrder, settings: PosSettingsData | null
     }
   }
 
-  // PO summary + customer data — only printed when the transaction actually
-  // has PO items (pos-preorder-addon-spec.md bagian 6/7). hasPreOrder is
-  // derived here, never stored.
+  // PO summary — only printed when the transaction actually has PO items.
+  // hasPreOrder is derived here, never stored.
   if (hasPreOrder) {
     lines.push('--------------------------------');
     lines.push('Item PO (butuh produksi):');
@@ -287,11 +287,23 @@ function buildReceiptLines(order: ReceiptOrder, settings: PosSettingsData | null
       const label = getVariantLabel(item.variant.color, item.variant.type);
       lines.push(`- ${item.variant.product.sku}${label ? ' ' + label : ''} x${item.qty}`);
     }
-    if (order.customerName?.trim() || order.customerPhone?.trim()) {
-      lines.push('');
-      lines.push('Data Customer (PO):');
+  }
+
+  // Data pembeli & catatan — selalu dicetak kalau diisi, independen dari
+  // status PO (revisi dari spec awal yang nge-gate ini di belakang PO).
+  const hasCustomerInfo = !!(order.customerName?.trim() || order.customerPhone?.trim());
+  const hasNotes = !!order.notes?.trim();
+  if (hasCustomerInfo || hasNotes) {
+    lines.push('--------------------------------');
+    if (hasCustomerInfo) {
+      lines.push('Data Pembeli:');
       if (order.customerName?.trim()) lines.push(`- Nama : ${order.customerName.trim()}`);
       if (order.customerPhone?.trim()) lines.push(`- WA   : ${order.customerPhone.trim()}`);
+    }
+    if (hasNotes) {
+      if (hasCustomerInfo) lines.push('');
+      lines.push('Catatan:');
+      lines.push(order.notes!.trim());
     }
   }
 
@@ -406,6 +418,7 @@ export default function PosPage() {
   const [addOnValueInput, setAddOnValueInput] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [orderNotes, setOrderNotes] = useState('');
 
   const [successData, setSuccessData] = useState<ReceiptOrder | null>(null);
   const [waPhone, setWaPhone] = useState('');
@@ -429,6 +442,7 @@ export default function PosPage() {
   const [historySummary, setHistorySummary] = useState<HistorySummary | null>(null);
   const [historyDateRange, setHistoryDateRange] = useState<SimpleDateRange>(null);
   const [historySearch, setHistorySearch] = useState('');
+  const [historyPoOnly, setHistoryPoOnly] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [detailOrder, setDetailOrder] = useState<ReceiptOrder | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ReceiptOrder | null>(null);
@@ -460,9 +474,11 @@ export default function PosPage() {
 
   const filteredHistoryOrders = useMemo(() => {
     const q = historySearch.trim().toUpperCase();
-    if (!q) return historyOrders;
-    return historyOrders.filter((o) => o.orderNo.toUpperCase().includes(q));
-  }, [historyOrders, historySearch]);
+    let list = historyOrders;
+    if (q) list = list.filter((o) => o.orderNo.toUpperCase().includes(q));
+    if (historyPoOnly) list = list.filter((o) => o.orderItems.some((i) => i.isPreOrder));
+    return list;
+  }, [historyOrders, historySearch, historyPoOnly]);
 
   const fetchProducts = useCallback(async () => {
     setLoadingProducts(true);
@@ -575,7 +591,6 @@ export default function PosPage() {
     () => cart.reduce((sum, item) => sum + item.addOns.reduce((s, a) => s + a.price, 0), 0),
     [cart]
   );
-  const hasPreOrderInCart = useMemo(() => cart.some((i) => i.isPreOrder), [cart]);
   // "Subtotal" shown to the kasir is the reference total as if no bundle
   // discount applied — bundleCalc.savings is broken out as its own line, so
   // every cart row's displayed price × qty still sums to this number.
@@ -725,6 +740,7 @@ export default function PosPage() {
     setCashReceived('');
     setCustomerName('');
     setCustomerPhone('');
+    setOrderNotes('');
     toast.message('Keranjang dikosongkan');
   }, [cart.length, paymentMethod, discountAmount]);
 
@@ -795,6 +811,7 @@ export default function PosPage() {
           cashReceived: cashReceivedNum ?? undefined,
           customerName: customerName.trim() || undefined,
           customerPhone: customerPhone.trim() || undefined,
+          notes: orderNotes.trim() || undefined,
         }),
       });
       const data = await res.json();
@@ -809,6 +826,7 @@ export default function PosPage() {
       setCashReceived('');
       setCustomerName('');
       setCustomerPhone('');
+      setOrderNotes('');
       fetchProducts();
       fetchRecentTransactions();
       // Print immediately — no extra click needed unless turned off in Settings.
@@ -1233,24 +1251,29 @@ export default function PosPage() {
               </div>
             </div>
 
-            {/* Data Customer — cuma muncul kalau ada item PO, tetap opsional (pos-preorder-addon-spec.md bagian 2) */}
-            {hasPreOrderInCart && (
-              <div className="space-y-1.5 bg-[var(--warning)]/10 rounded-lg p-2.5">
-                <Label className="text-xs font-medium text-[var(--warning)]">Data Customer (PO, opsional)</Label>
-                <Input
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="Nama pembeli"
-                  className="h-8 text-xs bg-[var(--card)] border-[var(--bd)] rounded-lg"
-                />
-                <Input
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                  placeholder="08xxxxxxxxxx"
-                  className="h-8 text-xs bg-[var(--card)] border-[var(--bd)] rounded-lg"
-                />
-              </div>
-            )}
+            {/* Data Pembeli & Catatan — selalu ada, selalu opsional, nggak tergantung status PO */}
+            <div className="space-y-1.5 bg-[var(--surface)] rounded-lg p-2.5">
+              <Label className="text-xs font-medium text-[var(--t-body)]">Data Pembeli & Catatan (opsional)</Label>
+              <Input
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="Nama pembeli"
+                className="h-8 text-xs bg-[var(--card)] border-[var(--bd)] rounded-lg"
+              />
+              <Input
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                placeholder="08xxxxxxxxxx"
+                className="h-8 text-xs bg-[var(--card)] border-[var(--bd)] rounded-lg"
+              />
+              <Textarea
+                value={orderNotes}
+                onChange={(e) => setOrderNotes(e.target.value)}
+                placeholder="Catatan order (opsional)"
+                rows={2}
+                className="text-xs bg-[var(--card)] border-[var(--bd)] rounded-lg"
+              />
+            </div>
 
             {/* Payment method */}
             <div className="space-y-1.5">
@@ -1346,6 +1369,16 @@ export default function PosPage() {
                 className="pl-8 h-8 text-xs rounded-lg bg-[var(--card)] border-[var(--bd)] w-[200px]"
               />
             </div>
+            <button
+              onClick={() => setHistoryPoOnly((v) => !v)}
+              className={`h-8 px-3 rounded-lg text-xs font-semibold border cursor-pointer transition-colors ${
+                historyPoOnly
+                  ? 'bg-[var(--warning)] text-white border-[var(--warning)]'
+                  : 'bg-[var(--card)] text-[var(--t-body)] border-[var(--bd)] hover:border-[var(--warning)] hover:text-[var(--warning)]'
+              }`}
+            >
+              Hanya PO
+            </button>
           </div>
 
           {/* Summary */}
@@ -1545,12 +1578,14 @@ export default function PosPage() {
                           - {item.variant.product.sku} {getVariantLabel(item.variant.color, item.variant.type)} x{item.qty}
                         </p>
                       ))}
-                      {(detailOrder.customerName?.trim() || detailOrder.customerPhone?.trim()) && (
-                        <div className="mt-1.5 text-[11px] text-[var(--t-body)]">
-                          {detailOrder.customerName?.trim() && <p>Nama: {detailOrder.customerName}</p>}
-                          {detailOrder.customerPhone?.trim() && <p>WA: {detailOrder.customerPhone}</p>}
-                        </div>
-                      )}
+                    </div>
+                  )}
+                  {/* Data pembeli & catatan — selalu tampil kalau diisi, independen dari status PO */}
+                  {(detailOrder.customerName?.trim() || detailOrder.customerPhone?.trim() || detailOrder.notes?.trim()) && (
+                    <div className="pt-2 border-t border-[var(--surface-2)] mt-1 text-[11px] text-[var(--t-body)]">
+                      {detailOrder.customerName?.trim() && <p>Nama: {detailOrder.customerName}</p>}
+                      {detailOrder.customerPhone?.trim() && <p>WA: {detailOrder.customerPhone}</p>}
+                      {detailOrder.notes?.trim() && <p className="mt-1">Catatan: {detailOrder.notes}</p>}
                     </div>
                   )}
                 </>
