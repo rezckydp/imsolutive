@@ -52,11 +52,9 @@ import { ThemeToggle } from '@/components/dashboard/theme-toggle';
 import { format } from 'date-fns';
 import {
   calculateBundlePrice,
-  getUpsellHints,
   type FixedPackage,
   type BulkTier,
   type BundlePriceResult,
-  type UpsellHint,
 } from '@/lib/bundle-pricing';
 
 // ============ TYPES ============
@@ -538,21 +536,34 @@ export default function PosPage() {
     return map;
   }, [bundleConfig]);
 
-  const categoryNameByCode = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const c of bundleConfig?.categories ?? []) map[c.code] = c.name;
-    return map;
-  }, [bundleConfig]);
-
   const bundleCalc: BundlePriceResult | null = useMemo(() => {
     if (!bundleConfig || Object.keys(qtyByCategory).length === 0) return null;
     return calculateBundlePrice(qtyByCategory, bundleConfig.packages, bundleConfig.bulkTiers, normalPriceByCategory);
   }, [bundleConfig, qtyByCategory, normalPriceByCategory]);
 
-  const upsellHints: UpsellHint[] = useMemo(() => {
-    if (!bundleConfig || Object.keys(qtyByCategory).length === 0) return [];
-    return getUpsellHints(qtyByCategory, bundleConfig.packages, bundleConfig.bulkTiers, normalPriceByCategory, categoryNameByCode);
-  }, [bundleConfig, qtyByCategory, normalPriceByCategory, categoryNameByCode]);
+  // Per-item "harga normal vs setelah diskon" for bundle-category cart rows
+  // — a package's price doesn't belong to 1 SKU, so this allocates
+  // bundleCalc.total back to each line pro-rata by its normal-price share,
+  // same formula as the server-side revenue allocation at checkout
+  // (pos-pricing-promo-spec.md bagian 6), just recomputed live for display.
+  // Rounding remainder lands on the last bundle line so the lines' "setelah
+  // diskon" values always sum to exactly bundleCalc.total.
+  const cartBundleAllocation = useMemo(() => {
+    const map = new Map<string, { normal: number; afterDiscount: number }>();
+    if (!bundleCalc || bundleCalc.normalTotal <= 0) return map;
+    const bundleItems = cart.filter((i) => i.categoryCode);
+    let allocatedSum = 0;
+    const raws: Array<{ variantId: string; normal: number; raw: number }> = [];
+    for (const item of bundleItems) {
+      const normal = item.unitPrice * item.qty;
+      const raw = Math.round(bundleCalc.total * (normal / bundleCalc.normalTotal));
+      raws.push({ variantId: item.variantId, normal, raw });
+      allocatedSum += raw;
+    }
+    if (raws.length > 0) raws[raws.length - 1].raw += bundleCalc.total - allocatedSum;
+    for (const r of raws) map.set(r.variantId, { normal: r.normal, afterDiscount: r.raw });
+    return map;
+  }, [cart, bundleCalc]);
 
   const plainSubtotal = useMemo(
     () => cart.reduce((sum, item) => sum + (item.categoryCode ? 0 : item.unitPrice * item.qty), 0),
@@ -1079,9 +1090,20 @@ export default function PosPage() {
                         <Plus className="w-3 h-3" />
                       </button>
                     </div>
-                    <span className="text-xs font-semibold text-[var(--t-heading)] w-20 text-right flex-shrink-0">
-                      {formatRupiah(item.unitPrice * item.qty)}
-                    </span>
+                    {item.categoryCode ? (
+                      <div className="flex flex-col items-end flex-shrink-0 w-24">
+                        <span className="text-[10px] text-[var(--t-subtle)] line-through">
+                          {formatRupiah(cartBundleAllocation.get(item.variantId)?.normal ?? item.unitPrice * item.qty)}
+                        </span>
+                        <span className="text-xs font-semibold text-[var(--success)]">
+                          {formatRupiah(cartBundleAllocation.get(item.variantId)?.afterDiscount ?? item.unitPrice * item.qty)}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-xs font-semibold text-[var(--t-heading)] w-20 text-right flex-shrink-0">
+                        {formatRupiah(item.unitPrice * item.qty)}
+                      </span>
+                    )}
                     <button
                       onClick={() => removeCartItem(item.variantId)}
                       className="text-[var(--danger)] hover:bg-[var(--danger)]/10 rounded-md p-1 cursor-pointer flex-shrink-0"
@@ -1135,12 +1157,21 @@ export default function PosPage() {
             )}
           </div>
 
-          {/* Upsell hint — "tambah 1 item cuma +Xrb" (pos-pricing-promo-spec.md bagian 4) */}
-          {upsellHints.length > 0 && (
+          {/* Paket yang dipakai — breakdown kombinasi termurah yang dipilih engine buat isi keranjang sekarang */}
+          {bundleCalc && bundleCalc.lines.length > 0 && (
             <div className="px-4 pb-2">
-              <div className="flex items-start gap-1.5 bg-[var(--brand)]/10 text-[var(--brand)] rounded-lg px-2.5 py-2 text-[11px] font-medium">
-                <Sparkles className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                <span>{upsellHints[0].message}</span>
+              <div className="bg-[var(--brand)]/10 rounded-lg px-2.5 py-2">
+                <p className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--brand)] mb-1">
+                  <Sparkles className="w-3.5 h-3.5 flex-shrink-0" /> Paket yang dipakai
+                </p>
+                <div className="space-y-0.5">
+                  {bundleCalc.lines.map((line) => (
+                    <div key={line.code} className="flex items-center justify-between text-[11px] text-[var(--t-body)]">
+                      <span className="truncate">{line.packageCount}x {line.name}</span>
+                      <span className="flex-shrink-0">{formatRupiah(line.subtotal)}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
