@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
               variant: {
                 include: { product: true },
               },
+              addOns: { include: { addOn: true } },
             },
           },
         },

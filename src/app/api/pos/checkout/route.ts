@@ -6,9 +6,16 @@ import { logActivity, snapshotOrder, snapshotOrderItem } from "@/lib/activity-lo
 import { loadBundleEngineConfig } from "@/lib/bundle-config";
 import { calculateBundlePrice } from "@/lib/bundle-pricing";
 
+interface CheckoutAddOnInput {
+  addOnId: string;
+  value?: string;
+}
+
 interface CheckoutItem {
   variantId: string;
   qty: number;
+  isPreOrder?: boolean;
+  addOns?: CheckoutAddOnInput[];
 }
 
 // Compute the next POS-xxxxxx order number the same way /api/orders/next-number
@@ -48,7 +55,16 @@ export async function POST(request: NextRequest) {
       discountAmount = 0,
       paymentMethod,
       cashReceived,
-    }: { items: CheckoutItem[]; discountAmount?: number; paymentMethod: string; cashReceived?: number } = body;
+      customerName,
+      customerPhone,
+    }: {
+      items: CheckoutItem[];
+      discountAmount?: number;
+      paymentMethod: string;
+      cashReceived?: number;
+      customerName?: string;
+      customerPhone?: string;
+    } = body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "Keranjang kosong" }, { status: 400 });
@@ -84,6 +100,40 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Validate add-ons (pos-preorder-addon-spec.md) — eligibility & text
+    // length checked server-side, never trusting the client payload.
+    const allAddOnIds = Array.from(new Set(items.flatMap((i) => (i.addOns ?? []).map((a) => a.addOnId))));
+    const addOns = allAddOnIds.length > 0
+      ? await db.addOn.findMany({ where: { id: { in: allAddOnIds } }, include: { eligibleProducts: { select: { productId: true } } } })
+      : [];
+    const addOnMap = new Map(addOns.map((a) => [a.id, a]));
+
+    for (const item of items) {
+      const variant = variantMap.get(item.variantId)!;
+      for (const a of item.addOns ?? []) {
+        const addOn = addOnMap.get(a.addOnId);
+        if (!addOn) {
+          return NextResponse.json({ error: "Add-on tidak ditemukan" }, { status: 404 });
+        }
+        if (!addOn.active) {
+          return NextResponse.json({ error: `Add-on "${addOn.name}" sudah dinonaktifkan` }, { status: 400 });
+        }
+        const eligible = addOn.eligibleProducts.some((ep) => ep.productId === variant.productId);
+        if (!eligible) {
+          return NextResponse.json({ error: `Add-on "${addOn.name}" tidak berlaku untuk produk ini` }, { status: 400 });
+        }
+        if (addOn.inputType === "TEXT") {
+          const value = (a.value ?? "").trim();
+          if (!value) {
+            return NextResponse.json({ error: `Teks ${addOn.name} wajib diisi` }, { status: 400 });
+          }
+          if (addOn.maxLength != null && value.length > addOn.maxLength) {
+            return NextResponse.json({ error: `Teks melebihi batas karakter (maks ${addOn.maxLength})` }, { status: 400 });
+          }
+        }
+      }
+    }
+
     // Group bundle-category items by category code; everything else stays plain.
     const qtyByCategory: Record<string, number> = {};
     let plainSubtotal = 0;
@@ -104,7 +154,25 @@ export async function POST(request: NextRequest) {
       bundleResult = calculateBundlePrice(qtyByCategory, engineConfig.packages, engineConfig.bulkTiers, engineConfig.normalPriceByCategory);
     }
 
-    const subtotalAmount = plainSubtotal + (bundleResult?.total ?? 0);
+    // Add-on snapshots per item (pos-preorder-addon-spec.md bagian 3/7) —
+    // priced flat per LINE (not × qty — a text engrave is one line of text
+    // for that row, not duplicated per pcs), additive on top of
+    // item/bundle pricing, never fed into the bundle DP.
+    const itemAddOns = new Map<number, Array<{ addOnId: string; value: string; priceSnapshot: number }>>();
+    items.forEach((item, idx) => {
+      const data = (item.addOns ?? []).map((a) => {
+        const addOn = addOnMap.get(a.addOnId)!;
+        return {
+          addOnId: addOn.id,
+          value: addOn.inputType === "TEXT" ? (a.value ?? "").trim() : "",
+          priceSnapshot: addOn.price,
+        };
+      });
+      if (data.length > 0) itemAddOns.set(idx, data);
+    });
+    const addOnTotal = Array.from(itemAddOns.values()).reduce((sum, list) => sum + list.reduce((s, a) => s + a.priceSnapshot, 0), 0);
+
+    const subtotalAmount = plainSubtotal + (bundleResult?.total ?? 0) + addOnTotal;
     const clampedDiscount = Math.max(0, Math.min(discountAmount || 0, subtotalAmount));
     const totalAmount = subtotalAmount - clampedDiscount;
 
@@ -113,19 +181,22 @@ export async function POST(request: NextRequest) {
     // Build OrderItem rows — unitPrice + allocatedRevenue per line. Bundle
     // items get pro-rata revenue allocation (spec bagian 6) since a
     // package's price doesn't belong to 1 SKU; plain items allocate exactly
-    // unitPrice × qty (no rounding ever needed there).
-    const itemsData = items.map((item) => {
+    // unitPrice × qty (no rounding ever needed there). Add-on cost is kept
+    // separate from allocatedRevenue (it's its own line in reporting terms).
+    const itemsData = items.map((item, idx) => {
       const variant = variantMap.get(item.variantId)!;
       const category = variant.product.bundleCategory;
+      const isPreOrder = !!item.isPreOrder;
+      const addOnsForItem = itemAddOns.get(idx) ?? [];
       if (category) {
         const unitPrice = category.normalPrice;
         const contribution = unitPrice * item.qty;
         const normalTotal = bundleResult!.normalTotal;
         const allocated = normalTotal > 0 ? Math.round(bundleResult!.total * (contribution / normalTotal)) : 0;
-        return { variantId: item.variantId, qty: item.qty, status: "Ready" as const, unitPrice, allocatedRevenue: allocated, isBundle: true };
+        return { variantId: item.variantId, qty: item.qty, status: "Ready" as const, unitPrice, allocatedRevenue: allocated, isBundle: true, isPreOrder, addOns: addOnsForItem };
       }
       const unitPrice = variant.price!;
-      return { variantId: item.variantId, qty: item.qty, status: "Ready" as const, unitPrice, allocatedRevenue: unitPrice * item.qty, isBundle: false };
+      return { variantId: item.variantId, qty: item.qty, status: "Ready" as const, unitPrice, allocatedRevenue: unitPrice * item.qty, isBundle: false, isPreOrder, addOns: addOnsForItem };
     });
 
     // Rounding remainder from the pro-rata split lands on the LAST bundle
@@ -152,6 +223,10 @@ export async function POST(request: NextRequest) {
         bundlePricingSnapshot: bundleResult
           ? JSON.stringify({ lines: bundleResult.lines, normalTotal: bundleResult.normalTotal, savings: bundleResult.savings })
           : null,
+        // Always optional (pos-preorder-addon-spec.md bagian 2/7) — never
+        // required even when items are tagged PO.
+        customerName: customerName?.trim() || null,
+        customerPhone: customerPhone?.trim() || null,
         orderItems: {
           create: itemsData.map((d) => ({
             variantId: d.variantId,
@@ -159,12 +234,14 @@ export async function POST(request: NextRequest) {
             status: d.status,
             unitPrice: d.unitPrice,
             allocatedRevenue: d.allocatedRevenue,
+            isPreOrder: d.isPreOrder,
+            addOns: d.addOns.length > 0 ? { create: d.addOns } : undefined,
           })),
         },
       },
       include: {
         orderItems: {
-          include: { variant: { include: { product: true } } },
+          include: { variant: { include: { product: true } }, addOns: { include: { addOn: true } } },
         },
       },
     });
