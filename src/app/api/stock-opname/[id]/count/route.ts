@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/current-user";
 import { logActivity, snapshotStockOpnameItem } from "@/lib/activity-log";
 
-// POST count/scan an item — accept { variantId, actualQty }
+// POST count/scan an item — accept { variantId, actualQty } or { variantId, increment: true }
 // Looks up variant's current qty as systemQty, calculates difference, upserts item, recalculates session totals
 export async function POST(
   request: NextRequest,
@@ -13,7 +13,7 @@ export async function POST(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { variantId, actualQty } = body;
+    const { variantId, actualQty, increment } = body;
 
     if (!variantId) {
       return NextResponse.json(
@@ -22,7 +22,7 @@ export async function POST(
       );
     }
 
-    if (actualQty === undefined || actualQty === null) {
+    if (!increment && (actualQty === undefined || actualQty === null)) {
       return NextResponse.json(
         { error: "actualQty is required" },
         { status: 400 }
@@ -62,11 +62,21 @@ export async function POST(
       );
     }
 
-    const systemQty = variant.qty;
-    const difference = actualQty - systemQty;
-
     // Check if an item with this variantId already exists in this session (upsert)
     const existingItem = session.items.find((item) => item.variantId === variantId);
+    const countedQty = increment
+      ? (existingItem?.actualQty ?? 0) + 1
+      : Number(actualQty);
+
+    if (!Number.isInteger(countedQty) || countedQty < 0) {
+      return NextResponse.json(
+        { error: "actualQty must be a non-negative whole number" },
+        { status: 400 }
+      );
+    }
+
+    const systemQty = variant.qty;
+    const difference = countedQty - systemQty;
 
     let item;
     if (existingItem) {
@@ -74,7 +84,7 @@ export async function POST(
         where: { id: existingItem.id },
         data: {
           systemQty,
-          actualQty,
+          actualQty: countedQty,
           difference,
           adjusted: false,
         },
@@ -96,7 +106,7 @@ export async function POST(
           opnameId: id,
           variantId,
           systemQty,
-          actualQty,
+          actualQty: countedQty,
           difference,
         },
         include: {

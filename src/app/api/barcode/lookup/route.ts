@@ -30,9 +30,11 @@ export async function GET(request: NextRequest) {
       if (product && product.variants.length > 0) {
         // Return all variants for the SKU
         return NextResponse.json({
+          productId: product.id,
           sku: product.sku,
           name: product.name,
           minStock: product.minStock,
+          parentProductId: product.parentProductId,
           variants: product.variants,
         });
       }
@@ -45,6 +47,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       variantId: variant.id,
+      productId: variant.product.id,
       sku: variant.product.sku,
       name: variant.product.name,
       color: variant.color,
