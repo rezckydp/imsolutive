@@ -240,6 +240,7 @@ export function StockOpname() {
   const [barcodeInput, setBarcodeInput] = useState('');
   const [barcodeLookingUp, setBarcodeLookingUp] = useState(false);
   const [barcodeError, setBarcodeError] = useState('');
+  const [pendingBarcodeCount, setPendingBarcodeCount] = useState(false);
 
   // ==================== Fetch sessions ====================
   const fetchSessions = useCallback(async () => {
@@ -393,6 +394,36 @@ export function StockOpname() {
     }
   };
 
+  // ==================== Add one item for a scanned barcode ====================
+  const handleCountScannedItem = useCallback(async (variantId: string) => {
+    if (!selectedSessionId) return;
+    try {
+      setCounting(true);
+      const res = await fetch(`/api/stock-opname/${selectedSessionId}/count`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ variantId, increment: true }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to count scanned item');
+      }
+      toast.success('Scan counted (+1)');
+      setPendingBarcodeCount(false);
+      setSelectedProduct(null);
+      setSelectedVariantId(null);
+      setActualQty('');
+      fetchSessionDetail(selectedSessionId);
+      fetchSessions();
+      setTimeout(() => barcodeInputRef.current?.focus(), 50);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to count scanned item');
+      setTimeout(() => barcodeInputRef.current?.focus(), 50);
+    } finally {
+      setCounting(false);
+    }
+  }, [selectedSessionId, fetchSessionDetail, fetchSessions]);
+
   // ==================== Adjust stock ====================
   const handleAdjustStock = async () => {
     if (!selectedSessionId) return;
@@ -476,6 +507,7 @@ export function StockOpname() {
 
     setBarcodeLookingUp(true);
     setBarcodeError('');
+    setPendingBarcodeCount(false);
 
     try {
       const res = await fetch(`/api/barcode/lookup?code=${encodeURIComponent(code)}`);
@@ -512,8 +544,7 @@ export function StockOpname() {
         }
         setSelectedVariantId(data.variantId);
         setBarcodeInput('');
-        // Focus the qty input so user can type count immediately
-        setTimeout(() => countInputRef.current?.focus(), 50);
+        await handleCountScannedItem(data.variantId);
       } else if (data.variants && data.variants.length === 1) {
         // Product with single variant
         const v = data.variants[0];
@@ -527,7 +558,7 @@ export function StockOpname() {
         });
         setSelectedVariantId(v.id);
         setBarcodeInput('');
-        setTimeout(() => countInputRef.current?.focus(), 50);
+        await handleCountScannedItem(v.id);
       } else if (data.variants && data.variants.length > 1) {
         // Product with multiple variants — select product, show color picker
         setSelectedProduct({
@@ -542,7 +573,8 @@ export function StockOpname() {
         });
         setSelectedVariantId(null);
         setBarcodeInput('');
-        toast.info('Multiple colors found. Please select a color variant.');
+        setPendingBarcodeCount(true);
+        toast.info('Select a color variant to count this scan (+1).');
       } else {
         setBarcodeError('Product not found');
         setBarcodeInput('');
@@ -555,7 +587,7 @@ export function StockOpname() {
     } finally {
       setBarcodeLookingUp(false);
     }
-  }, [barcodeInput, products]);
+  }, [barcodeInput, products, handleCountScannedItem]);
 
   // Re-focus barcode input when barcodeLookingUp finishes
   const prevBarcodeLookingUp = useRef(false);
@@ -939,14 +971,14 @@ export function StockOpname() {
                         }
                       }}
                       placeholder="Scan or type barcode / SKU..."
-                      disabled={barcodeLookingUp}
+                      disabled={barcodeLookingUp || counting}
                       autoFocus
                       className="pl-9 h-11 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg"
                     />
                   </div>
                   <Button
                     onClick={handleBarcodeScan}
-                    disabled={barcodeLookingUp || !barcodeInput.trim()}
+                    disabled={barcodeLookingUp || counting || !barcodeInput.trim()}
                     className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white h-11 px-4 rounded-lg flex-shrink-0 disabled:opacity-50"
                   >
                     {barcodeLookingUp ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
@@ -1005,6 +1037,7 @@ export function StockOpname() {
                               key={product.id}
                               value={`${product.sku} ${product.name}`}
                               onSelect={() => {
+                                setPendingBarcodeCount(false);
                                 if (product.variants.length === 1) {
                                   // Auto-select if only one variant
                                   setSelectedProduct(product);
@@ -1044,7 +1077,14 @@ export function StockOpname() {
                     {selectedProduct.variants.map((v) => (
                       <button
                         key={v.id}
-                        onClick={() => setSelectedVariantId(v.id)}
+                        onClick={() => {
+                          if (pendingBarcodeCount) {
+                            void handleCountScannedItem(v.id);
+                          } else {
+                            setSelectedVariantId(v.id);
+                          }
+                        }}
+                        disabled={counting}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all cursor-pointer ${
                           selectedVariantId === v.id
                             ? 'border-[var(--brand)] bg-[var(--brand)]/5 text-[var(--brand)]'
@@ -1078,7 +1118,7 @@ export function StockOpname() {
                 </div>
               )}
 
-              {/* Actual Qty Input */}
+              {/* Keep manual count entry available for corrections and manual product search. */}
               <div className="flex flex-col sm:flex-row gap-3">
                 <div className="space-y-1.5 flex-1">
                   <label className="text-xs font-medium text-[var(--t-body)]">Actual Quantity</label>
