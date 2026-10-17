@@ -40,7 +40,10 @@ export async function POST() {
         variants: {
           include: {
             printQueueItems: { select: { qty: true } },
-            productionItems: { where: { status: "In Progress" }, select: { qty: true } },
+            productionItems: {
+              where: { OR: [{ status: "In Progress" }, { status: "Completed", closedAt: null }] },
+              select: { qty: true, scannedQty: true, writeOffQty: true },
+            },
           },
         },
       },
@@ -51,7 +54,7 @@ export async function POST() {
       for (const v of p.variants) {
         const queued =
           v.printQueueItems.reduce((s, i) => s + i.qty, 0) +
-          v.productionItems.reduce((s, i) => s + i.qty, 0);
+          v.productionItems.reduce((s, i) => s + (i.qty - i.scannedQty - i.writeOffQty), 0);
         const target = v.boothMinStock ?? 0;
         kurangByVariant.set(v.id, target - (v.qty + queued));
       }

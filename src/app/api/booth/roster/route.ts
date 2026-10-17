@@ -17,9 +17,13 @@ export async function GET() {
           include: {
             printQueueItems: { select: { qty: true } },
             // Completed rows stay in this table forever (Production History) —
-            // only "In Progress" ones are still physically pending, not yet
-            // added back to stock.qty.
-            productionItems: { where: { status: "In Progress" }, select: { qty: true } },
+            // "In Progress" ones and Completed-but-not-yet-closed ones (printed
+            // but not yet scanned into the warehouse via Terima Stok) are both
+            // still physically pending, not yet added back to stock.qty.
+            productionItems: {
+              where: { OR: [{ status: "In Progress" }, { status: "Completed", closedAt: null }] },
+              select: { qty: true, scannedQty: true, writeOffQty: true },
+            },
           },
         },
       },
@@ -33,7 +37,7 @@ export async function GET() {
       variants: sortVariantsForDisplay(p.variants.map((v) => {
         const queued =
           v.printQueueItems.reduce((s, i) => s + i.qty, 0) +
-          v.productionItems.reduce((s, i) => s + i.qty, 0);
+          v.productionItems.reduce((s, i) => s + (i.qty - i.scannedQty - i.writeOffQty), 0);
         const target = v.boothMinStock ?? 0;
         return {
           id: v.id,
