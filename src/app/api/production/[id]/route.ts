@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { syncStockToGroup, refreshOrderItemStatuses, getGroupVariantIds, demoteProductionItemsToQueue } from "@/lib/stock-sync";
+import { demoteProductionItemsToQueue } from "@/lib/stock-sync";
 
-// PUT update production item — with shared stock sync on complete/revert
+// PUT update production item — status is now purely "done print+QC, ready to
+// be scanned into the warehouse". Completed no longer touches ProductVariant.qty
+// (see ims-real-stock-scan-pipeline-spec.md §4.1) — that only happens via
+// POST /api/stock/receive-scan once the physical units are actually scanned in.
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -18,46 +21,6 @@ export async function PUT(
         { error: "Production item not found" },
         { status: 404 }
       );
-    }
-
-    // Handle status change to Completed → add stock + sync to group + refresh order statuses
-    if (status === "Completed" && existing.status !== "Completed") {
-      await db.productVariant.update({
-        where: { id: existing.variantId },
-        data: { qty: { increment: existing.qty } },
-      });
-      await syncStockToGroup(existing.variantId, existing.qty);
-      // Refresh order statuses for ALL variants in the group (not just this one)
-      const variant = await db.productVariant.findUnique({
-        where: { id: existing.variantId },
-        select: { productId: true },
-      });
-      if (variant) {
-        const groupVariantIds = await getGroupVariantIds(variant.productId);
-        for (const vid of groupVariantIds) {
-          await refreshOrderItemStatuses(vid);
-        }
-      }
-    }
-
-    // Handle status change from Completed back to In Progress → remove stock + sync to group + refresh
-    if (existing.status === "Completed" && status === "In Progress") {
-      await db.productVariant.update({
-        where: { id: existing.variantId },
-        data: { qty: { decrement: existing.qty } },
-      });
-      await syncStockToGroup(existing.variantId, -existing.qty);
-      // Refresh order statuses for ALL variants in the group
-      const variant = await db.productVariant.findUnique({
-        where: { id: existing.variantId },
-        select: { productId: true },
-      });
-      if (variant) {
-        const groupVariantIds = await getGroupVariantIds(variant.productId);
-        for (const vid of groupVariantIds) {
-          await refreshOrderItemStatuses(vid);
-        }
-      }
     }
 
     const item = await db.productionItem.update({
@@ -103,13 +66,14 @@ export async function DELETE(
       );
     }
 
-    // If completed, remove the added stock before deleting + sync to group
-    if (existing.status === "Completed") {
-      await db.productVariant.update({
-        where: { id: existing.variantId },
-        data: { qty: { decrement: existing.qty } },
-      });
-      await syncStockToGroup(existing.variantId, -existing.qty);
+    // Already (partially) scanned into real stock — must be reconciled via
+    // write-off, not deleted outright, or the scanned units it already
+    // counted for would be orphaned from any production record.
+    if (existing.status === "Completed" && existing.scannedQty > 0) {
+      return NextResponse.json(
+        { error: "Item ini sudah sebagian discan — gunakan \"Tandai Sisa Reject/Hilang\", bukan hapus." },
+        { status: 400 }
+      );
     }
 
     await db.productionItem.delete({ where: { id } });

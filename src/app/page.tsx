@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Sidebar } from '@/components/dashboard/sidebar';
 import { Header } from '@/components/dashboard/header';
 import { ThemeToggle } from '@/components/dashboard/theme-toggle';
-import { LowStockCard, type LowStockItem, type RecommendationItem } from '@/components/dashboard/low-stock-card';
+import { LowStockCard, type LowStockItem, type PipelineItem, type RecommendationItem } from '@/components/dashboard/low-stock-card';
 import { PrintQueueCard, type PrintQueueItem } from '@/components/dashboard/print-queue-card';
 import { InProductionCard, type ProductionItem } from '@/components/dashboard/in-production-card';
 import { ProductionHistoryCard, type ProductionHistoryItem } from '@/components/dashboard/production-history-card';
@@ -40,9 +40,26 @@ interface StockProduct {
   };
 }
 
+interface PipelineStatusDto {
+  required: number;
+  real: number;
+  pendingScan: number;
+  inProgress: number;
+  queue: number;
+  kurang: number;
+}
+
 interface DashboardData {
   minusStockProducts: StockProduct[];
-  lowStockProducts: StockProduct[];
+  pipelineProducts: Array<PipelineStatusDto & {
+    variantId: string;
+    sku: string;
+    name: string;
+    color: string;
+    colorHex: string;
+    type: string;
+  }>;
+  pipelineBySkuColorType: Record<string, PipelineStatusDto>;
   printQueueItems: Array<{
     id: string;
     variantId: string;
@@ -65,6 +82,9 @@ interface DashboardData {
     variantId: string;
     qty: number;
     assignedTo: string;
+    status: string;
+    scannedQty: number;
+    writeOffQty: number;
     note: string;
     createdAt: string;
     variant: {
@@ -125,7 +145,7 @@ interface DashboardData {
     totalProducts: number;
     totalVariants: number;
     minusStockCount: number;
-    lowStockCount: number;
+    pipelineCount: number;
     printQueueCount: number;
     printQueueDurationMinutes: number;
     printQueueItemsMissingEstimate: number;
@@ -385,6 +405,17 @@ export default function Home() {
     }
   }, [fetchDashboardData]);
 
+  const handleWriteOff = useCallback(async (id: string) => {
+    try {
+      const res = await fetch(`/api/production/${id}/write-off`, { method: 'POST' });
+      if (res.ok) {
+        fetchDashboardData();
+      }
+    } catch {
+      // silent
+    }
+  }, [fetchDashboardData]);
+
   const handleSendBackToPrintQueue = useCallback(async (productionItem: ProductionItem) => {
     try {
       // 1. Create print queue item
@@ -440,7 +471,8 @@ export default function Home() {
   });
 
   const minusStockItems = (dashboardData?.minusStockProducts ?? []).map(mapStockItem);
-  const lowStockItems = (dashboardData?.lowStockProducts ?? []).map(mapStockItem);
+  const pipelineItems: PipelineItem[] = dashboardData?.pipelineProducts ?? [];
+  const pipelineBySkuColorType = dashboardData?.pipelineBySkuColorType ?? {};
 
   const printQueueItems: PrintQueueItem[] = (dashboardData?.printQueueItems ?? []).map((item) => ({
     id: item.id,
@@ -465,6 +497,9 @@ export default function Home() {
     type: item.variant.type || '',
     qty: item.qty,
     assignedTo: item.assignedTo,
+    status: item.status,
+    scannedQty: item.scannedQty,
+    writeOffQty: item.writeOffQty,
     note: item.note || variantNoteMap[item.variantId] || '',
     createdAt: item.createdAt,
   }));
@@ -584,7 +619,7 @@ export default function Home() {
       </div>
 
       {/* Dialogs */}
-      <BarcodeScanner open={barcodeOpen} onOpenChange={setBarcodeOpen} onOrderCreated={handleDataChanged} onProductionAdded={handleDataChanged} />
+      <BarcodeScanner open={barcodeOpen} onOpenChange={setBarcodeOpen} onOrderCreated={handleDataChanged} onProductionAdded={handleDataChanged} onStockReceived={handleDataChanged} />
       <CombinedEntryDialog
         open={addNewOpen}
         onOpenChange={setAddNewOpen}
@@ -626,12 +661,12 @@ export default function Home() {
                     <div className="flex items-baseline gap-1.5">
                       <p className="text-xl md:text-2xl font-bold text-[var(--danger-dark)]">{summary?.minusStockCount ?? 0}</p>
                       <span className="text-[11px] text-[var(--t-muted)]">/</span>
-                      <p className="text-lg md:text-xl font-bold text-[var(--warning)]">{summary?.lowStockCount ?? 0}</p>
+                      <p className="text-lg md:text-xl font-bold text-[var(--warning)]">{summary?.pipelineCount ?? 0}</p>
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-[11px] md:text-[11px] text-[var(--danger-dark)]">minus</span>
                       <span className="text-[11px] text-[var(--t-muted)]">·</span>
-                      <span className="text-[11px] md:text-[11px] text-[var(--warning)]">low stock</span>
+                      <span className="text-[11px] md:text-[11px] text-[var(--warning)]">kurang stok</span>
                     </div>
                   </>
                 )}
@@ -718,14 +753,15 @@ export default function Home() {
             <div className="mb-3 md:mb-4">
               <RecentOrderCard
                 items={recentOrderItems}
+                pipelineBySkuColorType={pipelineBySkuColorType}
                 loading={loading}
                 onDataChange={fetchDashboardData}
               />
             </div>
 
-            {/* Middle Row: Stok Minus / Low Stock, Print Queue, In Production */}
+            {/* Middle Row: Stok Minus / Pipeline, Print Queue, In Production */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4 mb-3 md:mb-4">
-              <LowStockCard minusItems={minusStockItems} lowItems={lowStockItems} recommendationItems={recommendationItems} recommendationLoading={recommendationLoading} loading={loading} onSendToPrintQueue={handleSendToPrintQueue} printQueueItems={printQueueItems} productionItems={productionItems} />
+              <LowStockCard minusItems={minusStockItems} pipelineItems={pipelineItems} recommendationItems={recommendationItems} recommendationLoading={recommendationLoading} loading={loading} onSendToPrintQueue={handleSendToPrintQueue} />
               <PrintQueueCard
                 items={printQueueItems}
                 loading={loading}
@@ -738,6 +774,7 @@ export default function Home() {
                 loading={loading}
                 onComplete={handleCompleteProduction}
                 onSendBack={handleSendBackToPrintQueue}
+                onWriteOff={handleWriteOff}
                 onAdd={() => setAddNewOpen(true)}
                 onUpdatePrinter={() => fetchDashboardData()}
               />

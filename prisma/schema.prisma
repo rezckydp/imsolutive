@@ -149,6 +149,13 @@ model ProductionItem {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  // Real Stock Scan Pipeline (ims-real-stock-scan-pipeline-spec.md) — Completed
+  // no longer increments ProductVariant.qty by itself; qty only moves via
+  // "Terima Stok" scans against this job (POST /api/stock/receive-scan).
+  scannedQty  Int       @default(0) // how much of `qty` has been confirmed via scan
+  closedAt    DateTime? // set once scannedQty reaches qty, or on manual write-off
+  writeOffQty Int       @default(0) // confirmed reject/lost, will never be scanned
+
   variant     ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
 }
 

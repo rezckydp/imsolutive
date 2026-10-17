@@ -48,8 +48,15 @@ export interface RecentOrderItem {
   createdAt: string;
 }
 
+interface PipelineStatusLite {
+  pendingScan: number;
+  inProgress: number;
+  queue: number;
+}
+
 interface RecentOrderCardProps {
   items?: RecentOrderItem[];
+  pipelineBySkuColorType?: Record<string, PipelineStatusLite>;
   loading?: boolean;
   onDataChange?: () => void;
 }
@@ -72,7 +79,7 @@ function formatDate(isoString: string) {
   return `${months[d.getMonth()]} ${d.getDate().toString().padStart(2, '0')}, ${d.getFullYear()}`;
 }
 
-export function RecentOrderCard({ items = [], loading = false, onDataChange }: RecentOrderCardProps) {
+export function RecentOrderCard({ items = [], pipelineBySkuColorType = {}, loading = false, onDataChange }: RecentOrderCardProps) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'oldest' | 'newest'>('oldest');
@@ -202,6 +209,8 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
     type: string;
     totalQty: number;
     currentStock: number; // net stock position for this variant (can be negative)
+    pendingScan: number; // Completed production, outstanding, not yet scanned (ims-real-stock-scan-pipeline-spec.md §5.3)
+    inProgress: number; // still actively printing
     orderRefs: Map<string, string>; // orderId -> orderNo
     items: RecentOrderItem[];
     oldestCreatedAt: string;
@@ -220,6 +229,8 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
       ? `${it.groupSku}|reqcolor|${it.id}`
       : `${it.groupSku}|${it.color}|${it.type}`;
     if (!summaryMap.has(key)) {
+      const pipelineKey = `${it.groupSku}|${it.color}|${it.type}`;
+      const pipeline = pipelineBySkuColorType[pipelineKey];
       summaryMap.set(key, {
         key,
         groupSku: it.groupSku,
@@ -229,6 +240,8 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
         type: it.type,
         totalQty: 0,
         currentStock: it.currentStock,
+        pendingScan: pipeline?.pendingScan ?? 0,
+        inProgress: pipeline?.inProgress ?? 0,
         orderRefs: new Map(),
         items: [],
         oldestCreatedAt: it.createdAt,
@@ -486,6 +499,8 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
                       <th className="text-left text-xs font-medium text-[var(--t-body)] py-3 px-4">Master SKU</th>
                       <th className="text-left text-xs font-medium text-[var(--t-body)] py-3 px-4">Warna</th>
                       <th className="text-right text-xs font-medium text-[var(--t-body)] py-3 px-4">Jumlah</th>
+                      <th className="text-right text-xs font-medium text-[var(--t-body)] py-3 px-4">Nunggu Scan</th>
+                      <th className="text-right text-xs font-medium text-[var(--t-body)] py-3 px-4">Lagi Diprint</th>
                       <th className="text-left text-xs font-medium text-[var(--t-body)] py-3 px-4">Sumber</th>
                       <th className="text-right text-xs font-medium text-[var(--t-body)] py-3 px-4">Actions</th>
                     </tr>
@@ -499,7 +514,7 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
                       </>
                     ) : summaryGroups.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="text-center py-10">
+                        <td colSpan={8} className="text-center py-10">
                           <div className="flex flex-col items-center gap-3">
                             <div className="w-12 h-12 rounded-full bg-[var(--surface)] flex items-center justify-center">
                               <Sparkles className="w-6 h-6 text-[var(--t-muted)]" />
@@ -553,6 +568,20 @@ export function RecentOrderCard({ items = [], loading = false, onDataChange }: R
                               </span>
                             )}
                             <span className="text-xs text-[var(--t-muted)]"> pcs</span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {g.pendingScan > 0 ? (
+                              <span className="text-sm font-semibold text-[var(--info)]">{g.pendingScan}</span>
+                            ) : (
+                              <span className="text-sm text-[var(--t-muted)]">0</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {g.inProgress > 0 ? (
+                              <span className="text-sm font-semibold text-[var(--accent-purple)]">{g.inProgress}</span>
+                            ) : (
+                              <span className="text-sm text-[var(--t-muted)]">0</span>
+                            )}
                           </td>
                           <td className="py-3 px-4 text-left">
                             <div className="flex flex-wrap gap-1">

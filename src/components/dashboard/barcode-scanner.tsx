@@ -32,11 +32,26 @@ import {
   Upload,
   FileText,
   AlertTriangle,
+  Undo2,
+  PackageCheck,
 } from 'lucide-react';
 
-type ScannerMode = 'order' | 'production';
+type ScannerMode = 'order' | 'production' | 'receive';
 type OrderSubMode = 'manual' | 'pdf';
 type PdfStage = 'idle' | 'uploading' | 'review';
+
+// One scanned-in unit during a "Terima Stok" session — pushed to the front
+// of scanHistory (LIFO) so "Undo Scan Terakhir" always undoes index 0.
+interface ReceiveScanEntry {
+  variantId: string;
+  jobId: string | null;
+  sku: string;
+  name: string;
+  color: string;
+  colorHex: string;
+  type: string;
+  source: 'production' | 'unlinked';
+}
 
 // "Req. Color" variants (customer picks a custom color per order) must never
 // auto-stack with each other — each scan represents a different customer's
@@ -65,6 +80,7 @@ interface BarcodeScannerProps {
   onOpenChange: (open: boolean) => void;
   onOrderCreated?: () => void;
   onProductionAdded?: () => void;
+  onStockReceived?: () => void;
 }
 
 // ============ HELPERS ============
@@ -120,6 +136,7 @@ export function BarcodeScanner({
   onOpenChange,
   onOrderCreated,
   onProductionAdded,
+  onStockReceived,
 }: BarcodeScannerProps) {
   const [mode, setMode] = useState<ScannerMode>('order');
   const [orderSubMode, setOrderSubMode] = useState<OrderSubMode>('manual');
@@ -141,6 +158,13 @@ export function BarcodeScanner({
   // For production mode
   const [printers, setPrinters] = useState<Array<{ id: string; name: string; status: string }>>([]);
   const [selectedPrinter, setSelectedPrinter] = useState('');
+
+  // For "Terima Stok" (receive) mode — each scan commits immediately, no
+  // batch submit. scanHistory is LIFO (newest first) so Undo always targets
+  // index 0 — reset only when the modal closes, not on mode switch.
+  const [scanHistory, setScanHistory] = useState<ReceiveScanEntry[]>([]);
+  const [todayTotal, setTodayTotal] = useState<number | null>(null);
+  const [undoingLast, setUndoingLast] = useState(false);
 
   // Reset order-specific sub-state when switching to production mode
   useEffect(() => {
@@ -297,11 +321,82 @@ export function BarcodeScanner({
     }
   }, []);
 
+  // ============ RECEIVE STOK (Terima Stok) ============
+
+  const handleReceiveScan = useCallback(async (code: string) => {
+    if (isProcessing.current) return;
+    isProcessing.current = true;
+    setLookingUp(true);
+    setLookupError('');
+
+    try {
+      const res = await fetch('/api/stock/receive-scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setLookupError(data.error || 'Gagal menerima scan');
+        return;
+      }
+
+      const entry: ReceiveScanEntry = {
+        variantId: data.variantId,
+        jobId: data.jobId ?? null,
+        sku: data.sku,
+        name: data.name,
+        color: data.color || '',
+        colorHex: data.colorHex || '#000000',
+        type: data.type || '',
+        source: data.source,
+      };
+      setScanHistory((prev) => [entry, ...prev]);
+      setTodayTotal(data.todayTotal);
+      onStockReceived?.();
+    } catch {
+      setLookupError('Gagal menerima scan. Coba lagi.');
+    } finally {
+      isProcessing.current = false;
+      setLookingUp(false);
+    }
+  }, [onStockReceived]);
+
+  const handleUndoLastScan = async () => {
+    const last = scanHistory[0];
+    if (!last) return;
+    setUndoingLast(true);
+    try {
+      const res = await fetch('/api/stock/undo-scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ variantId: last.variantId, jobId: last.jobId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setLookupError(data.error || 'Gagal undo scan');
+        return;
+      }
+      setScanHistory((prev) => prev.slice(1));
+      setTodayTotal(data.todayTotal);
+      onStockReceived?.();
+    } catch {
+      setLookupError('Gagal undo scan. Coba lagi.');
+    } finally {
+      setUndoingLast(false);
+    }
+  };
+
   // ============ MANUAL LOOKUP ============
 
   const handleManualLookup = async () => {
     if (!manualCode.trim()) return;
-    await handleScan(manualCode.trim());
+    if (mode === 'receive') {
+      await handleReceiveScan(manualCode.trim());
+    } else {
+      await handleScan(manualCode.trim());
+    }
     setManualCode('');
     // Focus will be restored by the lookingUp useEffect above
   };
@@ -510,6 +605,8 @@ export function BarcodeScanner({
       setPickingListNo('');
       setNumberType('picking');
       resetPdfUpload();
+      setScanHistory([]);
+      setTodayTotal(null);
     }
     onOpenChange(val);
   };
@@ -534,13 +631,13 @@ export function BarcodeScanner({
             <div className="flex items-center gap-2 min-w-0">
               <ScanBarcode className="w-5 h-5 text-[var(--brand)] flex-shrink-0" />
               <DialogTitle className="text-[var(--t-heading)] text-base max-md:text-sm truncate">
-                {mode === 'order' ? 'Input Pesanan' : 'Input Produksi'}
+                {mode === 'order' ? 'Input Pesanan' : mode === 'production' ? 'Input Produksi' : 'Terima Stok'}
               </DialogTitle>
             </div>
             <div className="flex items-center gap-1 bg-[var(--surface)] rounded-lg p-0.5 flex-shrink-0">
               <button
                 onClick={() => setMode('order')}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${
+                className={`flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${
                   mode === 'order'
                     ? 'bg-[var(--card)] text-[var(--brand)] shadow-sm'
                     : 'text-[var(--t-body)] hover:text-[var(--t-heading)]'
@@ -551,7 +648,7 @@ export function BarcodeScanner({
               </button>
               <button
                 onClick={() => setMode('production')}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${
+                className={`flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${
                   mode === 'production'
                     ? 'bg-[var(--card)] text-[var(--info)] shadow-sm'
                     : 'text-[var(--t-body)] hover:text-[var(--t-heading)]'
@@ -560,12 +657,25 @@ export function BarcodeScanner({
                 <Factory className="w-3.5 h-3.5" />
                 <span className="max-md:hidden">Produksi</span>
               </button>
+              <button
+                onClick={() => setMode('receive')}
+                className={`flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${
+                  mode === 'receive'
+                    ? 'bg-[var(--card)] text-[var(--success)] shadow-sm'
+                    : 'text-[var(--t-body)] hover:text-[var(--t-heading)]'
+                }`}
+              >
+                <PackageCheck className="w-3.5 h-3.5" />
+                <span className="max-md:hidden">Terima Stok</span>
+              </button>
             </div>
           </div>
           <DialogDescription className="text-[var(--t-body)] mt-1 text-xs">
             {mode === 'order'
               ? 'Ketik atau scan barcode untuk input pesanan baru'
-              : 'Ketik atau scan barcode untuk input stok produksi'}
+              : mode === 'production'
+              ? 'Ketik atau scan barcode untuk input stok produksi'
+              : 'Scan barcode produk yang sudah lolos QC — stok real nambah langsung tiap scan'}
           </DialogDescription>
         </DialogHeader>
 
@@ -747,7 +857,7 @@ export function BarcodeScanner({
           )}
 
           {/* Scanned Items */}
-          {items.length > 0 && (
+          {mode !== 'receive' && items.length > 0 && (
             <div className="mt-3 flex-1 min-h-0 flex flex-col">
               <div className="flex items-center justify-between mb-2 flex-shrink-0">
                 <div className="flex items-center gap-2">
@@ -935,7 +1045,7 @@ export function BarcodeScanner({
           )}
 
           {/* Empty state */}
-          {items.length === 0 && !lookingUp && !(mode === 'order' && orderSubMode === 'pdf') && (
+          {mode !== 'receive' && items.length === 0 && !lookingUp && !(mode === 'order' && orderSubMode === 'pdf') && (
             <div className="mt-6 flex flex-col items-center justify-center py-8 md:py-12 text-center flex-shrink-0">
               <div className="w-16 h-16 rounded-full bg-[var(--surface)] flex items-center justify-center mb-3">
                 <ScanBarcode className="w-7 h-7 text-[var(--t-muted)]" />
@@ -944,6 +1054,90 @@ export function BarcodeScanner({
               <p className="text-xs text-[var(--t-muted)] mt-1">
                 Ketik barcode/SKU di atas atau scan pakai alat barcode scanner
               </p>
+            </div>
+          )}
+
+          {/* Terima Stok — tiap scan commit langsung, nggak ada batch submit */}
+          {mode === 'receive' && (
+            <div className="mt-3 flex-1 min-h-0 flex flex-col overflow-y-auto -webkit-overflow-scrolling-touch">
+              {/* Running daily counter */}
+              <div className="flex-shrink-0 flex items-center justify-between bg-[var(--success)]/5 border border-[var(--success)]/20 rounded-lg px-3 py-2 mb-3">
+                <span className="text-xs text-[var(--t-body)] font-medium">Total Diterima Hari Ini</span>
+                <span className="text-lg font-bold text-[var(--success)]">{todayTotal ?? 0}</span>
+              </div>
+
+              {/* Last scan confirmation card */}
+              {scanHistory.length > 0 && (
+                <div className="flex-shrink-0 mb-3 p-3 rounded-lg border border-[var(--success)]/30 bg-[var(--success)]/5">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-[var(--success)] flex-shrink-0" />
+                    <span className="text-xs font-bold text-[var(--success)]">DISCAN — STOK NAMBAH</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="w-4 h-4 rounded-full border border-[var(--bd)] flex-shrink-0"
+                      style={{ backgroundColor: scanHistory[0].colorHex }}
+                    />
+                    <span className="text-sm font-semibold text-[var(--t-heading)] bg-[var(--surface-2)] px-1.5 py-0.5 rounded">
+                      {scanHistory[0].sku}
+                    </span>
+                    <span className="text-sm text-[var(--t-body)] truncate">
+                      {scanHistory[0].color}{scanHistory[0].type ? ` - ${scanHistory[0].type}` : ''}
+                    </span>
+                  </div>
+                  {scanHistory[0].source === 'unlinked' && (
+                    <p className="text-[11px] text-[var(--warning)] font-medium mt-1 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                      Tanpa job produksi — tetap dicatat, dicek manual kalau sering kejadian
+                    </p>
+                  )}
+                  <button
+                    onClick={handleUndoLastScan}
+                    disabled={undoingLast}
+                    className="mt-2 w-full flex items-center justify-center gap-1.5 h-8 rounded-lg bg-[var(--card)] border border-[var(--bd)] text-xs font-medium text-[var(--t-body)] hover:text-[var(--danger)] hover:border-[var(--danger)]/30 transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    {undoingLast ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Undo2 className="w-3.5 h-3.5" />}
+                    Undo Scan Terakhir
+                  </button>
+                </div>
+              )}
+
+              {/* Session rundown per SKU/warna */}
+              {scanHistory.length > 0 ? (
+                <div className="flex-1 min-h-0 overflow-y-auto rounded-lg border border-[var(--bd)]">
+                  <div className="p-2 space-y-1">
+                    {Array.from(
+                      scanHistory.reduce((map, s) => {
+                        const key = `${s.sku}|${s.color}|${s.type}`;
+                        const cur = map.get(key);
+                        if (cur) cur.count += 1;
+                        else map.set(key, { sku: s.sku, color: s.color, colorHex: s.colorHex, type: s.type, count: 1 });
+                        return map;
+                      }, new Map<string, { sku: string; color: string; colorHex: string; type: string; count: number }>())
+                        .values()
+                    ).map((row) => (
+                      <div key={`${row.sku}|${row.color}|${row.type}`} className="flex items-center justify-between px-2 py-1.5 rounded-md">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 border border-[var(--bd)]" style={{ backgroundColor: row.colorHex }} />
+                          <span className="text-xs font-semibold text-[var(--t-heading)] bg-[var(--surface-2)] px-1.5 py-0.5 rounded flex-shrink-0">{row.sku}</span>
+                          <span className="text-xs text-[var(--t-body)] truncate">{row.color}{row.type ? ` - ${row.type}` : ''}</span>
+                        </div>
+                        <span className="text-sm font-bold text-[var(--success)] flex-shrink-0">×{row.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : !lookingUp && (
+                <div className="flex-1 flex flex-col items-center justify-center py-8 md:py-12 text-center flex-shrink-0">
+                  <div className="w-16 h-16 rounded-full bg-[var(--surface)] flex items-center justify-center mb-3">
+                    <PackageCheck className="w-7 h-7 text-[var(--t-muted)]" />
+                  </div>
+                  <p className="text-sm text-[var(--t-body)] font-medium">Belum ada scan di sesi ini</p>
+                  <p className="text-xs text-[var(--t-muted)] mt-1">
+                    Ketik barcode/SKU di atas atau scan pakai alat barcode scanner
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>

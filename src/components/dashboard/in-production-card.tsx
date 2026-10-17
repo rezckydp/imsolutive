@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Check, Loader2, RotateCcw, Printer as PrinterIcon } from 'lucide-react';
+import { Check, Loader2, RotateCcw, Printer as PrinterIcon, ScanLine, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -24,6 +24,9 @@ export interface ProductionItem {
   type: string;
   qty: number;
   assignedTo: string;
+  status: string; // In Progress, Completed
+  scannedQty: number;
+  writeOffQty: number;
   note: string;
   createdAt: string;
 }
@@ -39,6 +42,7 @@ interface InProductionCardProps {
   loading?: boolean;
   onComplete?: (id: string) => void;
   onSendBack?: (item: ProductionItem) => void;
+  onWriteOff?: (id: string) => void;
   onAdd?: () => void;
   onUpdatePrinter?: (itemId: string, printerName: string) => void;
 }
@@ -92,12 +96,14 @@ function formatExactTime(iso: string): string {
   return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}, ${formatClockTime(iso)}`;
 }
 
-export function InProductionCard({ items = [], loading = false, onComplete, onSendBack, onAdd, onUpdatePrinter }: InProductionCardProps) {
+export function InProductionCard({ items = [], loading = false, onComplete, onSendBack, onWriteOff, onAdd, onUpdatePrinter }: InProductionCardProps) {
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [sendingBackId, setSendingBackId] = useState<string | null>(null);
   const [printers, setPrinters] = useState<PrinterOption[]>([]);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [updatingPrinterId, setUpdatingPrinterId] = useState<string | null>(null);
+  const [writeOffConfirmId, setWriteOffConfirmId] = useState<string | null>(null);
+  const [writingOffId, setWritingOffId] = useState<string | null>(null);
 
   const fetchPrinters = useCallback(async () => {
     try {
@@ -130,6 +136,19 @@ export function InProductionCard({ items = [], loading = false, onComplete, onSe
       await onSendBack?.(item);
     } finally {
       setSendingBackId(null);
+    }
+  };
+
+  const handleWriteOff = async (id: string) => {
+    setWritingOffId(id);
+    try {
+      await onWriteOff?.(id);
+      toast.success('Sisa ditandai reject/hilang — dicatat ke Activity Log.');
+    } catch {
+      toast.error('Gagal menandai write-off. Coba lagi.');
+    } finally {
+      setWritingOffId(null);
+      setWriteOffConfirmId(null);
     }
   };
 
@@ -186,15 +205,16 @@ export function InProductionCard({ items = [], loading = false, onComplete, onSe
       </CardHeader>
       <CardContent className="px-4 pb-4 pt-0">
         <div className="rounded-lg border border-[var(--bd)] overflow-x-auto -webkit-overflow-scrolling-touch">
-          <table className="w-full min-w-[580px]">
+          <table className="w-full min-w-[660px]">
             <thead>
               <tr className="bg-[var(--surface)]">
                 <th className="text-left text-xs font-medium text-[var(--t-body)] py-2 px-3">Product</th>
                 <th className="text-left text-xs font-medium text-[var(--t-body)] py-2 px-3">Color</th>
                 <th className="text-right text-xs font-medium text-[var(--t-body)] py-2 px-3">Qty</th>
+                <th className="text-left text-xs font-medium text-[var(--t-body)] py-2 px-3">Status</th>
                 <th className="text-left text-xs font-medium text-[var(--t-body)] py-2 px-3">Mulai</th>
                 <th className="text-left text-xs font-medium text-[var(--t-body)] py-2 px-3">Printer</th>
-                <th className="w-[76px] text-center text-xs font-medium text-[var(--t-body)] py-2 px-1">Actions</th>
+                <th className="w-[90px] text-center text-xs font-medium text-[var(--t-body)] py-2 px-1">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -202,12 +222,15 @@ export function InProductionCard({ items = [], loading = false, onComplete, onSe
                 <SkeletonRows />
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-6 text-sm text-[var(--t-body)]">
+                  <td colSpan={7} className="text-center py-6 text-sm text-[var(--t-body)]">
                     No items in production
                   </td>
                 </tr>
               ) : (
-                items.map((item) => (
+                items.map((item) => {
+                  const isCompleted = item.status === 'Completed';
+                  const outstanding = item.qty - item.scannedQty - item.writeOffQty;
+                  return (
                   <tr
                     key={item.id}
                     className="border-t border-[var(--surface-2)] hover:bg-[var(--surface-hover)] transition-colors"
@@ -237,11 +260,36 @@ export function InProductionCard({ items = [], loading = false, onComplete, onSe
                     <td className="py-2.5 px-3 text-right text-sm text-[var(--t-heading)] font-medium">
                       {item.qty}
                     </td>
+                    <td className="py-2.5 px-3">
+                      {isCompleted ? (
+                        <Badge
+                          variant="outline"
+                          className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-[var(--info)]/10 text-[var(--info)] border-[var(--info)]/30 gap-1"
+                        >
+                          <ScanLine className="w-2.5 h-2.5" />
+                          {item.scannedQty > 0 ? `Nunggu Scan (${item.scannedQty}/${item.qty})` : 'Nunggu Scan'}
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant="outline"
+                          className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-[var(--accent-purple)]/10 text-[var(--accent-purple)] border-[var(--accent-purple)]/30 gap-1"
+                        >
+                          Lagi Diprint
+                        </Badge>
+                      )}
+                    </td>
                     <td className="py-2.5 px-3" title={formatExactTime(item.createdAt)}>
                       <span className="text-xs text-[var(--t-body)] whitespace-nowrap">{formatClockTime(item.createdAt)}</span>
                     </td>
                     <td className="py-2.5 px-3">
-                      {updatingPrinterId === item.id ? (
+                      {isCompleted ? (
+                        <Badge
+                          variant="outline"
+                          className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-[var(--highlight)]/10 text-[var(--t-heading)] border-[var(--highlight)]/30 gap-1"
+                        >
+                          {item.assignedTo || <span className="text-[var(--t-muted)]">—</span>}
+                        </Badge>
+                      ) : updatingPrinterId === item.id ? (
                         <div className="flex items-center gap-1">
                           <Loader2 className="w-3 h-3 animate-spin text-[var(--warning)]" />
                           <span className="text-[11px] text-[var(--t-muted)]">Updating...</span>
@@ -295,35 +343,72 @@ export function InProductionCard({ items = [], loading = false, onComplete, onSe
                       )}
                     </td>
                     <td className="py-2.5 px-1">
-                      <div className="flex items-center justify-center gap-1">
-                        <button
-                          onClick={() => handleSendBack(item)}
-                          disabled={sendingBackId === item.id}
-                          className="p-1.5 rounded-md bg-[var(--accent-orange)]/10 hover:bg-[var(--accent-orange)]/20 text-[var(--accent-orange)] transition-colors cursor-pointer disabled:opacity-60"
-                          title="Send back to Print Queue"
-                        >
-                          {sendingBackId === item.id ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <RotateCcw className="w-3.5 h-3.5" />
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleComplete(item.id)}
-                          disabled={completingId === item.id || sendingBackId === item.id}
-                          className="p-1.5 rounded-md bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white transition-colors cursor-pointer disabled:opacity-60"
-                          title="Mark as completed"
-                        >
-                          {completingId === item.id ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <Check className="w-3.5 h-3.5" />
-                          )}
-                        </button>
-                      </div>
+                      {isCompleted ? (
+                        writeOffConfirmId === item.id ? (
+                          <div className="flex flex-col items-end gap-1">
+                            <span className="text-[10px] text-[var(--t-muted)] text-right leading-tight">
+                              Yakin {outstanding} pcs reject/hilang?
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => setWriteOffConfirmId(null)}
+                                className="px-1.5 py-1 rounded-md text-[11px] text-[var(--t-body)] hover:bg-[var(--surface)] cursor-pointer"
+                              >
+                                Batal
+                              </button>
+                              <button
+                                onClick={() => handleWriteOff(item.id)}
+                                disabled={writingOffId === item.id}
+                                className="px-1.5 py-1 rounded-md text-[11px] font-medium bg-[var(--danger)] hover:bg-[var(--danger-dark)] text-white cursor-pointer disabled:opacity-60 flex items-center gap-1"
+                              >
+                                {writingOffId === item.id ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                                Ya
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center">
+                            <button
+                              onClick={() => setWriteOffConfirmId(item.id)}
+                              className="p-1.5 rounded-md bg-[var(--danger)]/10 hover:bg-[var(--danger)]/20 text-[var(--danger)] transition-colors cursor-pointer"
+                              title={`Tandai Sisa Reject/Hilang (${outstanding})`}
+                            >
+                              <AlertTriangle className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )
+                      ) : (
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => handleSendBack(item)}
+                            disabled={sendingBackId === item.id}
+                            className="p-1.5 rounded-md bg-[var(--accent-orange)]/10 hover:bg-[var(--accent-orange)]/20 text-[var(--accent-orange)] transition-colors cursor-pointer disabled:opacity-60"
+                            title="Send back to Print Queue"
+                          >
+                            {sendingBackId === item.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <RotateCcw className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleComplete(item.id)}
+                            disabled={completingId === item.id || sendingBackId === item.id}
+                            className="p-1.5 rounded-md bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white transition-colors cursor-pointer disabled:opacity-60"
+                            title="Mark as completed"
+                          >
+                            {completingId === item.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Check className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
