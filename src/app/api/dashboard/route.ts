@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { refreshAllOrderStatuses } from "@/lib/stock-sync";
+import { getPipelineStatus } from "@/lib/pipeline-status";
 
 export async function GET() {
   try {
@@ -43,9 +44,13 @@ export async function GET() {
         },
         orderBy: { createdAt: "desc" },
       }),
-      // Production items (In Progress only for cards)
+      // Production items for the "In Production" card: still actively
+      // printing, OR Completed but still waiting to be scanned into the
+      // warehouse (ims-real-stock-scan-pipeline-spec.md §5.4).
       db.productionItem.findMany({
-        where: { status: "In Progress" },
+        where: {
+          OR: [{ status: "In Progress" }, { status: "Completed", closedAt: null }],
+        },
         include: {
           variant: {
             include: { product: true },
@@ -95,10 +100,34 @@ export async function GET() {
     // Stok Minus: qty < 0 (urgent, must produce immediately)
     const minusStockProducts = masterVariants.filter((v) => v.qty < 0);
 
-    // Low Stock: 0 <= qty < minStock (need to print to keep printers working)
-    const lowStockProducts = masterVariants.filter(
-      (v) => v.qty >= 0 && v.qty < v.product.minStock
-    );
+    // Pipeline (ims-real-stock-scan-pipeline-spec.md §4.5/§5.2) — supersedes the
+    // old simple Low Stock check: credits what's already in the production
+    // pipeline (scanned-pending, in-progress, queued) against real stock before
+    // deciding something still needs attention.
+    const pipelineStatusMap = await getPipelineStatus(masterVariants.map((v) => v.id));
+    const pipelineBySkuColorType: Record<string, (typeof pipelineStatusMap)[string]> = {};
+    for (const v of masterVariants) {
+      const status = pipelineStatusMap[v.id];
+      if (!status) continue;
+      pipelineBySkuColorType[`${v.product.sku}|${v.color}|${v.type}`] = status;
+    }
+    const pipelineProducts = masterVariants
+      .filter((v) => {
+        const status = pipelineStatusMap[v.id];
+        return status && status.real < status.required;
+      })
+      .map((v) => {
+        const status = pipelineStatusMap[v.id];
+        return {
+          variantId: v.id,
+          sku: v.product.sku,
+          name: v.product.name,
+          color: v.color,
+          colorHex: v.colorHex,
+          type: v.type || "",
+          ...status,
+        };
+      });
 
     // Print Queue duration estimate — sum(qty × product.estPrintMinutes), skipping
     // items whose product doesn't have an estimate set yet
@@ -117,7 +146,7 @@ export async function GET() {
       totalProducts,
       totalVariants,
       minusStockCount: minusStockProducts.length,
-      lowStockCount: lowStockProducts.length,
+      pipelineCount: pipelineProducts.filter((p) => p.kurang > 0).length,
       printQueueCount: printQueueItems.length,
       printQueueDurationMinutes,
       printQueueItemsMissingEstimate,
@@ -127,7 +156,8 @@ export async function GET() {
 
     return NextResponse.json({
       minusStockProducts,
-      lowStockProducts,
+      pipelineProducts,
+      pipelineBySkuColorType,
       printQueueItems,
       productionItems,
       allProductionItems,

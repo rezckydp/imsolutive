@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Printer, Loader2, AlertTriangle, PackageX, Sparkles } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronLeft, ChevronRight, Printer, Loader2, AlertTriangle, PackageX, Sparkles, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +18,21 @@ export interface LowStockItem {
   note: string;
 }
 
+export interface PipelineItem {
+  variantId: string;
+  sku: string;
+  name: string;
+  color: string;
+  colorHex: string;
+  type: string;
+  required: number;
+  real: number;
+  pendingScan: number;
+  inProgress: number;
+  queue: number;
+  kurang: number;
+}
+
 export interface RecommendationItem {
   sku: string;
   name: string;
@@ -30,20 +45,13 @@ export interface RecommendationItem {
   suggestedQty: number;
 }
 
-interface VariantQtyRef {
-  variantId: string;
-  qty: number;
-}
-
 interface LowStockCardProps {
   minusItems?: LowStockItem[];
-  lowItems?: LowStockItem[];
+  pipelineItems?: PipelineItem[];
   recommendationItems?: RecommendationItem[];
   recommendationLoading?: boolean;
   loading?: boolean;
   onSendToPrintQueue?: (variantId: string, qty?: number) => void;
-  printQueueItems?: VariantQtyRef[];
-  productionItems?: VariantQtyRef[];
 }
 
 function SkeletonRows() {
@@ -75,35 +83,23 @@ function SkeletonRows() {
   );
 }
 
-export function LowStockCard({ minusItems = [], lowItems = [], recommendationItems = [], recommendationLoading = false, loading = false, onSendToPrintQueue, printQueueItems = [], productionItems = [] }: LowStockCardProps) {
-  const [tab, setTab] = useState<'minus' | 'low' | 'reco'>('minus');
+export function LowStockCard({ minusItems = [], pipelineItems = [], recommendationItems = [], recommendationLoading = false, loading = false, onSendToPrintQueue }: LowStockCardProps) {
+  const [tab, setTab] = useState<'minus' | 'pipeline' | 'reco'>('minus');
   const [page, setPage] = useState(0);
   const [sendingId, setSendingId] = useState<string | null>(null);
   const itemsPerPage = 4;
 
-  const items = tab === 'minus' ? minusItems : tab === 'low' ? lowItems : recommendationItems;
+  const items = tab === 'minus' ? minusItems : tab === 'pipeline' ? pipelineItems : recommendationItems;
   const totalPages = Math.ceil(items.length / itemsPerPage);
-  const displayItems = items.slice(page * itemsPerPage, (page + 1) * itemsPerPage) as (LowStockItem | RecommendationItem)[];
+  const displayItems = items.slice(page * itemsPerPage, (page + 1) * itemsPerPage) as (LowStockItem | PipelineItem | RecommendationItem)[];
 
   // Reset page when switching tabs
-  const handleTabChange = (newTab: 'minus' | 'low' | 'reco') => {
+  const handleTabChange = (newTab: 'minus' | 'pipeline' | 'reco') => {
     if (newTab !== tab) {
       setTab(newTab);
       setPage(0);
     }
   };
-
-  // Build a map: variantId -> total queued qty (Print Queue + In Production, not yet completed)
-  const queuedMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    for (const pq of printQueueItems) {
-      map[pq.variantId] = (map[pq.variantId] || 0) + pq.qty;
-    }
-    for (const pi of productionItems) {
-      map[pi.variantId] = (map[pi.variantId] || 0) + pi.qty;
-    }
-    return map;
-  }, [printQueueItems, productionItems]);
 
   const handleSendToPrint = async (variantId: string, qty?: number) => {
     setSendingId(variantId);
@@ -116,6 +112,7 @@ export function LowStockCard({ minusItems = [], lowItems = [], recommendationIte
 
   const isMinus = tab === 'minus';
   const isReco = tab === 'reco';
+  const isPipeline = tab === 'pipeline';
 
   return (
     <Card className="rounded-xl shadow-sm border-0">
@@ -135,7 +132,7 @@ export function LowStockCard({ minusItems = [], lowItems = [], recommendationIte
             ) : (
               <span className="flex items-center gap-1.5">
                 <AlertTriangle className="w-4 h-4 text-[var(--warning)]" />
-                Low Stock
+                Pipeline
               </span>
             )}
           </CardTitle>
@@ -179,20 +176,20 @@ export function LowStockCard({ minusItems = [], lowItems = [], recommendationIte
                 )}
               </button>
               <button
-                onClick={() => handleTabChange('low')}
+                onClick={() => handleTabChange('pipeline')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-                  tab === 'low'
+                  isPipeline
                     ? 'bg-[var(--card)] text-[var(--warning)] shadow-sm'
                     : 'text-[var(--t-body)] hover:text-[var(--t-heading)]'
                 }`}
               >
                 <AlertTriangle className="w-3 h-3" />
-                Low Stock
-                {lowItems.length > 0 && (
+                Pipeline
+                {pipelineItems.length > 0 && (
                   <span className={`ml-0.5 text-[11px] px-1.5 py-0 rounded-full font-bold ${
-                    tab === 'low' ? 'bg-[var(--warning)] text-white' : 'bg-[var(--warning)]/10 text-[var(--warning)]'
+                    isPipeline ? 'bg-[var(--warning)] text-white' : 'bg-[var(--warning)]/10 text-[var(--warning)]'
                   }`}>
-                    {lowItems.length}
+                    {pipelineItems.length}
                   </span>
                 )}
               </button>
@@ -234,13 +231,13 @@ export function LowStockCard({ minusItems = [], lowItems = [], recommendationIte
                     <th className="text-right text-xs font-medium text-[var(--t-body)] py-2 px-3">Avg/hari</th>
                     <th className="text-right text-xs font-medium text-[var(--t-body)] py-2 px-3">Saran</th>
                   </>
-                ) : (
+                ) : isPipeline ? (
                   <>
-                    <th className="text-right text-xs font-medium text-[var(--t-body)] py-2 px-3">
-                      {isMinus ? 'Qty' : 'Stok'}
-                    </th>
-                    <th className="text-right text-xs font-medium text-[var(--t-body)] py-2 px-3">Queued</th>
+                    <th className="text-left text-xs font-medium text-[var(--t-body)] py-2 px-3">Breakdown</th>
+                    <th className="text-right text-xs font-medium text-[var(--t-body)] py-2 px-3">Status</th>
                   </>
+                ) : (
+                  <th className="text-right text-xs font-medium text-[var(--t-body)] py-2 px-3">Qty</th>
                 )}
                 <th className="w-9"></th>
               </tr>
@@ -264,23 +261,23 @@ export function LowStockCard({ minusItems = [], lowItems = [], recommendationIte
                         )}
                       </div>
                       <p className="text-xs text-[var(--t-body)]">
-                        {isReco ? 'Belum ada saran reorder' : isMinus ? 'Tidak ada stok minus' : 'Tidak ada low stock'}
+                        {isReco ? 'Belum ada saran reorder' : isMinus ? 'Tidak ada stok minus' : 'Semua aman — nggak ada yang butuh perhatian'}
                       </p>
                       {isReco ? (
                         <p className="text-[11px] text-[var(--t-muted)]">Muncul kalau ada produk dengan demand rutin & stok mepet</p>
                       ) : isMinus ? (
                         <p className="text-[11px] text-[var(--t-muted)]">Produk dengan stok minus akan muncul di sini</p>
                       ) : (
-                        <p className="text-[11px] text-[var(--t-muted)]">Produk dengan stok di bawah minimum akan muncul di sini</p>
+                        <p className="text-[11px] text-[var(--t-muted)]">Produk yang stoknya di bawah kebutuhan (setelah dikredit produksi) akan muncul di sini</p>
                       )}
                     </div>
                   </td>
                 </tr>
               ) : (
                 displayItems.map((item, idx) => {
-                  const queued = queuedMap[item.variantId] || 0;
                   const reco = item as RecommendationItem;
                   const stock = item as LowStockItem;
+                  const pipe = item as PipelineItem;
                   return (
                     <tr
                       key={item.variantId || item.sku + idx}
@@ -302,7 +299,7 @@ export function LowStockCard({ minusItems = [], lowItems = [], recommendationIte
                           />
                           <div className="min-w-0">
                             <span className="text-sm text-[var(--t-body)]">{item.color}{item.type ? ` - ${item.type}` : ''}</span>
-                            {!isReco && stock.note && (
+                            {isMinus && stock.note && (
                               <p className="text-[11px] text-[var(--warning)] font-medium truncate max-w-[100px]" title={stock.note}>
                                 {stock.note}
                               </p>
@@ -324,31 +321,37 @@ export function LowStockCard({ minusItems = [], lowItems = [], recommendationIte
                             <span className="text-sm font-bold text-[var(--brand)]">+{reco.suggestedQty}</span>
                           </td>
                         </>
-                      ) : (
+                      ) : isPipeline ? (
                         <>
-                          <td className="py-2.5 px-3 text-right">
-                            {isMinus ? (
-                              <span className="text-sm font-bold text-[var(--danger-dark)]">{stock.qty}</span>
-                            ) : (
-                              <div className="text-right">
-                                <span className="text-sm font-semibold text-[var(--warning)]">{stock.qty}</span>
-                                <p className="text-[11px] text-[var(--t-muted)]">min: {stock.minStock}</p>
-                              </div>
-                            )}
+                          <td className="py-2.5 px-3">
+                            <p className="text-[11px] text-[var(--t-muted)] leading-tight">
+                              Butuh {pipe.required} · Real {pipe.real}
+                              {pipe.pendingScan > 0 && <> · Scan {pipe.pendingScan}</>}
+                              {pipe.inProgress > 0 && <> · Print {pipe.inProgress}</>}
+                              {pipe.queue > 0 && <> · Antri {pipe.queue}</>}
+                            </p>
                           </td>
                           <td className="py-2.5 px-3 text-right">
-                            {queued > 0 ? (
-                              <span className="text-sm font-semibold text-[var(--info)]">{queued}</span>
+                            {pipe.kurang > 0 ? (
+                              <Badge className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]/30" variant="outline">
+                                Kurang {pipe.kurang}
+                              </Badge>
                             ) : (
-                              <span className="text-sm text-[var(--t-muted)]">0</span>
+                              <Badge className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/30 gap-1" variant="outline">
+                                <CheckCircle2 className="w-2.5 h-2.5" /> Aman
+                              </Badge>
                             )}
                           </td>
                         </>
+                      ) : (
+                        <td className="py-2.5 px-3 text-right">
+                          <span className="text-sm font-bold text-[var(--danger-dark)]">{stock.qty}</span>
+                        </td>
                       )}
                       <td className="py-2.5 px-1">
                         <button
-                          onClick={() => handleSendToPrint(item.variantId, isReco ? reco.suggestedQty : undefined)}
-                          disabled={sendingId === item.variantId}
+                          onClick={() => handleSendToPrint(item.variantId, isReco ? reco.suggestedQty : isPipeline ? pipe.kurang : undefined)}
+                          disabled={sendingId === item.variantId || (isPipeline && pipe.kurang <= 0)}
                           className={`p-1.5 rounded-md transition-colors cursor-pointer disabled:opacity-50 ${
                             isReco
                               ? 'bg-[var(--brand)]/10 hover:bg-[var(--brand)]/20 text-[var(--brand)]'
@@ -356,7 +359,7 @@ export function LowStockCard({ minusItems = [], lowItems = [], recommendationIte
                               ? 'bg-[var(--danger-dark)]/10 hover:bg-[var(--danger-dark)]/20 text-[var(--danger-dark)]'
                               : 'bg-[var(--info)]/10 hover:bg-[var(--info)]/20 text-[var(--info)]'
                           }`}
-                          title={isReco ? `Send ${reco.suggestedQty} to Print Queue` : 'Send to Print Queue'}
+                          title={isReco ? `Send ${reco.suggestedQty} to Print Queue` : isPipeline ? `Send ${pipe.kurang} to Print Queue` : 'Send to Print Queue'}
                         >
                           {sendingId === item.variantId ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
