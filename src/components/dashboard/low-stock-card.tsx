@@ -330,6 +330,8 @@ export function LowStockCard({ minusItems = [], pipelineItems = [], recommendati
                               {pipe.inProgress > 0 && <> · Print {pipe.inProgress}</>}
                               {pipe.queue > 0 && <> · Antri {pipe.queue}</>}
                             </p>
+                            {/* TEMP DEBUG — remove once Total Kurang mismatch is confirmed fixed */}
+                            <p className="text-[9px] text-[var(--t-subtle)] font-mono">id: ...{pipe.variantId.slice(-8)}</p>
                           </td>
                           <td className="py-2.5 px-3 text-right">
                             {pipe.kurang > 0 ? (

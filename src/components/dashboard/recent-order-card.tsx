@@ -358,6 +358,7 @@ export function RecentOrderCard({ items = [], pipelineByVariantId = {}, loading 
     pendingScan: number; // Completed production, outstanding, not yet scanned (ims-real-stock-scan-pipeline-spec.md §5.3)
     inProgress: number; // still actively printing
     kurang: number; // Pipeline tab's "Kurang" for this SKU+Warna — SAME across every Picking List row sharing it
+    masterVariantId: string; // TEMP DEBUG field — remove once Total Kurang mismatch is confirmed fixed
     orderRefs: Map<string, string>; // orderId -> orderNo
     items: RecentOrderItem[];
     oldestCreatedAt: string;
@@ -394,6 +395,7 @@ export function RecentOrderCard({ items = [], pipelineByVariantId = {}, loading 
         pendingScan: pipeline?.pendingScan ?? 0,
         inProgress: pipeline?.inProgress ?? 0,
         kurang: pipeline?.kurang ?? 0,
+        masterVariantId: it.masterVariantId,
         orderRefs: new Map(),
         items: [],
         oldestCreatedAt: it.createdAt,
@@ -756,6 +758,8 @@ export function RecentOrderCard({ items = [], pipelineByVariantId = {}, loading 
                             ) : (
                               <span className="text-sm font-semibold text-[var(--success)]">Aman</span>
                             )}
+                            {/* TEMP DEBUG — remove once Total Kurang mismatch is confirmed fixed */}
+                            <p className="text-[9px] text-[var(--t-subtle)] font-mono">id: ...{g.masterVariantId.slice(-8)}</p>
                           </td>
                           <td className="py-3 px-4 text-right">
                             {g.pendingScan > 0 ? (
