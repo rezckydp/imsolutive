@@ -407,29 +407,28 @@ export function RecentOrderCard({ items = [], pipelineBySkuColorType = {}, loadi
     }
   }
 
-  // Cluster urgency: rows sharing the same SKU+Warna (but different Picking
-  // Lists) stay visually adjacent — ranked by whichever of them is waiting
-  // longest, then ordered among themselves oldest-first too.
-  const clusterKeyOf = (g: SummaryGroup) => `${g.groupSku}|${g.color}|${g.type}`;
-  const clusterUrgencyMap = new Map<string, number>();
-  for (const g of summaryMap.values()) {
-    const ck = clusterKeyOf(g);
-    const t = new Date(g.oldestCreatedAt).getTime();
-    const cur = clusterUrgencyMap.get(ck);
-    if (cur === undefined || t < cur) clusterUrgencyMap.set(ck, t);
-  }
-  const summaryGroups = Array.from(summaryMap.values()).sort((a, b) => {
-    const ckA = clusterKeyOf(a);
-    const ckB = clusterKeyOf(b);
-    const clusterDiff = clusterUrgencyMap.get(ckA)! - clusterUrgencyMap.get(ckB)!;
-    if (clusterDiff !== 0) return clusterDiff;
-    if (ckA !== ckB) return ckA.localeCompare(ckB);
-    return new Date(a.oldestCreatedAt).getTime() - new Date(b.oldestCreatedAt).getTime();
-  });
+  // Same number the "2 hari" / "1 hari" / "Hari ini" label uses (ims-hotfix-
+  // summary-sort-order.md) — sort and label MUST read off one shared value,
+  // or they can silently disagree.
   const daysWaiting = (iso: string) => {
     const ms = Date.now() - new Date(iso).getTime();
     return Math.max(0, Math.floor(ms / (1000 * 60 * 60 * 24)));
   };
+  const clusterKeyOf = (g: SummaryGroup) => `${g.groupSku}|${g.color}|${g.type}`;
+
+  // Urgency (how long waiting — FIFO) is the PRIMARY order: more days waiting
+  // always outranks fewer, full stop. groupSku+color is only a tie-breaker
+  // for rows whose waiting time is EXACTLY equal (same day bucket) — it must
+  // never drag a more-urgent row down to sit next to its same-SKU sibling,
+  // or a less-urgent one up (ims-hotfix-summary-sort-order.md).
+  const summaryGroups = Array.from(summaryMap.values()).sort((a, b) => {
+    const urgencyDiff = daysWaiting(b.oldestCreatedAt) - daysWaiting(a.oldestCreatedAt);
+    if (urgencyDiff !== 0) return urgencyDiff;
+    const ckA = clusterKeyOf(a);
+    const ckB = clusterKeyOf(b);
+    if (ckA !== ckB) return ckA.localeCompare(ckB);
+    return new Date(a.oldestCreatedAt).getTime() - new Date(b.oldestCreatedAt).getTime();
+  });
 
   const handleSendToQueue = async (item: RecentOrderItem) => {
     setActionLoading(item.id);
