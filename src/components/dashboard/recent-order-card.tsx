@@ -447,22 +447,23 @@ export function RecentOrderCard({ items = [], pipelineByVariantId = {}, loading 
   };
 
   // Urgency (how long waiting — FIFO) is the PRIMARY order: more days waiting
-  // always outranks fewer, full stop. groupSku+color only tie-breaks rows
-  // whose waiting time is EXACTLY equal (same day bucket) — it must never
-  // drag a more-urgent row down to sit next to its same-SKU sibling, or a
-  // less-urgent one up (ims-hotfix-summary-sort-order.md). A final tie-break
-  // by ascending Picking List number keeps even THOSE rows in a stable,
-  // predictable order (ims-hotfix-total-kurang-and-sort-tiebreak.md §2).
+  // always outranks fewer, full stop — it must never drag a more-urgent row
+  // down to sit next to its same-SKU sibling, or a less-urgent one up
+  // (ims-hotfix-summary-sort-order.md). When urgency ties (same day bucket),
+  // rank ascending by Picking List/Adjustment number — PICK-000972 above
+  // PICK-000973 — regardless of SKU; groupSku+color only breaks a FURTHER
+  // tie (e.g. two rows on the very same list), and exact timestamp is the
+  // last resort.
   const summaryGroups = Array.from(summaryMap.values()).sort((a, b) => {
     const urgencyDiff = daysWaiting(b.oldestCreatedAt) - daysWaiting(a.oldestCreatedAt);
     if (urgencyDiff !== 0) return urgencyDiff;
-    const ckA = clusterKeyOf(a);
-    const ckB = clusterKeyOf(b);
-    if (ckA !== ckB) return ckA.localeCompare(ckB);
     const orderNoA = a.items[0]?.orderNo ?? '';
     const orderNoB = b.items[0]?.orderNo ?? '';
     const numDiff = extractOrderNumber(orderNoA) - extractOrderNumber(orderNoB);
     if (numDiff !== 0) return numDiff;
+    const ckA = clusterKeyOf(a);
+    const ckB = clusterKeyOf(b);
+    if (ckA !== ckB) return ckA.localeCompare(ckB);
     return new Date(a.oldestCreatedAt).getTime() - new Date(b.oldestCreatedAt).getTime();
   });
 
@@ -696,10 +697,10 @@ export function RecentOrderCard({ items = [], pipelineByVariantId = {}, loading 
                       <th className="text-left text-xs font-medium text-[var(--t-body)] py-3 px-4">Urgency</th>
                       <th className="text-left text-xs font-medium text-[var(--t-body)] py-3 px-4">Master SKU</th>
                       <th className="text-left text-xs font-medium text-[var(--t-body)] py-3 px-4">Warna</th>
-                      <th className="text-right text-xs font-medium text-[var(--t-body)] py-3 px-4">Qty (List Ini)</th>
-                      <th className="text-right text-xs font-medium text-[var(--t-body)] py-3 px-4">Total Kurang (Semua List)</th>
-                      <th className="text-right text-xs font-medium text-[var(--t-body)] py-3 px-4">Nunggu Scan</th>
+                      <th className="text-right text-xs font-medium text-[var(--t-body)] py-3 px-4">Qty</th>
+                      <th className="text-right text-xs font-medium text-[var(--t-body)] py-3 px-4">Total Qty</th>
                       <th className="text-right text-xs font-medium text-[var(--t-body)] py-3 px-4">Lagi Diprint</th>
+                      <th className="text-right text-xs font-medium text-[var(--t-body)] py-3 px-4">Nunggu Scan</th>
                       <th className="text-left text-xs font-medium text-[var(--t-body)] py-3 px-4">Sumber</th>
                       <th className="text-right text-xs font-medium text-[var(--t-body)] py-3 px-4">Actions</th>
                     </tr>
@@ -772,15 +773,15 @@ export function RecentOrderCard({ items = [], pipelineByVariantId = {}, loading 
                             <span className="text-sm font-bold text-[var(--danger)]">{g.kurang}</span>
                           </td>
                           <td className="py-3 px-4 text-right">
-                            {g.pendingScan > 0 ? (
-                              <span className="text-sm font-semibold text-[var(--info)]">{g.pendingScan}</span>
+                            {g.inProgress > 0 ? (
+                              <span className="text-sm font-semibold text-[var(--accent-purple)]">{g.inProgress}</span>
                             ) : (
                               <span className="text-sm text-[var(--t-muted)]">0</span>
                             )}
                           </td>
                           <td className="py-3 px-4 text-right">
-                            {g.inProgress > 0 ? (
-                              <span className="text-sm font-semibold text-[var(--accent-purple)]">{g.inProgress}</span>
+                            {g.pendingScan > 0 ? (
+                              <span className="text-sm font-semibold text-[var(--info)]">{g.pendingScan}</span>
                             ) : (
                               <span className="text-sm text-[var(--t-muted)]">0</span>
                             )}
