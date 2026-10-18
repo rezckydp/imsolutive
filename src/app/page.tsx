@@ -86,6 +86,7 @@ interface DashboardData {
     status: string;
     scannedQty: number;
     writeOffQty: number;
+    scheduledDoneAt: string | null;
     note: string;
     createdAt: string;
     variant: {
@@ -502,6 +503,7 @@ export default function Home() {
     status: item.status,
     scannedQty: item.scannedQty,
     writeOffQty: item.writeOffQty,
+    scheduledDoneAt: item.scheduledDoneAt,
     note: item.note || variantNoteMap[item.variantId] || '',
     createdAt: item.createdAt,
   }));

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Check, Loader2, RotateCcw, Printer as PrinterIcon, ScanLine, AlertTriangle } from 'lucide-react';
+import { Check, Loader2, RotateCcw, Printer as PrinterIcon, ScanLine, AlertTriangle, Timer } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -27,6 +27,7 @@ export interface ProductionItem {
   status: string; // In Progress, Completed
   scannedQty: number;
   writeOffQty: number;
+  scheduledDoneAt: string | null; // countdown auto-complete target, null = manual only
   note: string;
   createdAt: string;
 }
@@ -96,6 +97,20 @@ function formatExactTime(iso: string): string {
   return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}, ${formatClockTime(iso)}`;
 }
 
+// Countdown display only — the server-side check in
+// src/lib/production-autocomplete.ts is the actual source of truth for the
+// auto-complete transition (ims-feature-production-countdown-autocomplete.md).
+// "1:28:45" once past an hour left, "28:45" under that.
+function formatCountdown(targetIso: string, nowMs: number): string {
+  const remainingMs = Math.max(0, new Date(targetIso).getTime() - nowMs);
+  const totalSeconds = Math.floor(remainingMs / 1000);
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+}
+
 export function InProductionCard({ items = [], loading = false, onComplete, onSendBack, onWriteOff, onAdd, onUpdatePrinter }: InProductionCardProps) {
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [sendingBackId, setSendingBackId] = useState<string | null>(null);
@@ -104,6 +119,14 @@ export function InProductionCard({ items = [], loading = false, onComplete, onSe
   const [updatingPrinterId, setUpdatingPrinterId] = useState<string | null>(null);
   const [writeOffConfirmId, setWriteOffConfirmId] = useState<string | null>(null);
   const [writingOffId, setWritingOffId] = useState<string | null>(null);
+  // Ticks once a second so any live countdowns re-render — display only, the
+  // actual auto-complete transition happens server-side regardless of
+  // whether this card is even open (see lib/production-autocomplete.ts).
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   const fetchPrinters = useCallback(async () => {
     try {
@@ -270,12 +293,20 @@ export function InProductionCard({ items = [], loading = false, onComplete, onSe
                           {item.scannedQty > 0 ? `Nunggu Scan (${item.scannedQty}/${item.qty})` : 'Nunggu Scan'}
                         </Badge>
                       ) : (
-                        <Badge
-                          variant="outline"
-                          className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-[var(--accent-purple)]/10 text-[var(--accent-purple)] border-[var(--accent-purple)]/30 gap-1"
-                        >
-                          Lagi Diprint
-                        </Badge>
+                        <div>
+                          <Badge
+                            variant="outline"
+                            className="text-[11px] px-2 py-0.5 rounded-full font-semibold bg-[var(--accent-purple)]/10 text-[var(--accent-purple)] border-[var(--accent-purple)]/30 gap-1"
+                          >
+                            Lagi Diprint
+                          </Badge>
+                          {item.scheduledDoneAt && (
+                            <p className="text-[11px] text-[var(--t-muted)] mt-0.5 flex items-center gap-1 whitespace-nowrap">
+                              <Timer className="w-3 h-3 flex-shrink-0" />
+                              {formatCountdown(item.scheduledDoneAt, nowMs)} tersisa
+                            </p>
+                          )}
+                        </div>
                       )}
                     </td>
                     <td className="py-2.5 px-3" title={formatExactTime(item.createdAt)}>
@@ -395,7 +426,7 @@ export function InProductionCard({ items = [], loading = false, onComplete, onSe
                             onClick={() => handleComplete(item.id)}
                             disabled={completingId === item.id || sendingBackId === item.id}
                             className="p-1.5 rounded-md bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white transition-colors cursor-pointer disabled:opacity-60"
-                            title="Mark as completed"
+                            title={item.scheduledDoneAt ? "Check — tandai selesai sebelum countdown habis" : "Mark as completed"}
                           >
                             {completingId === item.id ? (
                               <Loader2 className="w-3.5 h-3.5 animate-spin" />

@@ -294,7 +294,7 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
                 placeholder="e.g. 45"
                 className="h-10 text-sm bg-[var(--surface-2)] border-none focus-visible:ring-1 focus-visible:ring-[var(--brand)]/30 w-32"
               />
-              <p className="text-[11px] text-[var(--t-muted)]">Buat estimasi durasi Print Queue</p>
+              <p className="text-[11px] text-[var(--t-muted)]">Buat estimasi durasi Print Queue, dan countdown auto-selesai di In Production (kosongin kalau nggak mau)</p>
             </div>
           </div>
 

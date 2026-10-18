@@ -57,12 +57,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Countdown auto-complete (ims-feature-production-countdown-autocomplete.md)
+    // — only set when the product has a per-pcs print duration configured;
+    // null keeps the row exactly as before (manual "Mark Completed" only).
+    const estPerPcs = variant.product.estPrintMinutes;
+    const scheduledDoneAt = estPerPcs != null ? new Date(Date.now() + estPerPcs * qty * 60_000) : null;
+
     const item = await db.productionItem.create({
       data: {
         variantId,
         qty,
         assignedTo: assignedTo || "",
         note: note || "",
+        scheduledDoneAt,
       },
       include: {
         variant: {
