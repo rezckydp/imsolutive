@@ -39,9 +39,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { getVariantLabel } from '@/lib/stock-sync';
-import { BoothStock } from '@/components/dashboard/booth-stock';
-import { BundlePricing } from '@/components/dashboard/bundle-pricing';
-import { AddOnManagement } from '@/components/dashboard/addon-management';
 import {
   VariantMatrixBuilder,
   buildVariantMatrixPayload,
@@ -235,7 +232,10 @@ function InlineStockInput({
 // ============ MAIN COMPONENT ============
 
 export function StockManagement() {
-  const [mainTab, setMainTab] = useState<'produk' | 'booth' | 'promo' | 'addon'>('produk');
+  // Booth Stock/Promo Harga/Add-On moved out to their own Inventory Booth
+  // page (ims-feature-split-inventory-booth-page.md) — Produk is the only
+  // tab left here, so this just always renders it.
+  const [mainTab] = useState<'produk'>('produk');
   const [products, setProducts] = useState<ProductData[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -788,46 +788,6 @@ export function StockManagement() {
         onClose={() => setMergeDialogOpen(false)}
         onMerged={fetchProducts}
       />
-
-      {/* Main Tab Switcher: Produk vs Booth Stock */}
-      <div className="flex items-center bg-[var(--surface)] rounded-lg p-0.5 mb-4 w-fit">
-        <button
-          onClick={() => setMainTab('produk')}
-          className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-            mainTab === 'produk' ? 'bg-[var(--card)] text-[var(--brand)] shadow-sm' : 'text-[var(--t-body)] hover:text-[var(--t-heading)]'
-          }`}
-        >
-          Produk
-        </button>
-        <button
-          onClick={() => setMainTab('booth')}
-          className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-            mainTab === 'booth' ? 'bg-[var(--card)] text-[var(--brand)] shadow-sm' : 'text-[var(--t-body)] hover:text-[var(--t-heading)]'
-          }`}
-        >
-          Booth Stock
-        </button>
-        <button
-          onClick={() => setMainTab('promo')}
-          className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-            mainTab === 'promo' ? 'bg-[var(--card)] text-[var(--brand)] shadow-sm' : 'text-[var(--t-body)] hover:text-[var(--t-heading)]'
-          }`}
-        >
-          Promo Harga
-        </button>
-        <button
-          onClick={() => setMainTab('addon')}
-          className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-            mainTab === 'addon' ? 'bg-[var(--card)] text-[var(--brand)] shadow-sm' : 'text-[var(--t-body)] hover:text-[var(--t-heading)]'
-          }`}
-        >
-          Add-On
-        </button>
-      </div>
-
-      {mainTab === 'booth' && <BoothStock />}
-      {mainTab === 'promo' && <BundlePricing />}
-      {mainTab === 'addon' && <AddOnManagement />}
 
       {mainTab === 'produk' && (
       <>

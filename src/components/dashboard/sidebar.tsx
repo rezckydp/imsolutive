@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   Package,
   Inbox,
+  ShoppingBag,
   ClipboardList,
   Factory,
   Printer,
@@ -43,6 +44,7 @@ interface SidebarProps {
 const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'stock-management', label: 'Stock Management', icon: Package },
+  { id: 'inventory-booth', label: 'Inventory Booth', icon: ShoppingBag },
   { id: 'order-lists', label: 'Order Lists', icon: ClipboardList },
   { id: 'production', label: 'Production', icon: Factory },
   { id: 'stock-opname', label: 'Stock Opname', icon: FileCheck },

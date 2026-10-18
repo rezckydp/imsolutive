@@ -13,6 +13,7 @@ import { RecentOrderCard, type RecentOrderItem } from '@/components/dashboard/re
 import { BarcodeScanner } from '@/components/dashboard/barcode-scanner';
 import { CombinedEntryDialog } from '@/components/dashboard/combined-entry-dialog';
 import { StockManagement } from '@/components/dashboard/stock-management';
+import { InventoryBoothPage } from '@/components/dashboard/inventory-booth';
 import { ProductionManagement } from '@/components/dashboard/production-management';
 import { StockOpname } from '@/components/dashboard/stock-opname';
 import { SettingsPage } from '@/components/dashboard/settings-page';
@@ -565,6 +566,7 @@ export default function Home() {
   // Determine what to show in the main area
   const showDashboard = activeNavItem === 'dashboard';
   const showStockManagement = activeNavItem === 'stock-management';
+  const showInventoryBooth = activeNavItem === 'inventory-booth';
   const showPrinterDatabase = activeNavItem === 'printer-database';
   const showColorVariant = activeNavItem === 'color-variant';
   const showProduction = activeNavItem === 'production';
@@ -576,6 +578,8 @@ export default function Home() {
     ? 'Dashboard'
     : showStockManagement
     ? 'Stock Management'
+    : showInventoryBooth
+    ? 'Inventory Booth'
     : showPrinterDatabase
     ? '3D Printer'
     : showColorVariant
@@ -805,6 +809,11 @@ export default function Home() {
           <StockManagement />
         )}
 
+        {/* ========== INVENTORY BOOTH VIEW ========== */}
+        {showInventoryBooth && (
+          <InventoryBoothPage />
+        )}
+
         {/* ========== PRINTER DATABASE VIEW ========== */}
         {showPrinterDatabase && (
           <PrinterDatabase />
@@ -831,7 +840,7 @@ export default function Home() {
         )}
 
         {/* ========== PLACEHOLDER FOR OTHER NAV ITEMS ========== */}
-        {!showDashboard && !showStockManagement && !showPrinterDatabase && !showColorVariant && !showProduction && !showStockOpname && !showSettings && (
+        {!showDashboard && !showStockManagement && !showInventoryBooth && !showPrinterDatabase && !showColorVariant && !showProduction && !showStockOpname && !showSettings && (
           <>
             <div className="hidden md:block">
               <Header title={headerTitle} />
