@@ -67,6 +67,35 @@ export async function getPipelineCredits(variantIds: string[]): Promise<Record<s
   return result;
 }
 
+// Active order demand = OrderItem rows still outstanding (status "Not Ready")
+// on a non-cancelled order. This is the EXACT SAME definition
+// recent-order-card.tsx's Summary tab uses for its `orderedQty` (filter
+// `itemStatus === "Not Ready"`) — kept in lockstep deliberately, since the
+// two numbers diverging silently is itself the bug this guards against
+// (ims-bugfix-pipeline-required-mismatch.md). Any future change to one
+// definition must be mirrored in the other.
+async function getActiveOrderDemand(siblingToMaster: Record<string, string>): Promise<Record<string, number>> {
+  const allSiblingIds = Object.keys(siblingToMaster);
+  const orderedMap: Record<string, number> = {};
+  if (allSiblingIds.length === 0) return orderedMap;
+
+  const activeOrderItems = await db.orderItem.findMany({
+    where: {
+      variantId: { in: allSiblingIds },
+      status: "Not Ready",
+      order: { status: { not: "Cancelled" } },
+    },
+    select: { variantId: true, qty: true },
+  });
+
+  for (const item of activeOrderItems) {
+    const masterId = siblingToMaster[item.variantId];
+    if (!masterId) continue;
+    orderedMap[masterId] = (orderedMap[masterId] || 0) + item.qty;
+  }
+  return orderedMap;
+}
+
 // Full Pipeline-tab status for a set of MASTER variant ids: required =
 // MAX(minStock, totalOrderedQty aktif) — demand is summed across sibling
 // child-SKU variants too, since an order can be placed against a child SKU
@@ -80,29 +109,18 @@ export async function getPipelineStatus(masterVariantIds: string[]): Promise<Rec
     const siblings = await getGroupSiblingVariantIds(id);
     for (const sid of siblings) siblingToMaster[sid] = id;
   }
-  const allSiblingIds = Object.keys(siblingToMaster);
 
-  const [credits, variants, activeOrderItems] = await Promise.all([
+  const [credits, variants, orderedMap] = await Promise.all([
     getPipelineCredits(masterVariantIds),
     db.productVariant.findMany({
       where: { id: { in: masterVariantIds } },
       select: { id: true, product: { select: { minStock: true } } },
     }),
-    db.orderItem.findMany({
-      where: { variantId: { in: allSiblingIds }, order: { status: { not: "Cancelled" } } },
-      select: { variantId: true, qty: true },
-    }),
+    getActiveOrderDemand(siblingToMaster),
   ]);
 
   const minStockMap: Record<string, number> = {};
   for (const v of variants) minStockMap[v.id] = v.product.minStock;
-
-  const orderedMap: Record<string, number> = {};
-  for (const item of activeOrderItems) {
-    const masterId = siblingToMaster[item.variantId];
-    if (!masterId) continue;
-    orderedMap[masterId] = (orderedMap[masterId] || 0) + item.qty;
-  }
 
   for (const id of masterVariantIds) {
     const c = credits[id];
