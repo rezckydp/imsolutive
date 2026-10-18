@@ -241,13 +241,21 @@ export async function DELETE(
   }
 }
 
-// PATCH send order item to Print Queue (Not Ready → In Queue)
+// PATCH send order item to Print Queue (Not Ready → In Queue). Optional body
+// `{ qty }` sends only part of the item — plate capacity is usually smaller
+// than total demand (ims-feature-quick-print-batch.md). A partial send
+// splits off a new "In Queue" order item for the sent portion while the
+// original keeps the leftover as "Not Ready", so it's still there for the
+// next batch. Omit `qty` (or send the full amount) for the original
+// all-at-once behavior.
 export async function PATCH(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
   try {
     const { id, itemId } = await params;
+    const body = await request.json().catch(() => ({}));
+    const requestedQty = typeof body?.qty === "number" ? body.qty : undefined;
 
     // Find the order item
     const orderItem = await db.orderItem.findUnique({
@@ -279,28 +287,54 @@ export async function PATCH(
       );
     }
 
+    if (requestedQty !== undefined && requestedQty < 1) {
+      return NextResponse.json({ error: "qty harus minimal 1" }, { status: 400 });
+    }
+
+    const isPartial = requestedQty !== undefined && requestedQty < orderItem.qty;
+    const qtyToSend = isPartial ? requestedQty! : orderItem.qty;
+
     // Create Print Queue item — always under the Master SKU's variant, even if
     // this order was placed against a child SKU Variant. Carry over the note.
     const printQueueVariantId = await resolveToMasterVariantId(orderItem.variantId);
-    await db.printQueueItem.create({
-      data: {
-        variantId: printQueueVariantId,
-        qty: orderItem.qty,
-        status: "Normal",
-        note: orderItem.note || "",
-      },
+
+    const result = await db.$transaction(async (tx) => {
+      await tx.printQueueItem.create({
+        data: {
+          variantId: printQueueVariantId,
+          qty: qtyToSend,
+          status: "Normal",
+          note: orderItem.note || "",
+        },
+      });
+
+      if (isPartial) {
+        await tx.orderItem.create({
+          data: {
+            orderId: orderItem.orderId,
+            variantId: orderItem.variantId,
+            qty: qtyToSend,
+            status: "In Queue",
+            note: orderItem.note,
+            isPreOrder: orderItem.isPreOrder,
+            createdAt: orderItem.createdAt,
+          },
+        });
+        return tx.orderItem.update({
+          where: { id: itemId },
+          data: { qty: orderItem.qty - qtyToSend },
+          include: { variant: { include: { product: true } } },
+        });
+      }
+
+      return tx.orderItem.update({
+        where: { id: itemId },
+        data: { status: "In Queue" },
+        include: { variant: { include: { product: true } } },
+      });
     });
 
-    // Update order item status to In Queue
-    const updated = await db.orderItem.update({
-      where: { id: itemId },
-      data: { status: "In Queue" },
-      include: {
-        variant: { include: { product: true } },
-      },
-    });
-
-    return NextResponse.json(updated);
+    return NextResponse.json(result);
   } catch (error) {
     console.error("Error sending to print queue:", error);
     return NextResponse.json(

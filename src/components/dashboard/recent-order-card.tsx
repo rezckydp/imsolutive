@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { CheckCircle2, Clock, Eye, Pencil, Trash2, AlertCircle, ChevronDown, ChevronUp, ShoppingCart, Printer, ArrowRight, RefreshCw, Factory, Sparkles, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -85,6 +85,71 @@ function formatDate(isoString: string) {
   return `${months[d.getMonth()]} ${d.getDate().toString().padStart(2, '0')}, ${d.getFullYear()}`;
 }
 
+// Summary tab's "Print" button — hover (desktop) or tap (touch) reveals a
+// quick-pick of +1..+4, capped at what's actually still needed, so sending
+// a batch that matches real plate capacity is one click instead of
+// edit-qty-then-send every time (ims-feature-quick-print-batch.md).
+function PrintQuickPick({
+  remainingQty,
+  loading,
+  onPick,
+}: {
+  remainingQty: number;
+  loading: boolean;
+  onPick: (qty: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [open]);
+
+  const options = Array.from({ length: Math.min(4, remainingQty) }, (_, i) => i + 1);
+  if (options.length === 0) return null;
+
+  return (
+    <div
+      ref={wrapRef}
+      className="relative inline-block"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <button
+        onClick={() => setOpen((o) => !o)}
+        disabled={loading}
+        title={`Kirim batch ke Print Queue (sisa ${remainingQty} pcs)`}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
+      >
+        {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Printer className="w-3.5 h-3.5" />}
+        Print
+      </button>
+      {open && !loading && (
+        <div className="absolute right-0 bottom-full mb-1 z-20 flex items-center gap-1 bg-[var(--card)] shadow-lg border border-[var(--bd)] rounded-lg p-1 whitespace-nowrap">
+          {options.map((n) => (
+            <button
+              key={n}
+              onClick={() => {
+                onPick(n);
+                setOpen(false);
+              }}
+              title={`Kirim ${n} pcs`}
+              className="px-2.5 py-1.5 rounded-md text-xs font-semibold bg-[var(--brand)]/10 hover:bg-[var(--brand)]/20 text-[var(--brand)] cursor-pointer"
+            >
+              +{n}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function RecentOrderCard({ items = [], pipelineByVariantId = {}, loading = false, onDataChange }: RecentOrderCardProps) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -93,7 +158,7 @@ export function RecentOrderCard({ items = [], pipelineByVariantId = {}, loading 
   const [expanded, setExpanded] = useState(false);
   const [readyExpanded, setReadyExpanded] = useState(false);
   const [bulkPrintingOrderId, setBulkPrintingOrderId] = useState<string | null>(null);
-  const [bulkPrintingGroupKey, setBulkPrintingGroupKey] = useState<string | null>(null);
+  const [partialPrintingGroupKey, setPartialPrintingGroupKey] = useState<string | null>(null);
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
 
   const toggleCardExpanded = (orderId: string) => {
@@ -510,17 +575,38 @@ export function RecentOrderCard({ items = [], pipelineByVariantId = {}, loading 
     }
   };
 
-  const handleBulkPrintGroup = async (groupKey: string, groupItems: RecentOrderItem[]) => {
-    if (groupItems.length === 0) return;
-    setBulkPrintingGroupKey(groupKey);
+  // Quick batch-print (ims-feature-quick-print-batch.md) — sends only `qty`
+  // pcs from a Summary row's worth of demand to Print Queue, instead of the
+  // whole remaining amount at once (plate capacity is usually much smaller
+  // than total demand). Consumes FIFO across the group's underlying order
+  // items; each PATCH call splits off the sent portion as its own "In Queue"
+  // order item while the original keeps the leftover as "Not Ready", so the
+  // row stays in Summary with a reduced qty, ready for the next batch.
+  const handlePrintPartial = async (group: SummaryGroup, qty: number) => {
+    if (group.items.length === 0 || qty <= 0) return;
+    setPartialPrintingGroupKey(group.key);
     try {
-      await sendItemsToQueue(groupItems);
-      toast.success(`${groupItems.length} item dikirim ke Print Queue`);
+      let remaining = qty;
+      for (const it of group.items) {
+        if (remaining <= 0) break;
+        const take = Math.min(remaining, it.orderedQty);
+        const res = await fetch(`/api/orders/${it.orderId}/item/${it.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ qty: take }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || `Gagal kirim ${it.sku}`);
+        }
+        remaining -= take;
+      }
+      toast.success(`${qty} pcs dikirim ke Print Queue`);
       onDataChange?.();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Sebagian item gagal dikirim');
+      toast.error(err instanceof Error ? err.message : 'Gagal mengirim batch print');
     } finally {
-      setBulkPrintingGroupKey(null);
+      setPartialPrintingGroupKey(null);
     }
   };
 
@@ -797,19 +883,11 @@ export function RecentOrderCard({ items = [], pipelineByVariantId = {}, loading 
                             </div>
                           </td>
                           <td className="py-3 px-4 text-right">
-                            <button
-                              onClick={() => handleBulkPrintGroup(g.key, g.items)}
-                              disabled={bulkPrintingGroupKey === g.key}
-                              title={`Kirim ${g.totalQty} pcs ke Print Queue`}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white text-xs font-medium transition-colors cursor-pointer disabled:opacity-50"
-                            >
-                              {bulkPrintingGroupKey === g.key ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              ) : (
-                                <Printer className="w-3.5 h-3.5" />
-                              )}
-                              Print
-                            </button>
+                            <PrintQuickPick
+                              remainingQty={g.totalQty}
+                              loading={partialPrintingGroupKey === g.key}
+                              onPick={(n) => handlePrintPartial(g, n)}
+                            />
                           </td>
                         </tr>
                         );
