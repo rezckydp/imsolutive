@@ -114,12 +114,7 @@ function PrintQuickPick({
   if (options.length === 0) return null;
 
   return (
-    <div
-      ref={wrapRef}
-      className="relative inline-block"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-    >
+    <div ref={wrapRef} className="relative inline-block">
       <button
         onClick={() => setOpen((o) => !o)}
         disabled={loading}
@@ -130,7 +125,7 @@ function PrintQuickPick({
         Print
       </button>
       {open && !loading && (
-        <div className="absolute right-0 bottom-full mb-1 z-20 flex items-center gap-1 bg-[var(--card)] shadow-lg border border-[var(--bd)] rounded-lg p-1 whitespace-nowrap">
+        <div className="absolute right-0 top-full mt-1 z-20 flex items-center gap-1 bg-[var(--card)] shadow-lg border border-[var(--bd)] rounded-lg p-1 whitespace-nowrap">
           {options.map((n) => (
             <button
               key={n}
