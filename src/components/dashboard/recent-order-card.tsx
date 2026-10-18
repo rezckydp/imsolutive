@@ -52,6 +52,7 @@ interface PipelineStatusLite {
   pendingScan: number;
   inProgress: number;
   queue: number;
+  kurang: number;
 }
 
 interface RecentOrderCardProps {
@@ -182,22 +183,162 @@ export function RecentOrderCard({ items = [], pipelineBySkuColorType = {}, loadi
 
   const kanbanCards = Array.from(cardMap.values())
     .filter((c) => c.items.some(searchMatch))
-    .map((c) => ({ ...c, lane: getCardLane(c.items) }))
+    .map((c) => ({
+      ...c,
+      lane: getCardLane(c.items),
+      readyCount: c.items.filter((i) => i.itemStatus === 'Ready').length,
+    }))
     .sort((a, b) =>
       sortBy === 'newest'
         ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         : new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
 
-  // FIFO rank for cards sitting in the Not Ready lane
+  // Picking List tab is a single full-width list now (ims-recent-order-ux-fixes.md
+  // §2) — cards still needing any work (Not Ready/In Queue/In Production) vs
+  // fully Ready, which collapses into a small badge instead of its own column.
+  const notReadyCards = kanbanCards.filter((c) => c.readyCount < c.items.length);
+  const readyCards = kanbanCards.filter((c) => c.readyCount === c.items.length);
+
+  // FIFO rank across ALL active (not-fully-ready) cards, always oldest-first
+  // regardless of the current sortBy display order.
   const cardFifoMap = new Map<string, number>();
-  kanbanCards
-    .filter((c) => c.lane === 'Not Ready')
-    .slice()
+  [...notReadyCards]
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
     .forEach((c, idx) => cardFifoMap.set(c.orderId, idx + 1));
 
-  const visibleLanes: Lane[] = statusFilter === 'all' ? [...LANES] : [statusFilter as Lane];
+  const laneMeta: Record<Lane, { color: string; bg: string; icon: typeof Clock }> = {
+    'Not Ready': { color: '#dc2626', bg: '#fef2f2', icon: Clock },
+    'In Queue': { color: '#2563eb', bg: '#eff6ff', icon: Printer },
+    'In Production': { color: '#7c3aed', bg: '#f5f3ff', icon: Factory },
+    'Ready': { color: '#15803d', bg: '#f0fdf4', icon: CheckCircle2 },
+  };
+  const itemMeta: Record<string, { color: string; icon: typeof Clock }> = {
+    'Not Ready': { color: '#dc2626', icon: Clock },
+    'In Queue': { color: '#2563eb', icon: Printer },
+    'In Production': { color: '#7c3aed', icon: Factory },
+    'Ready': { color: '#15803d', icon: CheckCircle2 },
+  };
+
+  // One full-width Picking List card — shared by the active list and the
+  // collapsed/expanded Ready list, so both render identically.
+  const renderPickingCard = (card: (typeof kanbanCards)[number]) => {
+    const meta = laneMeta[card.lane];
+    const LaneIcon = meta.icon;
+    const notReadyItems = card.items.filter((i) => i.itemStatus === 'Not Ready');
+    const fifoNo = cardFifoMap.get(card.orderId);
+    return (
+      <div
+        key={card.orderId}
+        className="bg-[var(--card)] rounded-lg shadow-sm p-3 border-l-[3px] hover:shadow-md transition-shadow"
+        style={{ borderLeftColor: meta.color }}
+      >
+        <div className="flex items-center justify-between mb-1.5 gap-2">
+          <button
+            onClick={() => setDetailOrderId(card.orderId)}
+            className="text-xs font-bold text-[var(--t-heading)] flex items-center gap-1 hover:underline cursor-pointer min-w-0"
+          >
+            <Eye className="w-3 h-3 text-[var(--brand)] flex-shrink-0" />
+            <span className="truncate">{card.orderNo}</span>
+          </button>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {fifoNo && (
+              <span className="text-[10px] font-bold text-[var(--danger)] bg-[var(--danger)]/10 px-1.5 rounded-full">
+                #{fifoNo}
+              </span>
+            )}
+            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex items-center gap-1" style={{ backgroundColor: meta.bg, color: meta.color }}>
+              <LaneIcon className="w-2.5 h-2.5" />
+              {card.lane}
+            </span>
+          </div>
+        </div>
+
+        <button
+          onClick={() => toggleCardExpanded(card.orderId)}
+          className="w-full flex items-center justify-between text-left mb-2 cursor-pointer group/toggle"
+        >
+          <span className="text-[10px] text-[var(--t-subtle)]">{formatDate(card.createdAt)}</span>
+          <span className="text-[10px] text-[var(--brand)] font-medium flex items-center gap-0.5 group-hover/toggle:underline">
+            {card.items.length} item
+            {expandedCards.has(card.orderId) ? (
+              <ChevronUp className="w-3 h-3" />
+            ) : (
+              <ChevronDown className="w-3 h-3" />
+            )}
+          </span>
+        </button>
+
+        {expandedCards.has(card.orderId) && (
+          <div className="space-y-1 mb-2">
+            {card.items.map((item) => {
+              const im = itemMeta[item.itemStatus] || itemMeta['Not Ready'];
+              const ItemIcon = im.icon;
+              const canEdit = item.itemStatus === 'Not Ready' || item.itemStatus === 'Ready';
+              return (
+                <div key={item.id} className="flex items-center gap-1.5 text-[11px] group">
+                  <ItemIcon className="w-3 h-3 flex-shrink-0" style={{ color: im.color }} />
+                  <span className="text-[var(--t-body)] truncate flex-1">
+                    {item.sku} <span className="text-[var(--t-subtle)]">· {item.color}{item.type ? ` - ${item.type}` : ''}</span>
+                  </span>
+                  <span className="text-[var(--t-heading)] font-medium flex-shrink-0">×{item.orderedQty}</span>
+                  {canEdit && (
+                    <span className="flex items-center gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => {
+                          setEditingItem(item);
+                          setEditQty(item.orderedQty);
+                          setEditNote(item.note || '');
+                          setEditVariantId(item.variantId);
+                        }}
+                        title="Edit qty / ganti varian"
+                        className="w-4 h-4 flex items-center justify-center text-[var(--t-body)] hover:text-[var(--t-heading)] cursor-pointer"
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={() => setDeleteItemTarget({ orderId: item.orderId, itemId: item.id, sku: item.sku, color: item.color })}
+                        title="Hapus item ini (customer cancel)"
+                        className="w-4 h-4 flex items-center justify-center text-[var(--danger)] hover:text-[var(--danger-dark)] cursor-pointer"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="flex items-center gap-2">
+          <div className="flex-1 h-1 bg-[var(--surface-2)] rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[var(--success)] rounded-full transition-all"
+              style={{ width: `${(card.readyCount / card.items.length) * 100}%` }}
+            />
+          </div>
+          <span className="text-[10px] text-[var(--t-muted)] flex-shrink-0">
+            {card.readyCount}/{card.items.length}
+          </span>
+          {notReadyItems.length > 0 && (
+            <button
+              onClick={() => handleBulkPrintOrder(card.orderId, notReadyItems)}
+              disabled={bulkPrintingOrderId === card.orderId}
+              title={`Kirim ${notReadyItems.length} item Not Ready ke Print Queue`}
+              className="w-6 h-6 rounded-md flex items-center justify-center bg-[var(--info)]/10 hover:bg-[var(--info)]/20 text-[var(--info)] transition-colors cursor-pointer disabled:opacity-50 flex-shrink-0"
+            >
+              {bulkPrintingOrderId === card.orderId ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <Printer className="w-3 h-3" />
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   // ============ SUMMARY (Master SKU roll-up, Not Ready only) ============
   interface SummaryGroup {
@@ -207,10 +348,11 @@ export function RecentOrderCard({ items = [], pipelineBySkuColorType = {}, loadi
     color: string;
     colorHex: string;
     type: string;
-    totalQty: number;
+    totalQty: number; // qty for THIS Picking List/Adjustment only (see key below)
     currentStock: number; // net stock position for this variant (can be negative)
     pendingScan: number; // Completed production, outstanding, not yet scanned (ims-real-stock-scan-pipeline-spec.md §5.3)
     inProgress: number; // still actively printing
+    kurang: number; // Pipeline tab's "Kurang" for this SKU+Warna — SAME across every Picking List row sharing it
     orderRefs: Map<string, string>; // orderId -> orderNo
     items: RecentOrderItem[];
     oldestCreatedAt: string;
@@ -225,9 +367,14 @@ export function RecentOrderCard({ items = [], pipelineBySkuColorType = {}, loadi
     if (it.itemStatus !== 'Not Ready' || !searchMatch(it)) continue;
     // Req. Color items each represent a distinct customer color request — never
     // merge them together, or the specific requested color (in `note`) gets lost.
+    // Normal items are keyed PER Picking List/Adjustment (orderNo) too — two
+    // different Picking Lists needing the same SKU+Warna must stay separate
+    // rows with their own urgency/qty, not stack into one misleading row
+    // (ims-recent-order-ux-fixes.md §1). Same orderNo (e.g. a re-sync) still
+    // merges, since that's genuinely the same list.
     const key = isRequestColorType(it.type)
       ? `${it.groupSku}|reqcolor|${it.id}`
-      : `${it.groupSku}|${it.color}|${it.type}`;
+      : `${it.groupSku}|${it.color}|${it.type}|${it.orderNo}`;
     if (!summaryMap.has(key)) {
       const pipelineKey = `${it.groupSku}|${it.color}|${it.type}`;
       const pipeline = pipelineBySkuColorType[pipelineKey];
@@ -242,6 +389,7 @@ export function RecentOrderCard({ items = [], pipelineBySkuColorType = {}, loadi
         currentStock: it.currentStock,
         pendingScan: pipeline?.pendingScan ?? 0,
         inProgress: pipeline?.inProgress ?? 0,
+        kurang: pipeline?.kurang ?? 0,
         orderRefs: new Map(),
         items: [],
         oldestCreatedAt: it.createdAt,
@@ -258,11 +406,26 @@ export function RecentOrderCard({ items = [], pipelineBySkuColorType = {}, loadi
       g.oldestCreatedAt = it.createdAt;
     }
   }
-  // Urgency-first: whichever group has been waiting longest (oldest contributing
-  // order) goes on top — matches the FIFO philosophy used everywhere else.
-  const summaryGroups = Array.from(summaryMap.values()).sort(
-    (a, b) => new Date(a.oldestCreatedAt).getTime() - new Date(b.oldestCreatedAt).getTime()
-  );
+
+  // Cluster urgency: rows sharing the same SKU+Warna (but different Picking
+  // Lists) stay visually adjacent — ranked by whichever of them is waiting
+  // longest, then ordered among themselves oldest-first too.
+  const clusterKeyOf = (g: SummaryGroup) => `${g.groupSku}|${g.color}|${g.type}`;
+  const clusterUrgencyMap = new Map<string, number>();
+  for (const g of summaryMap.values()) {
+    const ck = clusterKeyOf(g);
+    const t = new Date(g.oldestCreatedAt).getTime();
+    const cur = clusterUrgencyMap.get(ck);
+    if (cur === undefined || t < cur) clusterUrgencyMap.set(ck, t);
+  }
+  const summaryGroups = Array.from(summaryMap.values()).sort((a, b) => {
+    const ckA = clusterKeyOf(a);
+    const ckB = clusterKeyOf(b);
+    const clusterDiff = clusterUrgencyMap.get(ckA)! - clusterUrgencyMap.get(ckB)!;
+    if (clusterDiff !== 0) return clusterDiff;
+    if (ckA !== ckB) return ckA.localeCompare(ckB);
+    return new Date(a.oldestCreatedAt).getTime() - new Date(b.oldestCreatedAt).getTime();
+  });
   const daysWaiting = (iso: string) => {
     const ms = Date.now() - new Date(iso).getTime();
     return Math.max(0, Math.floor(ms / (1000 * 60 * 60 * 24)));
@@ -498,7 +661,8 @@ export function RecentOrderCard({ items = [], pipelineBySkuColorType = {}, loadi
                       <th className="text-left text-xs font-medium text-[var(--t-body)] py-3 px-4">Urgency</th>
                       <th className="text-left text-xs font-medium text-[var(--t-body)] py-3 px-4">Master SKU</th>
                       <th className="text-left text-xs font-medium text-[var(--t-body)] py-3 px-4">Warna</th>
-                      <th className="text-right text-xs font-medium text-[var(--t-body)] py-3 px-4">Jumlah</th>
+                      <th className="text-right text-xs font-medium text-[var(--t-body)] py-3 px-4">Qty (List Ini)</th>
+                      <th className="text-right text-xs font-medium text-[var(--t-body)] py-3 px-4">Total Kurang (Semua List)</th>
                       <th className="text-right text-xs font-medium text-[var(--t-body)] py-3 px-4">Nunggu Scan</th>
                       <th className="text-right text-xs font-medium text-[var(--t-body)] py-3 px-4">Lagi Diprint</th>
                       <th className="text-left text-xs font-medium text-[var(--t-body)] py-3 px-4">Sumber</th>
@@ -514,7 +678,7 @@ export function RecentOrderCard({ items = [], pipelineBySkuColorType = {}, loadi
                       </>
                     ) : summaryGroups.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="text-center py-10">
+                        <td colSpan={9} className="text-center py-10">
                           <div className="flex flex-col items-center gap-3">
                             <div className="w-12 h-12 rounded-full bg-[var(--surface)] flex items-center justify-center">
                               <Sparkles className="w-6 h-6 text-[var(--t-muted)]" />
@@ -570,6 +734,13 @@ export function RecentOrderCard({ items = [], pipelineBySkuColorType = {}, loadi
                             <span className="text-xs text-[var(--t-muted)]"> pcs</span>
                           </td>
                           <td className="py-3 px-4 text-right">
+                            {g.kurang > 0 ? (
+                              <span className="text-sm font-bold text-[var(--danger)]">{g.kurang}</span>
+                            ) : (
+                              <span className="text-sm font-semibold text-[var(--success)]">Aman</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-right">
                             {g.pendingScan > 0 ? (
                               <span className="text-sm font-semibold text-[var(--info)]">{g.pendingScan}</span>
                             ) : (
@@ -623,181 +794,60 @@ export function RecentOrderCard({ items = [], pipelineBySkuColorType = {}, loadi
             </div>
           )}
 
-          {/* ============ PICKING LIST TAB — KANBAN BOARD ============ */}
+          {/* ============ PICKING LIST TAB — SINGLE FULL-WIDTH LIST ============ */}
           {viewMode === 'picking' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+            <div className="space-y-2">
               {loading ? (
-                [1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-40 w-full rounded-xl" />)
+                [1, 2, 3].map((i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)
               ) : (
-                visibleLanes.map((lane) => {
-                  const laneMeta: Record<Lane, { color: string; bg: string; icon: typeof Clock }> = {
-                    'Not Ready': { color: '#dc2626', bg: '#fef2f2', icon: Clock },
-                    'In Queue': { color: '#2563eb', bg: '#eff6ff', icon: Printer },
-                    'In Production': { color: '#7c3aed', bg: '#f5f3ff', icon: Factory },
-                    'Ready': { color: '#15803d', bg: '#f0fdf4', icon: CheckCircle2 },
-                  };
-                  const meta = laneMeta[lane];
-                  const LaneIcon = meta.icon;
-                  let laneCards = kanbanCards.filter((c) => c.lane === lane);
-                  const isReadyLane = lane === 'Ready';
-                  const totalInLane = laneCards.length;
-                  if (isReadyLane) {
-                    laneCards = readyExpanded ? laneCards.slice(0, 3) : [];
-                  }
-
-                  return (
-                    <div key={lane} className="flex flex-col">
+                <>
+                  {/* Ready — collapsed badge, expand to see the cards (reuses readyExpanded) */}
+                  {(statusFilter === 'all' || statusFilter === 'Ready') && readyCards.length > 0 && (
+                    <>
                       <button
-                        onClick={() => isReadyLane && setReadyExpanded(!readyExpanded)}
-                        className={`flex items-center justify-between px-3 py-2 rounded-t-xl border-b-2 ${isReadyLane ? 'cursor-pointer' : ''}`}
-                        style={{ backgroundColor: meta.bg, borderColor: meta.color }}
+                        onClick={() => setReadyExpanded(!readyExpanded)}
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl border cursor-pointer"
+                        style={{ backgroundColor: laneMeta.Ready.bg, borderColor: laneMeta.Ready.color }}
                       >
-                        <span className="text-xs font-semibold flex items-center gap-1.5" style={{ color: meta.color }}>
-                          <LaneIcon className="w-3.5 h-3.5" />
-                          {lane}
-                          {isReadyLane && (readyExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
+                        <span className="text-xs font-semibold flex items-center gap-1.5" style={{ color: laneMeta.Ready.color }}>
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          {readyCards.length} Ready
+                          {readyExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                         </span>
-                        <span className="text-[11px] font-bold px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: meta.color }}>
-                          {totalInLane}
-                        </span>
+                        <span className="text-[11px] text-[var(--t-muted)]">{readyExpanded ? 'Sembunyikan' : 'Klik buat lihat'}</span>
                       </button>
-                      <div className="bg-[var(--surface-tint)] rounded-b-xl p-2 space-y-2 flex-1 min-h-[100px]">
-                        {isReadyLane && !readyExpanded && totalInLane > 0 && (
-                          <p className="text-[11px] text-[var(--t-muted)] text-center py-4">
-                            {totalInLane} Picking List Ready — klik header buat lihat
-                          </p>
-                        )}
-                        {(!isReadyLane || readyExpanded) && laneCards.length === 0 && (
-                          <p className="text-[11px] text-[var(--t-subtle)] text-center py-6">Kosong</p>
-                        )}
-                        {laneCards.map((card) => {
-                          const notReadyItems = card.items.filter((i) => i.itemStatus === 'Not Ready');
-                          const readyCount = card.items.filter((i) => i.itemStatus === 'Ready').length;
-                          return (
-                            <div
-                              key={card.orderId}
-                              className="bg-[var(--card)] rounded-lg shadow-sm p-3 border-l-[3px] hover:shadow-md transition-shadow"
-                              style={{ borderLeftColor: meta.color }}
-                            >
-                              <div className="flex items-center justify-between mb-1.5">
-                                <button
-                                  onClick={() => setDetailOrderId(card.orderId)}
-                                  className="text-xs font-bold text-[var(--t-heading)] flex items-center gap-1 hover:underline cursor-pointer"
-                                >
-                                  <Eye className="w-3 h-3 text-[var(--brand)]" />
-                                  {card.orderNo}
-                                </button>
-                                {lane === 'Not Ready' && cardFifoMap.get(card.orderId) && (
-                                  <span className="text-[10px] font-bold text-[var(--danger)] bg-[var(--danger)]/10 px-1.5 rounded-full">
-                                    #{cardFifoMap.get(card.orderId)}
-                                  </span>
-                                )}
-                              </div>
+                      {readyExpanded && (
+                        <div className="space-y-2 pl-1">
+                          {readyCards.map((card) => renderPickingCard(card))}
+                        </div>
+                      )}
+                    </>
+                  )}
 
-                              <button
-                                onClick={() => toggleCardExpanded(card.orderId)}
-                                className="w-full flex items-center justify-between text-left mb-2 cursor-pointer group/toggle"
-                              >
-                                <span className="text-[10px] text-[var(--t-subtle)]">{formatDate(card.createdAt)}</span>
-                                <span className="text-[10px] text-[var(--brand)] font-medium flex items-center gap-0.5 group-hover/toggle:underline">
-                                  {card.items.length} item
-                                  {expandedCards.has(card.orderId) ? (
-                                    <ChevronUp className="w-3 h-3" />
-                                  ) : (
-                                    <ChevronDown className="w-3 h-3" />
-                                  )}
-                                </span>
-                              </button>
+                  {/* Active — Not Ready / In Queue / In Production, FIFO oldest-first */}
+                  {statusFilter !== 'Ready' &&
+                    notReadyCards
+                      .filter((c) => statusFilter === 'all' || c.lane === statusFilter)
+                      .map((card) => renderPickingCard(card))}
 
-                              {expandedCards.has(card.orderId) && (
-                              <div className="space-y-1 mb-2">
-                                {card.items.map((item) => {
-                                  const itemMeta: Record<string, { color: string; icon: typeof Clock }> = {
-                                    'Not Ready': { color: '#dc2626', icon: Clock },
-                                    'In Queue': { color: '#2563eb', icon: Printer },
-                                    'In Production': { color: '#7c3aed', icon: Factory },
-                                    'Ready': { color: '#15803d', icon: CheckCircle2 },
-                                  };
-                                  const im = itemMeta[item.itemStatus] || itemMeta['Not Ready'];
-                                  const ItemIcon = im.icon;
-                                  const canEdit = item.itemStatus === 'Not Ready' || item.itemStatus === 'Ready';
-                                  return (
-                                    <div key={item.id} className="flex items-center gap-1.5 text-[11px] group">
-                                      <ItemIcon className="w-3 h-3 flex-shrink-0" style={{ color: im.color }} />
-                                      <span className="text-[var(--t-body)] truncate flex-1">
-                                        {item.sku} <span className="text-[var(--t-subtle)]">· {item.color}{item.type ? ` - ${item.type}` : ''}</span>
-                                      </span>
-                                      <span className="text-[var(--t-heading)] font-medium flex-shrink-0">×{item.orderedQty}</span>
-                                      {canEdit && (
-                                        <span className="flex items-center gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                          <button
-                                            onClick={() => {
-                                              setEditingItem(item);
-                                              setEditQty(item.orderedQty);
-                                              setEditNote(item.note || '');
-                                              setEditVariantId(item.variantId);
-                                            }}
-                                            title="Edit qty / ganti varian"
-                                            className="w-4 h-4 flex items-center justify-center text-[var(--t-body)] hover:text-[var(--t-heading)] cursor-pointer"
-                                          >
-                                            <Pencil className="w-3 h-3" />
-                                          </button>
-                                          <button
-                                            onClick={() => setDeleteItemTarget({ orderId: item.orderId, itemId: item.id, sku: item.sku, color: item.color })}
-                                            title="Hapus item ini (customer cancel)"
-                                            className="w-4 h-4 flex items-center justify-center text-[var(--danger)] hover:text-[var(--danger-dark)] cursor-pointer"
-                                          >
-                                            <Trash2 className="w-3 h-3" />
-                                          </button>
-                                        </span>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                              )}
-
-                              <div className="flex items-center gap-2">
-                                <div className="flex-1 h-1 bg-[var(--surface-2)] rounded-full overflow-hidden">
-                                  <div
-                                    className="h-full bg-[var(--success)] rounded-full transition-all"
-                                    style={{ width: `${(readyCount / card.items.length) * 100}%` }}
-                                  />
-                                </div>
-                                <span className="text-[10px] text-[var(--t-muted)] flex-shrink-0">
-                                  {readyCount}/{card.items.length}
-                                </span>
-                                {notReadyItems.length > 0 && (
-                                  <button
-                                    onClick={() => handleBulkPrintOrder(card.orderId, notReadyItems)}
-                                    disabled={bulkPrintingOrderId === card.orderId}
-                                    title={`Kirim ${notReadyItems.length} item Not Ready ke Print Queue`}
-                                    className="w-6 h-6 rounded-md flex items-center justify-center bg-[var(--info)]/10 hover:bg-[var(--info)]/20 text-[var(--info)] transition-colors cursor-pointer disabled:opacity-50 flex-shrink-0"
-                                  >
-                                    {bulkPrintingOrderId === card.orderId ? (
-                                      <Loader2 className="w-3 h-3 animate-spin" />
-                                    ) : (
-                                      <Printer className="w-3 h-3" />
-                                    )}
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
+                  {statusFilter !== 'Ready' &&
+                    notReadyCards.filter((c) => statusFilter === 'all' || c.lane === statusFilter).length === 0 &&
+                    readyCards.length === 0 && (
+                      <div className="flex flex-col items-center gap-3 py-10">
+                        <div className="w-12 h-12 rounded-full bg-[var(--surface)] flex items-center justify-center">
+                          <ShoppingCart className="w-6 h-6 text-[var(--t-muted)]" />
+                        </div>
+                        <p className="text-sm text-[var(--t-body)]">No recent orders yet</p>
+                        <p className="text-xs text-[var(--t-muted)]">Orders will appear here after scanning</p>
                       </div>
-                    </div>
-                  );
-                })
-              )}
-              {!loading && kanbanCards.length === 0 && (
-                <div className="col-span-full flex flex-col items-center gap-3 py-10">
-                  <div className="w-12 h-12 rounded-full bg-[var(--surface)] flex items-center justify-center">
-                    <ShoppingCart className="w-6 h-6 text-[var(--t-muted)]" />
-                  </div>
-                  <p className="text-sm text-[var(--t-body)]">No recent orders yet</p>
-                  <p className="text-xs text-[var(--t-muted)]">Orders will appear here after scanning</p>
-                </div>
+                    )}
+
+                  {statusFilter !== 'Ready' &&
+                    notReadyCards.filter((c) => statusFilter === 'all' || c.lane === statusFilter).length === 0 &&
+                    readyCards.length > 0 && (
+                      <p className="text-[11px] text-[var(--t-subtle)] text-center py-6">Semua Picking List udah Ready</p>
+                    )}
+                </>
               )}
             </div>
           )}
