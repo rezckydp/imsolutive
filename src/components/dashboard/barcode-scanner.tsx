@@ -170,6 +170,16 @@ export function BarcodeScanner({
   const [todayTotal, setTodayTotal] = useState<number | null>(null);
   const [undoingLast, setUndoingLast] = useState(false);
 
+  // Auto-popup Note prompt right after a Req. Color item is scanned
+  // (ims-feature-auto-popup-note-request-color.md) — Picking List/Adjustment
+  // only, never Produksi. Scanning another Req. Color item while one prompt
+  // is still open just swaps the target id, which is exactly Esc/skip
+  // behavior for the old one since nothing gets saved either way.
+  const [notePromptItemId, setNotePromptItemId] = useState<string | null>(null);
+  const [notePromptValue, setNotePromptValue] = useState('');
+  const notePromptInputRef = useRef<HTMLInputElement>(null);
+  const notePromptWrapRef = useRef<HTMLDivElement>(null);
+
   // Reset order-specific sub-state when switching to the Produksi sub-tab
   useEffect(() => {
     if (mode === 'order' && orderSubTab === 'production') {
@@ -278,6 +288,10 @@ export function BarcodeScanner({
           }
           return [newItem, ...prev];
         });
+        if (isRequestColorVariant(result.color || '', result.variantType || '') && mode === 'order' && orderSubTab !== 'production') {
+          setNotePromptItemId(newItem.id);
+          setNotePromptValue('');
+        }
       } else if (result.lookupType === 'product' && result.variants && result.variants.length === 1) {
         const v = result.variants[0];
         const newItem: ScannedItem = {
@@ -302,6 +316,10 @@ export function BarcodeScanner({
           }
           return [newItem, ...prev];
         });
+        if (isRequestColorVariant(v.color || '', v.type || '') && mode === 'order' && orderSubTab !== 'production') {
+          setNotePromptItemId(newItem.id);
+          setNotePromptValue('');
+        }
       } else if (result.lookupType === 'product' && result.variants && result.variants.length > 1) {
         const newItem: ScannedItem = {
           id: `scan-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -324,7 +342,7 @@ export function BarcodeScanner({
       isProcessing.current = false;
       setLookingUp(false);
     }
-  }, []);
+  }, [mode, orderSubTab]);
 
   // ============ RECEIVE STOK (Terima Stok) ============
 
@@ -524,6 +542,44 @@ export function BarcodeScanner({
     );
   };
 
+  // ============ NOTE PROMPT (Req. Color auto-popup) ============
+
+  useEffect(() => {
+    if (notePromptItemId) {
+      setTimeout(() => notePromptInputRef.current?.focus(), 50);
+    }
+  }, [notePromptItemId]);
+
+  useEffect(() => {
+    if (!notePromptItemId) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (notePromptWrapRef.current && !notePromptWrapRef.current.contains(e.target as Node)) {
+        setNotePromptItemId(null);
+        setNotePromptValue('');
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [notePromptItemId]);
+
+  const commitNotePrompt = () => {
+    if (notePromptItemId) updateItemNote(notePromptItemId, notePromptValue.trim());
+    setNotePromptItemId(null);
+    setNotePromptValue('');
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
+  const skipNotePrompt = () => {
+    setNotePromptItemId(null);
+    setNotePromptValue('');
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
+  const handleNotePromptKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') commitNotePrompt();
+    else if (e.key === 'Escape') skipNotePrompt();
+  };
+
   const removeItem = (itemId: string) => {
     setItems((prev) => prev.filter((i) => i.id !== itemId));
   };
@@ -614,6 +670,8 @@ export function BarcodeScanner({
       resetPdfUpload();
       setScanHistory([]);
       setTodayTotal(null);
+      setNotePromptItemId(null);
+      setNotePromptValue('');
     }
     onOpenChange(val);
   };
@@ -863,6 +921,35 @@ export function BarcodeScanner({
               <button onClick={() => setLookupError('')} className="text-[var(--danger)]/60 hover:text-[var(--danger)] cursor-pointer flex-shrink-0">
                 <X className="w-3 h-3" />
               </button>
+            </div>
+          )}
+
+          {/* Req. Color auto-popup — Enter saves + refocuses scan box, Esc/klik luar skip */}
+          {notePromptItemId && (
+            <div
+              ref={notePromptWrapRef}
+              className="mt-2 p-2.5 rounded-lg bg-[var(--warning)]/5 border border-[var(--warning)]/30 flex-shrink-0"
+            >
+              <p className="text-[11px] text-[var(--warning-darker)] font-semibold mb-1.5">
+                Req. Color — catat warna yang diminta
+              </p>
+              <div className="flex items-center gap-1.5">
+                <input
+                  ref={notePromptInputRef}
+                  type="text"
+                  value={notePromptValue}
+                  onChange={(e) => setNotePromptValue(e.target.value)}
+                  onKeyDown={handleNotePromptKeyDown}
+                  placeholder="Warna yang diminta... (misal: Lilac Purple)"
+                  className="flex-1 h-9 text-sm bg-[var(--card)] border border-[var(--warning)]/30 rounded-lg px-3 text-[var(--t-heading)] placeholder:text-[var(--t-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--warning)]/40"
+                />
+                <button
+                  onClick={commitNotePrompt}
+                  className="h-9 px-3 rounded-lg bg-[var(--warning)] hover:brightness-95 text-white text-xs font-semibold cursor-pointer flex-shrink-0"
+                >
+                  Simpan
+                </button>
+              </div>
             </div>
           )}
 
