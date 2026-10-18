@@ -33,6 +33,11 @@ export interface RecentOrderItem {
   orderId: string;
   orderNo: string;
   variantId: string;
+  // Master variantId this item's own variant resolves to — the EXACT key
+  // pipelineByVariantId is keyed by (ims-hotfix-total-kurang-and-sort-
+  // tiebreak.md §1). Resolved server-side; never reconstruct a SKU+color+type
+  // string to look this up, that's what caused the mismatch.
+  masterVariantId: string;
   sku: string;
   name: string;
   groupSku: string;         // Master SKU (rolled up from child SKU Variants, for Summary)
@@ -57,7 +62,7 @@ interface PipelineStatusLite {
 
 interface RecentOrderCardProps {
   items?: RecentOrderItem[];
-  pipelineBySkuColorType?: Record<string, PipelineStatusLite>;
+  pipelineByVariantId?: Record<string, PipelineStatusLite>;
   loading?: boolean;
   onDataChange?: () => void;
 }
@@ -80,7 +85,7 @@ function formatDate(isoString: string) {
   return `${months[d.getMonth()]} ${d.getDate().toString().padStart(2, '0')}, ${d.getFullYear()}`;
 }
 
-export function RecentOrderCard({ items = [], pipelineBySkuColorType = {}, loading = false, onDataChange }: RecentOrderCardProps) {
+export function RecentOrderCard({ items = [], pipelineByVariantId = {}, loading = false, onDataChange }: RecentOrderCardProps) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'oldest' | 'newest'>('oldest');
@@ -376,8 +381,7 @@ export function RecentOrderCard({ items = [], pipelineBySkuColorType = {}, loadi
       ? `${it.groupSku}|reqcolor|${it.id}`
       : `${it.groupSku}|${it.color}|${it.type}|${it.orderNo}`;
     if (!summaryMap.has(key)) {
-      const pipelineKey = `${it.groupSku}|${it.color}|${it.type}`;
-      const pipeline = pipelineBySkuColorType[pipelineKey];
+      const pipeline = pipelineByVariantId[it.masterVariantId];
       summaryMap.set(key, {
         key,
         groupSku: it.groupSku,
@@ -415,18 +419,32 @@ export function RecentOrderCard({ items = [], pipelineBySkuColorType = {}, loadi
     return Math.max(0, Math.floor(ms / (1000 * 60 * 60 * 24)));
   };
   const clusterKeyOf = (g: SummaryGroup) => `${g.groupSku}|${g.color}|${g.type}`;
+  // Each group is now exactly one Picking List/Adjustment (grouping key
+  // includes orderNo — see above), so this is always that one list's number.
+  // Parsed numerically (not string-compared) so PICK-000973 < PICK-000976
+  // sorts correctly regardless of the "PICK"/"ADJ" prefix.
+  const extractOrderNumber = (orderNo: string): number => {
+    const match = orderNo.match(/\d+/);
+    return match ? parseInt(match[0], 10) : 0;
+  };
 
   // Urgency (how long waiting — FIFO) is the PRIMARY order: more days waiting
-  // always outranks fewer, full stop. groupSku+color is only a tie-breaker
-  // for rows whose waiting time is EXACTLY equal (same day bucket) — it must
-  // never drag a more-urgent row down to sit next to its same-SKU sibling,
-  // or a less-urgent one up (ims-hotfix-summary-sort-order.md).
+  // always outranks fewer, full stop. groupSku+color only tie-breaks rows
+  // whose waiting time is EXACTLY equal (same day bucket) — it must never
+  // drag a more-urgent row down to sit next to its same-SKU sibling, or a
+  // less-urgent one up (ims-hotfix-summary-sort-order.md). A final tie-break
+  // by ascending Picking List number keeps even THOSE rows in a stable,
+  // predictable order (ims-hotfix-total-kurang-and-sort-tiebreak.md §2).
   const summaryGroups = Array.from(summaryMap.values()).sort((a, b) => {
     const urgencyDiff = daysWaiting(b.oldestCreatedAt) - daysWaiting(a.oldestCreatedAt);
     if (urgencyDiff !== 0) return urgencyDiff;
     const ckA = clusterKeyOf(a);
     const ckB = clusterKeyOf(b);
     if (ckA !== ckB) return ckA.localeCompare(ckB);
+    const orderNoA = a.items[0]?.orderNo ?? '';
+    const orderNoB = b.items[0]?.orderNo ?? '';
+    const numDiff = extractOrderNumber(orderNoA) - extractOrderNumber(orderNoB);
+    if (numDiff !== 0) return numDiff;
     return new Date(a.oldestCreatedAt).getTime() - new Date(b.oldestCreatedAt).getTime();
   });
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { refreshAllOrderStatuses } from "@/lib/stock-sync";
+import { refreshAllOrderStatuses, resolveToMasterVariantId } from "@/lib/stock-sync";
 import { getPipelineStatus } from "@/lib/pipeline-status";
 
 export async function GET() {
@@ -105,12 +105,26 @@ export async function GET() {
     // pipeline (scanned-pending, in-progress, queued) against real stock before
     // deciding something still needs attention.
     const pipelineStatusMap = await getPipelineStatus(masterVariants.map((v) => v.id));
-    const pipelineBySkuColorType: Record<string, (typeof pipelineStatusMap)[string]> = {};
-    for (const v of masterVariants) {
-      const status = pipelineStatusMap[v.id];
-      if (!status) continue;
-      pipelineBySkuColorType[`${v.product.sku}|${v.color}|${v.type}`] = status;
+
+    // Recent Order Summary tab's "Total Kurang" reads the SAME pipelineStatusMap
+    // entry the Pipeline tab does — by exact master variantId, never by
+    // reconstructing a SKU+color+type string (ims-hotfix-total-kurang-and-sort-
+    // tiebreak.md §1: a string key can silently collide — e.g. two variant rows
+    // sharing a color+type — and quietly return the wrong row's numbers). Resolve
+    // each order item's own variant to its master equivalent once, keyed by
+    // order item id, so the client can do one exact dictionary lookup.
+    const itemMasterVariantId: Record<string, string> = {};
+    const resolvedVariantCache: Record<string, string> = {};
+    for (const order of recentOrders) {
+      for (const item of order.orderItems) {
+        const vid = item.variant.id;
+        if (!(vid in resolvedVariantCache)) {
+          resolvedVariantCache[vid] = await resolveToMasterVariantId(vid);
+        }
+        itemMasterVariantId[item.id] = resolvedVariantCache[vid];
+      }
     }
+
     const pipelineProducts = masterVariants
       .filter((v) => {
         const status = pipelineStatusMap[v.id];
@@ -157,7 +171,8 @@ export async function GET() {
     return NextResponse.json({
       minusStockProducts,
       pipelineProducts,
-      pipelineBySkuColorType,
+      pipelineByVariantId: pipelineStatusMap,
+      itemMasterVariantId,
       printQueueItems,
       productionItems,
       allProductionItems,

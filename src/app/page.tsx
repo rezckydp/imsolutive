@@ -59,7 +59,8 @@ interface DashboardData {
     colorHex: string;
     type: string;
   }>;
-  pipelineBySkuColorType: Record<string, PipelineStatusDto>;
+  pipelineByVariantId: Record<string, PipelineStatusDto>;
+  itemMasterVariantId: Record<string, string>;
   printQueueItems: Array<{
     id: string;
     variantId: string;
@@ -472,7 +473,8 @@ export default function Home() {
 
   const minusStockItems = (dashboardData?.minusStockProducts ?? []).map(mapStockItem);
   const pipelineItems: PipelineItem[] = dashboardData?.pipelineProducts ?? [];
-  const pipelineBySkuColorType = dashboardData?.pipelineBySkuColorType ?? {};
+  const pipelineByVariantId = dashboardData?.pipelineByVariantId ?? {};
+  const itemMasterVariantId = dashboardData?.itemMasterVariantId ?? {};
 
   const printQueueItems: PrintQueueItem[] = (dashboardData?.printQueueItems ?? []).map((item) => ({
     id: item.id,
@@ -535,6 +537,10 @@ export default function Home() {
         orderId: order.id,
         orderNo: order.orderNo,
         variantId: item.variant.id,
+        // Exact same master variantId the Pipeline tab's pipelineProducts is
+        // keyed by — resolved server-side (ims-hotfix-total-kurang-and-sort-
+        // tiebreak.md §1), never reconstructed from a SKU+color+type string.
+        masterVariantId: itemMasterVariantId[item.id] ?? item.variant.id,
         sku: product.sku,
         name: product.name,
         groupSku: masterProduct.sku,
@@ -753,7 +759,7 @@ export default function Home() {
             <div className="mb-3 md:mb-4">
               <RecentOrderCard
                 items={recentOrderItems}
-                pipelineBySkuColorType={pipelineBySkuColorType}
+                pipelineByVariantId={pipelineByVariantId}
                 loading={loading}
                 onDataChange={fetchDashboardData}
               />
