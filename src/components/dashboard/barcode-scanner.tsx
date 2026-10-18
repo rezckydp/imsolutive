@@ -36,7 +36,11 @@ import {
   PackageCheck,
 } from 'lucide-react';
 
-type ScannerMode = 'order' | 'production' | 'receive';
+type ScannerMode = 'order' | 'receive';
+// Pesanan's own sub-tabs — Produksi lives here now instead of as a
+// top-level mode, since the two are almost always used back-to-back in one
+// work session (ims-ux-merge-produksi-tab.md).
+type OrderSubTab = 'picking' | 'production' | 'adjustment';
 type OrderSubMode = 'manual' | 'pdf';
 type PdfStage = 'idle' | 'uploading' | 'review';
 
@@ -139,9 +143,9 @@ export function BarcodeScanner({
   onStockReceived,
 }: BarcodeScannerProps) {
   const [mode, setMode] = useState<ScannerMode>('order');
+  const [orderSubTab, setOrderSubTab] = useState<OrderSubTab>('picking');
   const [orderSubMode, setOrderSubMode] = useState<OrderSubMode>('manual');
   const [pickingListNo, setPickingListNo] = useState('');
-  const [numberType, setNumberType] = useState<'picking' | 'adjustment'>('picking');
   const [fetchingNumber, setFetchingNumber] = useState(false);
   const [pdfStage, setPdfStage] = useState<PdfStage>('idle');
   const [pdfFileName, setPdfFileName] = useState('');
@@ -166,19 +170,19 @@ export function BarcodeScanner({
   const [todayTotal, setTodayTotal] = useState<number | null>(null);
   const [undoingLast, setUndoingLast] = useState(false);
 
-  // Reset order-specific sub-state when switching to production mode
+  // Reset order-specific sub-state when switching to the Produksi sub-tab
   useEffect(() => {
-    if (mode === 'production') {
+    if (mode === 'order' && orderSubTab === 'production') {
       setOrderSubMode('manual');
       setPdfStage('idle');
       setPdfFileName('');
       setPdfError('');
     }
-  }, [mode]);
+  }, [mode, orderSubTab]);
 
-  // Fetch printers for production mode
+  // Fetch printers for the Produksi sub-tab
   useEffect(() => {
-    if (open && mode === 'production') {
+    if (open && mode === 'order' && orderSubTab === 'production') {
       fetch('/api/printers')
         .then((r) => r.json())
         .then((data) => {
@@ -186,7 +190,7 @@ export function BarcodeScanner({
         })
         .catch(() => {});
     }
-  }, [open, mode]);
+  }, [open, mode, orderSubTab]);
 
   const fetchNextNumber = useCallback(async (type: 'picking' | 'adjustment') => {
     setFetchingNumber(true);
@@ -201,15 +205,16 @@ export function BarcodeScanner({
     }
   }, []);
 
-  const handleNumberTypeChange = (type: 'picking' | 'adjustment') => {
-    setNumberType(type);
-    fetchNextNumber(type);
+  const handleOrderSubTabChange = (tab: OrderSubTab) => {
+    setOrderSubTab(tab);
+    // Produksi has no Picking List/Adjustment number of its own
+    if (tab !== 'production') fetchNextNumber(tab);
   };
 
   // Auto-fill No. Picking List with the next number when the dialog opens fresh
   useEffect(() => {
-    if (open && mode === 'order' && !pickingListNo) {
-      setNumberType('picking');
+    if (open && mode === 'order' && orderSubTab !== 'production' && !pickingListNo) {
+      setOrderSubTab('picking');
       fetchNextNumber('picking');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -534,7 +539,9 @@ export function BarcodeScanner({
     const validItems = items.filter((i) => i.variantId);
     if (validItems.length === 0) return;
 
-    if (mode === 'order' && !pickingListNo.trim()) {
+    const isProductionTab = mode === 'order' && orderSubTab === 'production';
+
+    if (!isProductionTab && !pickingListNo.trim()) {
       setLookupError('No. Picking List wajib diisi sebelum submit');
       return;
     }
@@ -542,7 +549,7 @@ export function BarcodeScanner({
     setSubmitting(true);
 
     try {
-      if (mode === 'order') {
+      if (!isProductionTab) {
         const orderNo = pickingListNo.trim();
         const res = await fetch('/api/orders', {
           method: 'POST',
@@ -563,7 +570,7 @@ export function BarcodeScanner({
         setItems([]);
         setLookupError('');
         setPickingListNo('');
-        setNumberType('picking');
+        setOrderSubTab('picking');
         resetPdfUpload();
         onOrderCreated?.();
         onOpenChange(false);
@@ -601,9 +608,9 @@ export function BarcodeScanner({
       setLookupError('');
       setManualCode('');
       setMode('order');
+      setOrderSubTab('picking');
       setOrderSubMode('manual');
       setPickingListNo('');
-      setNumberType('picking');
       resetPdfUpload();
       setScanHistory([]);
       setTodayTotal(null);
@@ -631,7 +638,7 @@ export function BarcodeScanner({
             <div className="flex items-center gap-2 min-w-0">
               <ScanBarcode className="w-5 h-5 text-[var(--brand)] flex-shrink-0" />
               <DialogTitle className="text-[var(--t-heading)] text-base max-md:text-sm truncate">
-                {mode === 'order' ? 'Input Pesanan' : mode === 'production' ? 'Input Produksi' : 'Terima Stok'}
+                {mode === 'receive' ? 'Terima Stok' : orderSubTab === 'production' ? 'Input Produksi' : 'Input Pesanan'}
               </DialogTitle>
             </div>
             <div className="flex items-center gap-1 bg-[var(--surface)] rounded-lg p-0.5 flex-shrink-0">
@@ -647,17 +654,6 @@ export function BarcodeScanner({
                 <span className="max-md:hidden">Pesanan</span>
               </button>
               <button
-                onClick={() => setMode('production')}
-                className={`flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${
-                  mode === 'production'
-                    ? 'bg-[var(--card)] text-[var(--info)] shadow-sm'
-                    : 'text-[var(--t-body)] hover:text-[var(--t-heading)]'
-                }`}
-              >
-                <Factory className="w-3.5 h-3.5" />
-                <span className="max-md:hidden">Produksi</span>
-              </button>
-              <button
                 onClick={() => setMode('receive')}
                 className={`flex items-center gap-1 px-2 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${
                   mode === 'receive'
@@ -671,47 +667,59 @@ export function BarcodeScanner({
             </div>
           </div>
           <DialogDescription className="text-[var(--t-body)] mt-1 text-xs">
-            {mode === 'order'
-              ? 'Ketik atau scan barcode untuk input pesanan baru'
-              : mode === 'production'
+            {mode === 'receive'
+              ? 'Scan barcode produk yang sudah lolos QC — stok real nambah langsung tiap scan'
+              : orderSubTab === 'production'
               ? 'Ketik atau scan barcode untuk input stok produksi'
-              : 'Scan barcode produk yang sudah lolos QC — stok real nambah langsung tiap scan'}
+              : 'Ketik atau scan barcode untuk input pesanan baru'}
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden flex flex-col px-4 pb-4 max-md:px-3 max-md:pb-3">
-          {/* No. Picking List — order mode only */}
+          {/* Pesanan sub-tabs: Picking List | Produksi | Adjustment */}
           {mode === 'order' && (
             <div className="mt-3 flex-shrink-0 space-y-2">
-              {/* Picking List / Adjustment toggle */}
               <div className="flex gap-1 bg-[var(--surface)] p-0.5 rounded-lg w-fit">
                 <button
-                  onClick={() => handleNumberTypeChange('picking')}
+                  onClick={() => handleOrderSubTabChange('picking')}
                   className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-                    numberType === 'picking' ? 'bg-[var(--card)] text-[var(--t-heading)] shadow-sm' : 'text-[var(--t-muted)] hover:text-[var(--t-heading)]'
+                    orderSubTab === 'picking' ? 'bg-[var(--card)] text-[var(--t-heading)] shadow-sm' : 'text-[var(--t-muted)] hover:text-[var(--t-heading)]'
                   }`}
                 >
                   Picking List
                 </button>
                 <button
-                  onClick={() => handleNumberTypeChange('adjustment')}
+                  onClick={() => handleOrderSubTabChange('production')}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                    orderSubTab === 'production' ? 'bg-[var(--card)] text-[var(--info)] shadow-sm' : 'text-[var(--t-muted)] hover:text-[var(--t-heading)]'
+                  }`}
+                >
+                  <Factory className="w-3 h-3" />
+                  Produksi
+                </button>
+                <button
+                  onClick={() => handleOrderSubTabChange('adjustment')}
                   className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors cursor-pointer ${
-                    numberType === 'adjustment' ? 'bg-[var(--card)] text-[var(--warning)] shadow-sm' : 'text-[var(--t-muted)] hover:text-[var(--t-heading)]'
+                    orderSubTab === 'adjustment' ? 'bg-[var(--card)] text-[var(--warning)] shadow-sm' : 'text-[var(--t-muted)] hover:text-[var(--t-heading)]'
                   }`}
                 >
                   Adjustment
                 </button>
               </div>
+
+              {/* No. Picking List/Adjustment — not applicable to Produksi */}
+              {orderSubTab !== 'production' && (
+              <>
               <div>
                 <label className="text-[11px] font-medium text-[var(--t-body)] flex items-center gap-1.5 mb-1">
                   <FileText className="w-3.5 h-3.5" />
-                  No. {numberType === 'adjustment' ? 'Adjustment' : 'Picking List'}
+                  No. {orderSubTab === 'adjustment' ? 'Adjustment' : 'Picking List'}
                   {fetchingNumber && <Loader2 className="w-3 h-3 animate-spin text-[var(--t-muted)]" />}
                 </label>
                 <Input
                   value={pickingListNo}
                   onChange={(e) => setPickingListNo(e.target.value)}
-                  placeholder={numberType === 'adjustment' ? 'e.g. ADJ016' : 'e.g. PICK-000775'}
+                  placeholder={orderSubTab === 'adjustment' ? 'e.g. ADJ016' : 'e.g. PICK-000775'}
                   disabled={orderSubMode === 'pdf' && pdfStage === 'review'}
                   className="h-9 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg disabled:opacity-70"
                 />
@@ -746,6 +754,8 @@ export function BarcodeScanner({
                   Upload PDF
                 </button>
               </div>
+              </>
+              )}
             </div>
           )}
 
@@ -994,7 +1004,7 @@ export function BarcodeScanner({
               </div>
 
               {/* Production: Printer selection */}
-              {mode === 'production' && validItemCount > 0 && (
+              {mode === 'order' && orderSubTab === 'production' && validItemCount > 0 && (
                 <div className="mt-2 flex-shrink-0">
                   <Select value={selectedPrinter} onValueChange={setSelectedPrinter}>
                     <SelectTrigger className="h-9 text-xs bg-[var(--surface)] border-[var(--bd)] rounded-lg">
@@ -1020,23 +1030,23 @@ export function BarcodeScanner({
               <div className="mt-3 flex-shrink-0">
                 <Button
                   onClick={handleSubmit}
-                  disabled={submitting || validItemCount === 0 || (mode === 'order' && !pickingListNo.trim())}
+                  disabled={submitting || validItemCount === 0 || (orderSubTab !== 'production' && !pickingListNo.trim())}
                   className={`w-full h-11 rounded-lg font-semibold text-sm disabled:opacity-50 ${
-                    mode === 'order'
+                    orderSubTab !== 'production'
                       ? 'bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white'
                       : 'bg-[var(--info)] hover:bg-[var(--info-dark-alt)] text-white'
                   }`}
                 >
                   {submitting ? (
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : mode === 'order' ? (
+                  ) : orderSubTab !== 'production' ? (
                     <ShoppingCart className="w-4 h-4 mr-2" />
                   ) : (
                     <Factory className="w-4 h-4 mr-2" />
                   )}
                   {submitting
                     ? 'Mengirim...'
-                    : mode === 'order'
+                    : orderSubTab !== 'production'
                       ? `Submit Pesanan (${validItemCount} item, ${totalQty} qty)`
                       : `Submit Produksi (${validItemCount} item, ${totalQty} qty)`}
                 </Button>
