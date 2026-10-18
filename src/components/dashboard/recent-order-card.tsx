@@ -295,13 +295,13 @@ export function RecentOrderCard({ items = [], pipelineByVariantId = {}, loading 
     return (
       <div
         key={card.orderId}
-        className="bg-[var(--card)] rounded-lg shadow-sm p-3 border-l-[3px] hover:shadow-md transition-shadow"
+        className="bg-[var(--card)] rounded-lg shadow-sm p-2.5 border-l-[3px] hover:shadow-md transition-shadow min-w-0"
         style={{ borderLeftColor: meta.color }}
       >
-        <div className="flex items-center justify-between mb-1.5 gap-2">
+        <div className="flex items-center justify-between mb-1 gap-2">
           <button
             onClick={() => setDetailOrderId(card.orderId)}
-            className="text-xs font-bold text-[var(--t-heading)] flex items-center gap-1 hover:underline cursor-pointer min-w-0"
+            className="text-[11px] font-bold text-[var(--t-heading)] flex items-center gap-1 hover:underline cursor-pointer min-w-0"
           >
             <Eye className="w-3 h-3 text-[var(--brand)] flex-shrink-0" />
             <span className="truncate">{card.orderNo}</span>
@@ -321,7 +321,7 @@ export function RecentOrderCard({ items = [], pipelineByVariantId = {}, loading 
 
         <button
           onClick={() => toggleCardExpanded(card.orderId)}
-          className="w-full flex items-center justify-between text-left mb-2 cursor-pointer group/toggle"
+          className="w-full flex items-center justify-between text-left mb-1.5 cursor-pointer group/toggle"
         >
           <span className="text-[10px] text-[var(--t-subtle)]">{formatDate(card.createdAt)}</span>
           <span className="text-[10px] text-[var(--brand)] font-medium flex items-center gap-0.5 group-hover/toggle:underline">
@@ -917,18 +917,22 @@ export function RecentOrderCard({ items = [], pipelineByVariantId = {}, loading 
                         <span className="text-[11px] text-[var(--t-muted)]">{readyExpanded ? 'Sembunyikan' : 'Klik buat lihat'}</span>
                       </button>
                       {readyExpanded && (
-                        <div className="space-y-2 pl-1">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 pl-1">
                           {readyCards.map((card) => renderPickingCard(card))}
                         </div>
                       )}
                     </>
                   )}
 
-                  {/* Active — Not Ready / In Queue / In Production, FIFO oldest-first */}
-                  {statusFilter !== 'Ready' &&
-                    notReadyCards
-                      .filter((c) => statusFilter === 'all' || c.lane === statusFilter)
-                      .map((card) => renderPickingCard(card))}
+                  {/* Active — Not Ready / In Queue / In Production, FIFO oldest-first,
+                      left-to-right then top-to-bottom reading order of the grid */}
+                  {statusFilter !== 'Ready' && notReadyCards.filter((c) => statusFilter === 'all' || c.lane === statusFilter).length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                      {notReadyCards
+                        .filter((c) => statusFilter === 'all' || c.lane === statusFilter)
+                        .map((card) => renderPickingCard(card))}
+                    </div>
+                  )}
 
                   {statusFilter !== 'Ready' &&
                     notReadyCards.filter((c) => statusFilter === 'all' || c.lane === statusFilter).length === 0 &&
