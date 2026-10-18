@@ -762,11 +762,6 @@ export function RecentOrderCard({ items = [], pipelineByVariantId = {}, loading 
                           </td>
                           <td className="py-3 px-4 text-right">
                             <span className="text-base font-bold text-[var(--danger)]">{g.totalQty}</span>
-                            {g.currentStock < 0 && (
-                              <span className="text-xs font-semibold text-[var(--danger-dark)]/70" title="Stok saat ini (net)">
-                                {' '}({g.currentStock})
-                              </span>
-                            )}
                             <span className="text-xs text-[var(--t-muted)]"> pcs</span>
                           </td>
                           <td className="py-3 px-4 text-right">
