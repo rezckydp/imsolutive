@@ -357,8 +357,13 @@ export function RecentOrderCard({ items = [], pipelineByVariantId = {}, loading 
     currentStock: number; // net stock position for this variant (can be negative)
     pendingScan: number; // Completed production, outstanding, not yet scanned (ims-real-stock-scan-pipeline-spec.md §5.3)
     inProgress: number; // still actively printing
-    kurang: number; // Pipeline tab's "Kurang" for this SKU+Warna — SAME across every Picking List row sharing it
-    masterVariantId: string; // TEMP DEBUG field — remove once Total Kurang mismatch is confirmed fixed
+    kurang: number; // Total Kurang (Semua List) — combined totalQty across every active
+                     // Picking List/Adjustment sharing this SKU+Warna. Deliberately NOT
+                     // Pipeline tab's "Kurang" (that one also floors against minStock and
+                     // nets real stock — a different, bigger number by design). This is
+                     // purely "how much is still outstanding across every open list"
+                     // (ims-hotfix-total-kurang-and-sort-tiebreak.md follow-up).
+    masterVariantId: string; // clusters rows that share one physical stock pool
     orderRefs: Map<string, string>; // orderId -> orderNo
     items: RecentOrderItem[];
     oldestCreatedAt: string;
@@ -394,7 +399,7 @@ export function RecentOrderCard({ items = [], pipelineByVariantId = {}, loading 
         currentStock: it.currentStock,
         pendingScan: pipeline?.pendingScan ?? 0,
         inProgress: pipeline?.inProgress ?? 0,
-        kurang: pipeline?.kurang ?? 0,
+        kurang: 0, // filled in below, after totals across the whole cluster are known
         masterVariantId: it.masterVariantId,
         orderRefs: new Map(),
         items: [],
@@ -411,6 +416,17 @@ export function RecentOrderCard({ items = [], pipelineByVariantId = {}, loading 
     if (new Date(it.createdAt).getTime() < new Date(g.oldestCreatedAt).getTime()) {
       g.oldestCreatedAt = it.createdAt;
     }
+  }
+
+  // Total Kurang (Semua List) = sum of totalQty across every row that draws
+  // from the same physical stock (same masterVariantId) — e.g. UCS002 Carbon
+  // Series split across PICK-000972 (2) and ADJ025 (1) shows 3 on both rows.
+  const kurangByMasterVariantId = new Map<string, number>();
+  for (const g of summaryMap.values()) {
+    kurangByMasterVariantId.set(g.masterVariantId, (kurangByMasterVariantId.get(g.masterVariantId) ?? 0) + g.totalQty);
+  }
+  for (const g of summaryMap.values()) {
+    g.kurang = kurangByMasterVariantId.get(g.masterVariantId) ?? g.totalQty;
   }
 
   // Same number the "2 hari" / "1 hari" / "Hari ini" label uses (ims-hotfix-
@@ -753,13 +769,7 @@ export function RecentOrderCard({ items = [], pipelineByVariantId = {}, loading 
                             <span className="text-xs text-[var(--t-muted)]"> pcs</span>
                           </td>
                           <td className="py-3 px-4 text-right">
-                            {g.kurang > 0 ? (
-                              <span className="text-sm font-bold text-[var(--danger)]">{g.kurang}</span>
-                            ) : (
-                              <span className="text-sm font-semibold text-[var(--success)]">Aman</span>
-                            )}
-                            {/* TEMP DEBUG — remove once Total Kurang mismatch is confirmed fixed */}
-                            <p className="text-[9px] text-[var(--t-subtle)] font-mono">id: ...{g.masterVariantId.slice(-8)}</p>
+                            <span className="text-sm font-bold text-[var(--danger)]">{g.kurang}</span>
                           </td>
                           <td className="py-3 px-4 text-right">
                             {g.pendingScan > 0 ? (
