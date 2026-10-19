@@ -171,6 +171,92 @@ export function MaterialCatalogTab({ selectMaterialId, onSelectConsumed }: Mater
     }
   };
 
+  // ============ EDIT MATERIAL (Nama/Unit always; Stock/Min/Barcode if
+  // hasVariants=false — hasVariants itself is locked after creation) ============
+  const [editMaterialTarget, setEditMaterialTarget] = useState<MaterialData | null>(null);
+  const [editMaterialName, setEditMaterialName] = useState('');
+  const [editMaterialUnit, setEditMaterialUnit] = useState('');
+  const [editMaterialStock, setEditMaterialStock] = useState('0');
+  const [editMaterialMinStock, setEditMaterialMinStock] = useState('0');
+  const [editMaterialBarcode, setEditMaterialBarcode] = useState('');
+  const [savingEditMaterial, setSavingEditMaterial] = useState(false);
+
+  const openEditMaterial = (m: MaterialData) => {
+    setEditMaterialName(m.name);
+    setEditMaterialUnit(m.unit);
+    setEditMaterialStock(String(m.stock ?? 0));
+    setEditMaterialMinStock(String(m.minStock ?? 0));
+    setEditMaterialBarcode(m.barcode || '');
+    setEditMaterialTarget(m);
+  };
+
+  const handleSaveEditMaterial = async () => {
+    if (!editMaterialTarget || !editMaterialName.trim()) return;
+    setSavingEditMaterial(true);
+    try {
+      const body: Record<string, unknown> = {
+        name: editMaterialName.trim(),
+        unit: editMaterialUnit.trim() || 'pcs',
+      };
+      if (!editMaterialTarget.hasVariants) {
+        body.stock = parseInt(editMaterialStock, 10) || 0;
+        body.minStock = parseInt(editMaterialMinStock, 10) || 0;
+        body.barcode = editMaterialBarcode.trim() || null;
+      }
+      const res = await fetch(`/api/materials/${editMaterialTarget.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || 'Gagal menyimpan Material');
+        return;
+      }
+      setEditMaterialTarget(null);
+      fetchMaterials();
+    } catch {
+      alert('Gagal menyimpan Material. Coba lagi.');
+    } finally {
+      setSavingEditMaterial(false);
+    }
+  };
+
+  // ============ DELETE MATERIAL (two-stage: simple confirm, escalates to a
+  // BOM-usage warning if the first DELETE attempt comes back 409) ============
+  const [deleteMaterialTarget, setDeleteMaterialTarget] = useState<MaterialData | null>(null);
+  const [deleteMaterialWarning, setDeleteMaterialWarning] = useState<Array<{ sku: string; name: string }> | null>(null);
+  const [deletingMaterial, setDeletingMaterial] = useState(false);
+
+  const openDeleteMaterial = (m: MaterialData) => {
+    setDeleteMaterialWarning(null);
+    setDeleteMaterialTarget(m);
+  };
+
+  const handleConfirmDeleteMaterial = async (force: boolean) => {
+    if (!deleteMaterialTarget) return;
+    setDeletingMaterial(true);
+    try {
+      const res = await fetch(`/api/materials/${deleteMaterialTarget.id}${force ? '?force=true' : ''}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (res.status === 409 && data.requiresConfirm) {
+        setDeleteMaterialWarning(data.affectedProducts || []);
+        return;
+      }
+      if (!res.ok) {
+        alert(data.error || 'Gagal menghapus Material');
+        return;
+      }
+      setDeleteMaterialTarget(null);
+      setDeleteMaterialWarning(null);
+      fetchMaterials();
+    } catch {
+      alert('Gagal menghapus Material. Coba lagi.');
+    } finally {
+      setDeletingMaterial(false);
+    }
+  };
+
   // ============ VARIANT ADD/EDIT ============
   const [variantDialog, setVariantDialog] = useState<{ mode: 'add' | 'edit'; materialId: string; variant?: MaterialVariantData } | null>(null);
   const [variantLabel, setVariantLabel] = useState('');
@@ -462,27 +548,47 @@ export function MaterialCatalogTab({ selectMaterialId, onSelectConsumed }: Mater
               const isLowSimple = !m.hasVariants && (m.stock ?? 0) < (m.minStock ?? 0);
               const lowCount = m.hasVariants ? m.variants.filter((v) => v.stock < v.minStock).length : (isLowSimple ? 1 : 0);
               return (
-                <button
+                <div
                   key={m.id}
-                  onClick={() => setSelectedId(m.id)}
-                  className={`w-full text-left px-4 py-3 border-b border-[var(--bd)] last:border-b-0 transition-colors cursor-pointer ${
+                  className={`group flex items-center gap-1 border-b border-[var(--bd)] last:border-b-0 transition-colors ${
                     isActive ? 'bg-[var(--brand)]/10' : 'hover:bg-[var(--surface)]'
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className={`text-sm font-medium truncate ${isActive ? 'text-[var(--brand)]' : 'text-[var(--t-heading)]'}`}>
-                      {m.name}
+                  <button
+                    onClick={() => setSelectedId(m.id)}
+                    className="flex-1 min-w-0 text-left px-4 py-3 cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`text-sm font-medium truncate ${isActive ? 'text-[var(--brand)]' : 'text-[var(--t-heading)]'}`}>
+                        {m.name}
+                      </span>
+                      {lowCount > 0 && (
+                        <Badge className="text-[10px] px-1.5 py-0 rounded-full bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]/30 flex-shrink-0" variant="outline">
+                          {m.hasVariants ? lowCount : 'Low Stock'}
+                        </Badge>
+                      )}
+                    </div>
+                    <span className="text-[11px] text-[var(--t-muted)]">
+                      {m.hasVariants ? `${m.variants.length} varian` : `${m.stock ?? 0} ${m.unit}`}
                     </span>
-                    {lowCount > 0 && (
-                      <Badge className="text-[10px] px-1.5 py-0 rounded-full bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]/30 flex-shrink-0" variant="outline">
-                        {m.hasVariants ? lowCount : 'Low Stock'}
-                      </Badge>
-                    )}
+                  </button>
+                  <div className="flex items-center gap-0.5 pr-2 flex-shrink-0">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openEditMaterial(m); }}
+                      className="p-1 rounded hover:bg-[var(--surface-2)] text-[var(--t-muted)] hover:text-[var(--t-heading)] cursor-pointer"
+                      title="Edit Material"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openDeleteMaterial(m); }}
+                      className="p-1 rounded hover:bg-[var(--danger)]/10 text-[var(--t-muted)] hover:text-[var(--danger)] cursor-pointer"
+                      title="Hapus Material"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                  <span className="text-[11px] text-[var(--t-muted)]">
-                    {m.hasVariants ? `${m.variants.length} varian` : `${m.stock ?? 0} ${m.unit}`}
-                  </span>
-                </button>
+                </div>
               );
             })}
           </div>
@@ -707,6 +813,112 @@ export function MaterialCatalogTab({ selectMaterialId, onSelectConsumed }: Mater
               className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white rounded-full px-5 disabled:opacity-50"
             >
               {savingMaterial ? 'Saving...' : 'Tambah'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ============ EDIT MATERIAL DIALOG ============ */}
+      <Dialog open={!!editMaterialTarget} onOpenChange={(open) => !open && setEditMaterialTarget(null)}>
+        <DialogContent className="sm:max-w-sm rounded-xl">
+          <DialogHeader>
+            <DialogTitle className="text-[var(--t-heading)]">Edit Material</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Nama Material *</Label>
+              <Input
+                value={editMaterialName}
+                onChange={(e) => setEditMaterialName(e.target.value)}
+                className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Unit</Label>
+              <Input
+                value={editMaterialUnit}
+                onChange={(e) => setEditMaterialUnit(e.target.value)}
+                className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg w-32"
+              />
+            </div>
+
+            {editMaterialTarget && !editMaterialTarget.hasVariants && (
+              <div className="space-y-3 pt-1 border-t border-[var(--bd)] mt-1">
+                <div className="flex gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium text-[var(--t-heading)]">Stock</Label>
+                    <Input
+                      type="number"
+                      value={editMaterialStock}
+                      onChange={(e) => setEditMaterialStock(e.target.value)}
+                      className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg w-24"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium text-[var(--t-heading)]">Min Stock</Label>
+                    <Input
+                      type="number"
+                      value={editMaterialMinStock}
+                      onChange={(e) => setEditMaterialMinStock(e.target.value)}
+                      className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg w-24"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium text-[var(--t-heading)]">Barcode <span className="font-normal text-[var(--t-muted)]">(opt)</span></Label>
+                  <Input
+                    value={editMaterialBarcode}
+                    onChange={(e) => setEditMaterialBarcode(e.target.value)}
+                    className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg font-mono"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setEditMaterialTarget(null)} disabled={savingEditMaterial} className="rounded-full px-5">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveEditMaterial}
+              disabled={savingEditMaterial || !editMaterialName.trim()}
+              className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white rounded-full px-5 disabled:opacity-50"
+            >
+              {savingEditMaterial ? 'Saving...' : 'Simpan'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ============ DELETE MATERIAL CONFIRM (two-stage) ============ */}
+      <Dialog open={!!deleteMaterialTarget} onOpenChange={(open) => !open && setDeleteMaterialTarget(null)}>
+        <DialogContent className="sm:max-w-sm rounded-xl">
+          <DialogHeader>
+            <DialogTitle className="text-[var(--t-heading)]">Hapus Material</DialogTitle>
+            <DialogDescription className="text-[var(--t-body)]">
+              {deleteMaterialWarning === null ? (
+                <>Yakin mau hapus <strong>{deleteMaterialTarget?.name}</strong>? Tindakan ini nggak bisa dibatalkan.</>
+              ) : (
+                <>
+                  Material <strong>{deleteMaterialTarget?.name}</strong> masih dipakai sebagai BOM di {deleteMaterialWarning.length} produk:
+                  <span className="block mt-2 text-[var(--danger)]">
+                    {deleteMaterialWarning.map((p) => `${p.sku} — ${p.name}`).join(', ')}
+                  </span>
+                  <span className="block mt-2">Tetap hapus? BOM yang nyangkut ke Material ini juga akan ikut terhapus dari produk-produk itu.</span>
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteMaterialTarget(null)} disabled={deletingMaterial} className="rounded-full px-5">
+              Cancel
+            </Button>
+            <Button
+              onClick={() => handleConfirmDeleteMaterial(deleteMaterialWarning !== null)}
+              disabled={deletingMaterial}
+              className="bg-[var(--danger)] hover:bg-[var(--danger-dark)] text-white rounded-full px-5 disabled:opacity-50"
+            >
+              {deletingMaterial ? 'Deleting...' : deleteMaterialWarning === null ? 'Hapus' : 'Tetap Hapus'}
             </Button>
           </DialogFooter>
         </DialogContent>

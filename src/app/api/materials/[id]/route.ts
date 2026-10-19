@@ -63,8 +63,12 @@ export async function PUT(
 }
 
 // DELETE a Material — cascades its variants, BOM links and movement log.
+// If any Product's BOM still references this Material and the caller hasn't
+// passed ?force=true yet, respond 409 with the affected products instead of
+// deleting, so the client can show a warning and ask for confirmation first
+// (ims-hotfix-edit-delete-material.md).
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -72,6 +76,25 @@ export async function DELETE(
     const existing = await db.material.findUnique({ where: { id } });
     if (!existing) {
       return NextResponse.json({ error: "Material tidak ditemukan" }, { status: 404 });
+    }
+
+    const force = request.nextUrl.searchParams.get("force") === "true";
+
+    if (!force) {
+      const boms = await db.productBOM.findMany({
+        where: { materialId: id },
+        distinct: ["productId"],
+        include: { product: { select: { sku: true, name: true } } },
+      });
+      if (boms.length > 0) {
+        return NextResponse.json(
+          {
+            requiresConfirm: true,
+            affectedProducts: boms.map((b) => ({ sku: b.product.sku, name: b.product.name })),
+          },
+          { status: 409 }
+        );
+      }
     }
 
     await db.material.delete({ where: { id } });
