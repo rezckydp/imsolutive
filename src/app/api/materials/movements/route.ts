@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 export async function GET() {
   try {
     const movements = await db.materialMovement.findMany({
-      include: { materialVariant: { include: { material: true } } },
+      include: { material: true, materialVariant: true },
       orderBy: { createdAt: "desc" },
       take: 500,
     });
@@ -14,9 +14,9 @@ export async function GET() {
       movements: movements.map((m) => ({
         id: m.id,
         createdAt: m.createdAt,
-        materialName: m.materialVariant.material.name,
-        variantLabel: m.materialVariant.label,
-        unit: m.materialVariant.material.unit,
+        materialName: m.material.name,
+        variantLabel: m.materialVariant?.label ?? "—",
+        unit: m.material.unit,
         qty: m.qty,
         source: m.source,
         username: m.username,

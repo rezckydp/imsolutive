@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
 
     let material = await db.material.findFirst({ where: { name: materialName } });
     if (!material) {
-      material = await db.material.create({ data: { name: materialName, unit: "roll" } });
+      material = await db.material.create({ data: { name: materialName, unit: "roll", hasVariants: true } });
     }
 
     const variant = await db.materialVariant.create({
@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
 
     await db.materialMovement.create({
       data: {
+        materialId: material.id,
         materialVariantId: variant.id,
         qty: 1,
         source: "Scan Terima Material",

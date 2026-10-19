@@ -16,18 +16,20 @@ interface MaterialVariantData {
   id: string;
   label: string;
   stock: number;
-  unit?: string;
 }
 
 interface MaterialData {
   id: string;
   name: string;
   unit: string;
+  hasVariants: boolean;
+  stock: number | null;
   variants: MaterialVariantData[];
 }
 
 export interface BomRow {
-  materialVariantId: string;
+  materialId: string;
+  materialVariantId: string | null;
   qty: number;
 }
 
@@ -36,9 +38,8 @@ export interface BomChecklistHandle {
 }
 
 interface Props {
-  // Existing BOM rows for this Product, keyed by the Material they belong to
-  // so we know which checkbox starts checked. Empty/undefined = no BOM yet.
-  initialBom?: Array<{ materialVariantId: string; qty: number; materialVariant?: { materialId: string } }>;
+  // Existing BOM rows for this Product — empty/undefined = no BOM yet.
+  initialBom?: Array<{ materialId: string; materialVariantId: string | null; qty: number }>;
 }
 
 interface RowState {
@@ -66,9 +67,7 @@ export const ProductBomChecklist = forwardRef<BomChecklistHandle, Props>(functio
 
         const seeded: Record<string, RowState> = {};
         for (const m of list) {
-          const existing = (initialBom || []).find((b) =>
-            m.variants.some((v) => v.id === b.materialVariantId)
-          );
+          const existing = (initialBom || []).find((b) => b.materialId === m.id);
           seeded[m.id] = {
             checked: !!existing,
             materialVariantId: existing?.materialVariantId || m.variants[0]?.id || '',
@@ -84,12 +83,20 @@ export const ProductBomChecklist = forwardRef<BomChecklistHandle, Props>(functio
 
   useImperativeHandle(ref, () => ({
     getPayload: () =>
-      Object.values(rows)
-        .filter((r) => r.checked && r.materialVariantId)
-        .map((r) => ({
-          materialVariantId: r.materialVariantId,
-          qty: parseInt(r.qty, 10) || 1,
-        })),
+      Object.entries(rows)
+        .filter(([, r]) => r.checked)
+        .map(([materialId, r]) => {
+          const material = materials.find((m) => m.id === materialId);
+          return {
+            materialId,
+            materialVariantId: material?.hasVariants ? (r.materialVariantId || null) : null,
+            qty: parseInt(r.qty, 10) || 1,
+          };
+        })
+        .filter((r) => {
+          const material = materials.find((m) => m.id === r.materialId);
+          return material?.hasVariants ? !!r.materialVariantId : true;
+        }),
   }));
 
   const toggleChecked = (materialId: string) => {
@@ -122,18 +129,20 @@ export const ProductBomChecklist = forwardRef<BomChecklistHandle, Props>(functio
       <div className="flex items-start gap-2 p-2.5 rounded-lg bg-[var(--info)]/5 border border-[var(--info)]/20">
         <Info className="w-3.5 h-3.5 text-[var(--info)] flex-shrink-0 mt-0.5" />
         <p className="text-[11px] text-[var(--t-body)]">
-          List material di-pull dari katalog Material di halaman Inventory Management — nambah material baru lewat sana dulu, baru bisa dicentang di sini.
+          List material di-pull dari katalog Material di Warehouse Management — nambah material baru lewat sana dulu, baru bisa dicentang di sini.
         </p>
       </div>
 
       {materials.length === 0 ? (
-        <p className="text-xs text-[var(--t-muted)] p-2">Belum ada Material di katalog Inventory Management.</p>
+        <p className="text-xs text-[var(--t-muted)] p-2">Belum ada Material di katalog Warehouse Management.</p>
       ) : (
         <div className="max-h-[260px] overflow-y-auto space-y-1.5 pr-1" style={{ scrollbarWidth: 'thin', scrollbarColor: '#d1d5db transparent' }}>
           {materials.map((m) => {
             const row = rows[m.id];
             if (!row) return null;
-            const totalStock = m.variants.reduce((sum, v) => sum + v.stock, 0);
+            const availableStock = m.hasVariants
+              ? m.variants.reduce((sum, v) => sum + v.stock, 0)
+              : (m.stock ?? 0);
             return (
               <div key={m.id} className="rounded-lg border border-[var(--bd)] bg-[var(--surface-tint-3)] overflow-hidden">
                 <label className="flex items-center gap-2.5 p-2.5 cursor-pointer">
@@ -144,30 +153,32 @@ export const ProductBomChecklist = forwardRef<BomChecklistHandle, Props>(functio
                     className="w-4 h-4 rounded border-[var(--bd)] accent-[var(--brand)] cursor-pointer flex-shrink-0"
                   />
                   <span className="text-sm text-[var(--t-heading)] flex-1">{m.name}</span>
-                  <span className="text-[11px] text-[var(--t-muted)]">stok: {totalStock} {m.unit}</span>
+                  <span className="text-[11px] text-[var(--t-muted)]">stok: {availableStock} {m.unit}</span>
                 </label>
 
                 {row.checked && (
                   <div className="flex gap-2 px-2.5 pb-2.5">
-                    <div className="flex-1 space-y-1">
-                      <Label className="text-[10px] text-[var(--t-body)] uppercase tracking-wider">Variant</Label>
-                      <Select
-                        value={row.materialVariantId}
-                        onValueChange={(v) => updateRow(m.id, 'materialVariantId', v)}
-                      >
-                        <SelectTrigger className="h-8 text-xs bg-[var(--card)] border-[var(--bd)]">
-                          <SelectValue placeholder="Pilih variant..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {m.variants.map((v) => (
-                            <SelectItem key={v.id} value={v.id}>
-                              {v.label} (stok: {v.stock})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="w-24 space-y-1">
+                    {m.hasVariants && (
+                      <div className="flex-1 space-y-1">
+                        <Label className="text-[10px] text-[var(--t-body)] uppercase tracking-wider">Variant</Label>
+                        <Select
+                          value={row.materialVariantId}
+                          onValueChange={(v) => updateRow(m.id, 'materialVariantId', v)}
+                        >
+                          <SelectTrigger className="h-8 text-xs bg-[var(--card)] border-[var(--bd)]">
+                            <SelectValue placeholder="Pilih variant..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {m.variants.map((v) => (
+                              <SelectItem key={v.id} value={v.id}>
+                                {v.label} (stok: {v.stock})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    <div className={m.hasVariants ? 'w-24 space-y-1' : 'flex-1 space-y-1'}>
                       <Label className="text-[10px] text-[var(--t-body)] uppercase tracking-wider">Qty / pcs</Label>
                       <Input
                         type="number"

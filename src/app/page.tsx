@@ -12,9 +12,8 @@ import { OrderList, type OrderItem } from '@/components/dashboard/order-list';
 import { RecentOrderCard, type RecentOrderItem } from '@/components/dashboard/recent-order-card';
 import { BarcodeScanner } from '@/components/dashboard/barcode-scanner';
 import { CombinedEntryDialog } from '@/components/dashboard/combined-entry-dialog';
-import { StockManagement } from '@/components/dashboard/stock-management';
 import { InventoryBoothPage } from '@/components/dashboard/inventory-booth';
-import { InventoryManagementPage } from '@/components/dashboard/inventory-management';
+import { WarehouseManagementPage, type WarehouseSubTab } from '@/components/dashboard/warehouse-management';
 import { ProductionManagement } from '@/components/dashboard/production-management';
 import { StockOpname } from '@/components/dashboard/stock-opname';
 import { SettingsPage } from '@/components/dashboard/settings-page';
@@ -240,6 +239,15 @@ export default function Home() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [addNewOpen, setAddNewOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  // Deep-link into Warehouse Management from the Dashboard low-stock
+  // notification bell — jump to the Material sub-tab with that Material
+  // selected, then self-clear once WarehouseManagementPage consumes it.
+  const [warehouseDeepLink, setWarehouseDeepLink] = useState<{ subTab: WarehouseSubTab; materialId: string } | null>(null);
+  const navigateToMaterial = useCallback((materialId: string) => {
+    setWarehouseDeepLink({ subTab: 'material', materialId });
+    setActiveNavItem('warehouse-management');
+  }, []);
 
   // Dashboard data
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
@@ -566,9 +574,8 @@ export default function Home() {
 
   // Determine what to show in the main area
   const showDashboard = activeNavItem === 'dashboard';
-  const showStockManagement = activeNavItem === 'stock-management';
+  const showWarehouseManagement = activeNavItem === 'warehouse-management';
   const showInventoryBooth = activeNavItem === 'inventory-booth';
-  const showInventoryManagement = activeNavItem === 'inventory-management';
   const showPrinterDatabase = activeNavItem === 'printer-database';
   const showColorVariant = activeNavItem === 'color-variant';
   const showProduction = activeNavItem === 'production';
@@ -578,12 +585,10 @@ export default function Home() {
   // Header title
   const headerTitle = showDashboard
     ? 'Dashboard'
-    : showStockManagement
-    ? 'Stock Management'
+    : showWarehouseManagement
+    ? 'Warehouse Management'
     : showInventoryBooth
     ? 'Inventory Booth'
-    : showInventoryManagement
-    ? 'Inventory Management'
     : showPrinterDatabase
     ? '3D Printer'
     : showColorVariant
@@ -656,6 +661,7 @@ export default function Home() {
               <Header
                 title="Dashboard"
                 onScanBarcode={() => setBarcodeOpen(true)}
+                onNavigateToMaterial={navigateToMaterial}
               />
             </div>
 
@@ -808,19 +814,18 @@ export default function Home() {
           </>
         )}
 
-        {/* ========== STOCK MANAGEMENT VIEW ========== */}
-        {showStockManagement && (
-          <StockManagement />
+        {/* ========== WAREHOUSE MANAGEMENT VIEW ========== */}
+        {showWarehouseManagement && (
+          <WarehouseManagementPage
+            initialSubTab={warehouseDeepLink?.subTab ?? null}
+            selectMaterialId={warehouseDeepLink?.materialId ?? null}
+            onDeepLinkConsumed={() => setWarehouseDeepLink(null)}
+          />
         )}
 
         {/* ========== INVENTORY BOOTH VIEW ========== */}
         {showInventoryBooth && (
           <InventoryBoothPage />
-        )}
-
-        {/* ========== INVENTORY MANAGEMENT VIEW ========== */}
-        {showInventoryManagement && (
-          <InventoryManagementPage />
         )}
 
         {/* ========== PRINTER DATABASE VIEW ========== */}
@@ -849,7 +854,7 @@ export default function Home() {
         )}
 
         {/* ========== PLACEHOLDER FOR OTHER NAV ITEMS ========== */}
-        {!showDashboard && !showStockManagement && !showInventoryBooth && !showInventoryManagement && !showPrinterDatabase && !showColorVariant && !showProduction && !showStockOpname && !showSettings && (
+        {!showDashboard && !showWarehouseManagement && !showInventoryBooth && !showPrinterDatabase && !showColorVariant && !showProduction && !showStockOpname && !showSettings && (
           <>
             <div className="hidden md:block">
               <Header title={headerTitle} />

@@ -22,6 +22,9 @@ export async function POST(
     if (!material) {
       return NextResponse.json({ error: "Material tidak ditemukan" }, { status: 404 });
     }
+    if (!material.hasVariants) {
+      return NextResponse.json({ error: "Material ini tidak punya varian" }, { status: 400 });
+    }
 
     if (barcode) {
       const barcodeConflict = await db.materialVariant.findUnique({ where: { barcode } });

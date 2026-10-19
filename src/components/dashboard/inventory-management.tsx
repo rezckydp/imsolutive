@@ -39,6 +39,10 @@ interface MaterialData {
   id: string;
   name: string;
   unit: string;
+  hasVariants: boolean;
+  stock: number | null;
+  minStock: number | null;
+  barcode: string | null;
   variants: MaterialVariantData[];
 }
 
@@ -60,14 +64,19 @@ interface TallyEntry {
   isNew: boolean;
 }
 
-type InventoryTab = 'material' | 'riwayat';
-
 function isFilamentMaterialName(name: string) {
   return name.toLowerCase().startsWith('filament');
 }
 
-export function InventoryManagementPage() {
-  const [tab, setTab] = useState<InventoryTab>('material');
+interface MaterialCatalogTabProps {
+  // Deep-link from the Dashboard low-stock notification — select this
+  // Material in the left column once it's available, then consume the hint
+  // so navigating around the Material sub-tab afterward doesn't re-trigger it.
+  selectMaterialId?: string | null;
+  onSelectConsumed?: () => void;
+}
+
+export function MaterialCatalogTab({ selectMaterialId, onSelectConsumed }: MaterialCatalogTabProps) {
   const [materials, setMaterials] = useState<MaterialData[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string>('');
@@ -88,14 +97,22 @@ export function InventoryManagementPage() {
 
   useEffect(() => { fetchMaterials(); }, [fetchMaterials]);
 
+  useEffect(() => {
+    if (selectMaterialId && materials.some((m) => m.id === selectMaterialId)) {
+      setSelectedId(selectMaterialId);
+      onSelectConsumed?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectMaterialId, materials]);
+
   const selected = materials.find((m) => m.id === selectedId) || null;
 
   const stats = useMemo(() => {
     const totalVariants = materials.reduce((sum, m) => sum + m.variants.length, 0);
-    const lowStockCount = materials.reduce(
-      (sum, m) => sum + m.variants.filter((v) => v.stock < v.minStock).length,
-      0
-    );
+    const lowStockCount = materials.reduce((sum, m) => {
+      if (m.hasVariants) return sum + m.variants.filter((v) => v.stock < v.minStock).length;
+      return sum + ((m.stock ?? 0) < (m.minStock ?? 0) ? 1 : 0);
+    }, 0);
     return { totalMaterial: materials.length, totalVariants, lowStockCount };
   }, [materials]);
 
@@ -103,16 +120,39 @@ export function InventoryManagementPage() {
   const [showAddMaterial, setShowAddMaterial] = useState(false);
   const [newMaterialName, setNewMaterialName] = useState('');
   const [newMaterialUnit, setNewMaterialUnit] = useState('pcs');
+  const [newHasVariants, setNewHasVariants] = useState(true);
+  const [newStock, setNewStock] = useState('0');
+  const [newMinStock, setNewMinStock] = useState('0');
+  const [newBarcode, setNewBarcode] = useState('');
   const [savingMaterial, setSavingMaterial] = useState(false);
+
+  const resetAddMaterialForm = () => {
+    setNewMaterialName('');
+    setNewMaterialUnit('pcs');
+    setNewHasVariants(true);
+    setNewStock('0');
+    setNewMinStock('0');
+    setNewBarcode('');
+  };
 
   const handleAddMaterial = async () => {
     if (!newMaterialName.trim()) return;
     setSavingMaterial(true);
     try {
+      const body: Record<string, unknown> = {
+        name: newMaterialName.trim(),
+        unit: newMaterialUnit.trim() || 'pcs',
+        hasVariants: newHasVariants,
+      };
+      if (!newHasVariants) {
+        body.stock = parseInt(newStock, 10) || 0;
+        body.minStock = parseInt(newMinStock, 10) || 0;
+        body.barcode = newBarcode.trim() || null;
+      }
       const res = await fetch('/api/materials', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newMaterialName.trim(), unit: newMaterialUnit.trim() || 'pcs' }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -121,8 +161,7 @@ export function InventoryManagementPage() {
       }
       const created = await res.json();
       setShowAddMaterial(false);
-      setNewMaterialName('');
-      setNewMaterialUnit('pcs');
+      resetAddMaterialForm();
       await fetchMaterials();
       setSelectedId(created.id);
     } catch {
@@ -208,6 +247,55 @@ export function InventoryManagementPage() {
       alert('Gagal menghapus Variant. Coba lagi.');
     } finally {
       setDeletingVariant(false);
+    }
+  };
+
+  // ============ EDIT MATERIAL WITHOUT VARIANTS (inline card) ============
+  const [simpleDraft, setSimpleDraft] = useState<{ stock: string; minStock: string; barcode: string } | null>(null);
+  const [savingSimple, setSavingSimple] = useState(false);
+
+  useEffect(() => {
+    if (selected && !selected.hasVariants) {
+      setSimpleDraft({
+        stock: String(selected.stock ?? 0),
+        minStock: String(selected.minStock ?? 0),
+        barcode: selected.barcode || '',
+      });
+    } else {
+      setSimpleDraft(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.id]);
+
+  const simpleDirty = selected && !selected.hasVariants && simpleDraft && (
+    simpleDraft.stock !== String(selected.stock ?? 0) ||
+    simpleDraft.minStock !== String(selected.minStock ?? 0) ||
+    simpleDraft.barcode !== (selected.barcode || '')
+  );
+
+  const handleSaveSimpleMaterial = async () => {
+    if (!selected || !simpleDraft) return;
+    setSavingSimple(true);
+    try {
+      const res = await fetch(`/api/materials/${selected.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stock: parseInt(simpleDraft.stock, 10) || 0,
+          minStock: parseInt(simpleDraft.minStock, 10) || 0,
+          barcode: simpleDraft.barcode.trim() || null,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || 'Gagal menyimpan');
+        return;
+      }
+      await fetchMaterials();
+    } catch {
+      alert('Gagal menyimpan. Coba lagi.');
+    } finally {
+      setSavingSimple(false);
     }
   };
 
@@ -324,192 +412,218 @@ export function InventoryManagementPage() {
 
   return (
     <div>
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--t-heading)]">Inventory Management</h1>
-          <p className="text-sm text-[var(--t-body)] mt-1">Material & bahan baku pelengkap (packaging, filament)</p>
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 gap-3 mb-4 max-w-md">
+        <div className="bg-[var(--card)] rounded-xl p-4 border border-[var(--bd)]">
+          <p className="text-[11px] text-[var(--t-muted)] uppercase tracking-wider mb-1">Total Material</p>
+          <p className="text-xl font-bold text-[var(--t-heading)]">{stats.totalMaterial} jenis · {stats.totalVariants} varian</p>
+        </div>
+        <div className="bg-[var(--card)] rounded-xl p-4 border border-[var(--bd)]">
+          <p className="text-[11px] text-[var(--t-muted)] uppercase tracking-wider mb-1">Low Stock</p>
+          <p className={`text-xl font-bold ${stats.lowStockCount > 0 ? 'text-[var(--danger)]' : 'text-[var(--t-heading)]'}`}>
+            {stats.lowStockCount} item
+          </p>
         </div>
       </div>
 
-      {/* Sub-tab Switcher */}
-      <div className="flex items-center bg-[var(--surface)] rounded-lg p-0.5 mb-4 w-fit">
-        <button
-          onClick={() => setTab('material')}
-          className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-            tab === 'material' ? 'bg-[var(--card)] text-[var(--brand)] shadow-sm' : 'text-[var(--t-body)] hover:text-[var(--t-heading)]'
-          }`}
+      {/* Header actions */}
+      <div className="flex items-center gap-2 mb-4">
+        <Button
+          onClick={() => setShowAddMaterial(true)}
+          className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white rounded-full px-4 h-9 text-sm"
         >
-          Material
-        </button>
-        <button
-          onClick={() => setTab('riwayat')}
-          className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
-            tab === 'riwayat' ? 'bg-[var(--card)] text-[var(--brand)] shadow-sm' : 'text-[var(--t-body)] hover:text-[var(--t-heading)]'
-          }`}
+          <Plus className="w-4 h-4 mr-1.5" />
+          Tambah Material
+        </Button>
+        <Button
+          onClick={openScanSession}
+          variant="outline"
+          className="rounded-full px-4 h-9 text-sm border-[var(--bd)]"
         >
-          Riwayat Ambil Material
-        </button>
+          <PackagePlus className="w-4 h-4 mr-1.5" />
+          Ambil Material
+        </Button>
       </div>
 
-      {tab === 'material' ? (
-        <>
-          {/* Stat cards */}
-          <div className="grid grid-cols-2 gap-3 mb-4 max-w-md">
-            <div className="bg-[var(--card)] rounded-xl p-4 border border-[var(--bd)]">
-              <p className="text-[11px] text-[var(--t-muted)] uppercase tracking-wider mb-1">Total Material</p>
-              <p className="text-xl font-bold text-[var(--t-heading)]">{stats.totalMaterial} jenis · {stats.totalVariants} varian</p>
-            </div>
-            <div className="bg-[var(--card)] rounded-xl p-4 border border-[var(--bd)]">
-              <p className="text-[11px] text-[var(--t-muted)] uppercase tracking-wider mb-1">Low Stock</p>
-              <p className={`text-xl font-bold ${stats.lowStockCount > 0 ? 'text-[var(--danger)]' : 'text-[var(--t-heading)]'}`}>
-                {stats.lowStockCount} varian
-              </p>
-            </div>
+      {/* Master-Detail */}
+      {loading ? (
+        <p className="text-sm text-[var(--t-muted)]">Memuat...</p>
+      ) : materials.length === 0 ? (
+        <div className="bg-[var(--card)] rounded-xl p-8 border border-[var(--bd)] text-center">
+          <Package className="w-10 h-10 text-[var(--t-muted)] mx-auto mb-2" />
+          <p className="text-sm text-[var(--t-body)]">Belum ada Material. Tambah yang pertama.</p>
+        </div>
+      ) : (
+        <div className="flex gap-4">
+          {/* Left column — Material list */}
+          <div className="w-[280px] flex-shrink-0 bg-[var(--card)] rounded-xl border border-[var(--bd)] overflow-y-auto max-h-[560px]">
+            {materials.map((m) => {
+              const isActive = m.id === selectedId;
+              const isLowSimple = !m.hasVariants && (m.stock ?? 0) < (m.minStock ?? 0);
+              const lowCount = m.hasVariants ? m.variants.filter((v) => v.stock < v.minStock).length : (isLowSimple ? 1 : 0);
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => setSelectedId(m.id)}
+                  className={`w-full text-left px-4 py-3 border-b border-[var(--bd)] last:border-b-0 transition-colors cursor-pointer ${
+                    isActive ? 'bg-[var(--brand)]/10' : 'hover:bg-[var(--surface)]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`text-sm font-medium truncate ${isActive ? 'text-[var(--brand)]' : 'text-[var(--t-heading)]'}`}>
+                      {m.name}
+                    </span>
+                    {lowCount > 0 && (
+                      <Badge className="text-[10px] px-1.5 py-0 rounded-full bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]/30 flex-shrink-0" variant="outline">
+                        {m.hasVariants ? lowCount : 'Low Stock'}
+                      </Badge>
+                    )}
+                  </div>
+                  <span className="text-[11px] text-[var(--t-muted)]">
+                    {m.hasVariants ? `${m.variants.length} varian` : `${m.stock ?? 0} ${m.unit}`}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
-          {/* Header actions */}
-          <div className="flex items-center gap-2 mb-4">
-            <Button
-              onClick={() => setShowAddMaterial(true)}
-              className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white rounded-full px-4 h-9 text-sm"
-            >
-              <Plus className="w-4 h-4 mr-1.5" />
-              Tambah Material
-            </Button>
-            <Button
-              onClick={openScanSession}
-              variant="outline"
-              className="rounded-full px-4 h-9 text-sm border-[var(--bd)]"
-            >
-              <PackagePlus className="w-4 h-4 mr-1.5" />
-              Ambil Material
-            </Button>
-          </div>
+          {/* Right column — detail */}
+          <div className="flex-1 bg-[var(--card)] rounded-xl border border-[var(--bd)] p-4">
+            {!selected ? (
+              <p className="text-sm text-[var(--t-muted)]">Pilih Material di sebelah kiri.</p>
+            ) : selected.hasVariants ? (
+              <>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-[var(--t-heading)]">{selected.name}</h3>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openAddVariant(selected.id)}
+                    className="h-8 text-xs rounded-full px-3"
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" />
+                    Tambah Varian
+                  </Button>
+                </div>
 
-          {/* Master-Detail */}
-          {loading ? (
-            <p className="text-sm text-[var(--t-muted)]">Memuat...</p>
-          ) : materials.length === 0 ? (
-            <div className="bg-[var(--card)] rounded-xl p-8 border border-[var(--bd)] text-center">
-              <Package className="w-10 h-10 text-[var(--t-muted)] mx-auto mb-2" />
-              <p className="text-sm text-[var(--t-body)]">Belum ada Material. Tambah yang pertama.</p>
-            </div>
-          ) : (
-            <div className="flex gap-4">
-              {/* Left column — Material list */}
-              <div className="w-[280px] flex-shrink-0 bg-[var(--card)] rounded-xl border border-[var(--bd)] overflow-y-auto max-h-[560px]">
-                {materials.map((m) => {
-                  const lowCount = m.variants.filter((v) => v.stock < v.minStock).length;
-                  const isActive = m.id === selectedId;
-                  return (
-                    <button
-                      key={m.id}
-                      onClick={() => setSelectedId(m.id)}
-                      className={`w-full text-left px-4 py-3 border-b border-[var(--bd)] last:border-b-0 transition-colors cursor-pointer ${
-                        isActive ? 'bg-[var(--brand)]/10' : 'hover:bg-[var(--surface)]'
+                {selected.variants.length === 0 ? (
+                  <p className="text-sm text-[var(--t-muted)] py-6 text-center">Belum ada varian.</p>
+                ) : (
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-[11px] text-[var(--t-muted)] uppercase tracking-wider border-b border-[var(--bd)]">
+                        <th className="pb-2 font-medium">Varian</th>
+                        <th className="pb-2 font-medium">Stock</th>
+                        <th className="pb-2 font-medium">Min Stock</th>
+                        <th className="pb-2 font-medium">Status</th>
+                        <th className="pb-2 font-medium">Barcode</th>
+                        <th className="pb-2 font-medium text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selected.variants.map((v) => {
+                        const isLow = v.stock < v.minStock;
+                        return (
+                          <tr key={v.id} className="border-b border-[var(--bd)] last:border-b-0">
+                            <td className="py-2.5 text-[var(--t-heading)]">{v.label}</td>
+                            <td className="py-2.5 text-[var(--t-body)]">{v.stock}</td>
+                            <td className="py-2.5 text-[var(--t-body)]">{v.minStock}</td>
+                            <td className="py-2.5">
+                              <Badge
+                                className={`text-[10px] px-1.5 py-0 rounded-full border ${
+                                  isLow
+                                    ? 'bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]/30'
+                                    : 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/30'
+                                }`}
+                                variant="outline"
+                              >
+                                {isLow ? 'Low Stock' : 'OK'}
+                              </Badge>
+                            </td>
+                            <td className="py-2.5 text-[var(--t-muted)] font-mono text-xs">
+                              {isFilamentMaterialName(selected.name) ? (v.barcode || '—') : '—'}
+                            </td>
+                            <td className="py-2.5 text-right">
+                              <button
+                                onClick={() => openEditVariant(selected.id, v)}
+                                className="p-1 rounded hover:bg-[var(--surface)] text-[var(--t-muted)] hover:text-[var(--t-heading)] cursor-pointer"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setDeleteVariant(v)}
+                                className="p-1 rounded hover:bg-[var(--danger)]/10 text-[var(--t-muted)] hover:text-[var(--danger)] cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </>
+            ) : (
+              // Material without variants — simple inline-editable card
+              simpleDraft && (
+                <>
+                  <h3 className="text-sm font-semibold text-[var(--t-heading)] mb-3">{selected.name}</h3>
+                  <div className="grid grid-cols-2 gap-3 max-w-sm mb-3">
+                    <div className="space-y-1">
+                      <Label className="text-[11px] text-[var(--t-body)] uppercase tracking-wider">Stock ({selected.unit})</Label>
+                      <Input
+                        type="number"
+                        value={simpleDraft.stock}
+                        onChange={(e) => setSimpleDraft({ ...simpleDraft, stock: e.target.value })}
+                        className="h-9 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[11px] text-[var(--t-body)] uppercase tracking-wider">Min Stock</Label>
+                      <Input
+                        type="number"
+                        value={simpleDraft.minStock}
+                        onChange={(e) => setSimpleDraft({ ...simpleDraft, minStock: e.target.value })}
+                        className="h-9 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg"
+                      />
+                    </div>
+                    <div className="space-y-1 col-span-2">
+                      <Label className="text-[11px] text-[var(--t-body)] uppercase tracking-wider">Barcode (opt)</Label>
+                      <Input
+                        value={simpleDraft.barcode}
+                        onChange={(e) => setSimpleDraft({ ...simpleDraft, barcode: e.target.value })}
+                        className="h-9 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg font-mono"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      className={`text-[10px] px-1.5 py-0 rounded-full border ${
+                        (selected.stock ?? 0) < (selected.minStock ?? 0)
+                          ? 'bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]/30'
+                          : 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/30'
                       }`}
+                      variant="outline"
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className={`text-sm font-medium truncate ${isActive ? 'text-[var(--brand)]' : 'text-[var(--t-heading)]'}`}>
-                          {m.name}
-                        </span>
-                        {lowCount > 0 && (
-                          <Badge className="text-[10px] px-1.5 py-0 rounded-full bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]/30 flex-shrink-0" variant="outline">
-                            {lowCount}
-                          </Badge>
-                        )}
-                      </div>
-                      <span className="text-[11px] text-[var(--t-muted)]">{m.variants.length} varian</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Right column — Variant detail */}
-              <div className="flex-1 bg-[var(--card)] rounded-xl border border-[var(--bd)] p-4">
-                {selected ? (
-                  <>
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-semibold text-[var(--t-heading)]">{selected.name}</h3>
+                      {(selected.stock ?? 0) < (selected.minStock ?? 0) ? 'Low Stock' : 'OK'}
+                    </Badge>
+                    {simpleDirty && (
                       <Button
                         size="sm"
-                        variant="outline"
-                        onClick={() => openAddVariant(selected.id)}
-                        className="h-8 text-xs rounded-full px-3"
+                        onClick={handleSaveSimpleMaterial}
+                        disabled={savingSimple}
+                        className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white rounded-full px-4 h-8 text-xs disabled:opacity-50"
                       >
-                        <Plus className="w-3.5 h-3.5 mr-1" />
-                        Tambah Varian
+                        {savingSimple ? 'Saving...' : 'Simpan'}
                       </Button>
-                    </div>
-
-                    {selected.variants.length === 0 ? (
-                      <p className="text-sm text-[var(--t-muted)] py-6 text-center">Belum ada varian.</p>
-                    ) : (
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="text-left text-[11px] text-[var(--t-muted)] uppercase tracking-wider border-b border-[var(--bd)]">
-                            <th className="pb-2 font-medium">Varian</th>
-                            <th className="pb-2 font-medium">Stock</th>
-                            <th className="pb-2 font-medium">Min Stock</th>
-                            <th className="pb-2 font-medium">Status</th>
-                            <th className="pb-2 font-medium">Barcode</th>
-                            <th className="pb-2 font-medium text-right">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {selected.variants.map((v) => {
-                            const isLow = v.stock < v.minStock;
-                            return (
-                              <tr key={v.id} className="border-b border-[var(--bd)] last:border-b-0">
-                                <td className="py-2.5 text-[var(--t-heading)]">{v.label}</td>
-                                <td className="py-2.5 text-[var(--t-body)]">{v.stock}</td>
-                                <td className="py-2.5 text-[var(--t-body)]">{v.minStock}</td>
-                                <td className="py-2.5">
-                                  <Badge
-                                    className={`text-[10px] px-1.5 py-0 rounded-full border ${
-                                      isLow
-                                        ? 'bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]/30'
-                                        : 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/30'
-                                    }`}
-                                    variant="outline"
-                                  >
-                                    {isLow ? 'Low Stock' : 'OK'}
-                                  </Badge>
-                                </td>
-                                <td className="py-2.5 text-[var(--t-muted)] font-mono text-xs">
-                                  {isFilamentMaterialName(selected.name) ? (v.barcode || '—') : '—'}
-                                </td>
-                                <td className="py-2.5 text-right">
-                                  <button
-                                    onClick={() => openEditVariant(selected.id, v)}
-                                    className="p-1 rounded hover:bg-[var(--surface)] text-[var(--t-muted)] hover:text-[var(--t-heading)] cursor-pointer"
-                                  >
-                                    <Pencil className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    onClick={() => setDeleteVariant(v)}
-                                    className="p-1 rounded hover:bg-[var(--danger)]/10 text-[var(--t-muted)] hover:text-[var(--danger)] cursor-pointer"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
                     )}
-                  </>
-                ) : (
-                  <p className="text-sm text-[var(--t-muted)]">Pilih Material di sebelah kiri.</p>
-                )}
-              </div>
-            </div>
-          )}
-        </>
-      ) : (
-        <RiwayatTab />
+                  </div>
+                </>
+              )
+            )}
+          </div>
+        </div>
       )}
 
       {/* ============ ADD MATERIAL DIALOG ============ */}
@@ -517,7 +631,9 @@ export function InventoryManagementPage() {
         <DialogContent className="sm:max-w-sm rounded-xl">
           <DialogHeader>
             <DialogTitle className="text-[var(--t-heading)]">Tambah Material</DialogTitle>
-            <DialogDescription className="text-[var(--t-body)]">Isi nama & satuan, lanjut tambahin varian pertamanya.</DialogDescription>
+            <DialogDescription className="text-[var(--t-body)]">
+              {newHasVariants ? 'Isi nama & satuan, lanjut tambahin varian pertamanya.' : 'Isi nama, satuan, dan stok awalnya sekali jadi.'}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1.5">
@@ -538,6 +654,48 @@ export function InventoryManagementPage() {
                 className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg w-32"
               />
             </div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={newHasVariants}
+                onChange={(e) => setNewHasVariants(e.target.checked)}
+                className="w-4 h-4 rounded border-[var(--bd)] accent-[var(--brand)] cursor-pointer"
+              />
+              <span className="text-sm text-[var(--t-heading)]">Material ini punya varian (ukuran/warna/jenis)?</span>
+            </label>
+
+            {!newHasVariants && (
+              <div className="space-y-3 pt-1 border-t border-[var(--bd)] mt-1">
+                <div className="flex gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium text-[var(--t-heading)]">Jumlah Stock</Label>
+                    <Input
+                      type="number"
+                      value={newStock}
+                      onChange={(e) => setNewStock(e.target.value)}
+                      className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg w-24"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium text-[var(--t-heading)]">Min Stock</Label>
+                    <Input
+                      type="number"
+                      value={newMinStock}
+                      onChange={(e) => setNewMinStock(e.target.value)}
+                      className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg w-24"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium text-[var(--t-heading)]">Barcode <span className="font-normal text-[var(--t-muted)]">(opt)</span></Label>
+                  <Input
+                    value={newBarcode}
+                    onChange={(e) => setNewBarcode(e.target.value)}
+                    className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg font-mono"
+                  />
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setShowAddMaterial(false)} disabled={savingMaterial} className="rounded-full px-5">
@@ -780,7 +938,7 @@ export function InventoryManagementPage() {
 
 // ============ RIWAYAT TAB ============
 
-function RiwayatTab() {
+export function RiwayatTab() {
   const [movements, setMovements] = useState<MovementRow[]>([]);
   const [loading, setLoading] = useState(true);
 

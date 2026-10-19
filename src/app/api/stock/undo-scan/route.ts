@@ -80,12 +80,20 @@ export async function POST(request: NextRequest) {
     // same as the rest of undo-scan.
     const boms = await db.productBOM.findMany({ where: { productId: variant.product.id } });
     for (const b of boms) {
-      await db.materialVariant.update({
-        where: { id: b.materialVariantId },
-        data: { stock: { increment: b.qty } },
-      });
+      if (b.materialVariantId) {
+        await db.materialVariant.update({
+          where: { id: b.materialVariantId },
+          data: { stock: { increment: b.qty } },
+        });
+      } else {
+        await db.material.update({
+          where: { id: b.materialId },
+          data: { stock: { increment: b.qty } },
+        });
+      }
       await db.materialMovement.create({
         data: {
+          materialId: b.materialId,
           materialVariantId: b.materialVariantId,
           qty: b.qty,
           source: "Manual",

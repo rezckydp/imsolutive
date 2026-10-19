@@ -109,15 +109,22 @@ export async function POST(request: NextRequest) {
     // Management is the only consequence.
     const boms = await db.productBOM.findMany({
       where: { productId: variant.product.id },
-      include: { materialVariant: { include: { material: true } } },
     });
     for (const b of boms) {
-      await db.materialVariant.update({
-        where: { id: b.materialVariantId },
-        data: { stock: { decrement: b.qty } },
-      });
+      if (b.materialVariantId) {
+        await db.materialVariant.update({
+          where: { id: b.materialVariantId },
+          data: { stock: { decrement: b.qty } },
+        });
+      } else {
+        await db.material.update({
+          where: { id: b.materialId },
+          data: { stock: { decrement: b.qty } },
+        });
+      }
       await db.materialMovement.create({
         data: {
+          materialId: b.materialId,
           materialVariantId: b.materialVariantId,
           qty: -b.qty,
           source: "Dipakai Produksi",

@@ -26,7 +26,7 @@ export async function GET(
           orderBy: { sortOrder: "asc" },
           include: { partColors: { orderBy: { color: "asc" } } },
         },
-        boms: { include: { materialVariant: { include: { material: true } } } },
+        boms: { include: { material: true, materialVariant: true } },
       },
     });
 
@@ -334,12 +334,13 @@ export async function PUT(
     // only touched when the field is present at all.
     if (bom !== undefined && Array.isArray(bom)) {
       await db.productBOM.deleteMany({ where: { productId: existing.id } });
-      const validRows = bom.filter((b: { materialVariantId?: string; qty?: number }) => b.materialVariantId);
+      const validRows = bom.filter((b: { materialId?: string }) => b.materialId);
       if (validRows.length > 0) {
         await db.productBOM.createMany({
-          data: validRows.map((b: { materialVariantId: string; qty?: number }) => ({
+          data: validRows.map((b: { materialId: string; materialVariantId?: string | null; qty?: number }) => ({
             productId: existing.id,
-            materialVariantId: b.materialVariantId,
+            materialId: b.materialId,
+            materialVariantId: b.materialVariantId || null,
             qty: b.qty && b.qty > 0 ? b.qty : 1,
           })),
         });
@@ -362,7 +363,7 @@ export async function PUT(
           orderBy: { sortOrder: "asc" },
           include: { partColors: { orderBy: { color: "asc" } } },
         },
-        boms: { include: { materialVariant: { include: { material: true } } } },
+        boms: { include: { material: true, materialVariant: true } },
       },
     });
 

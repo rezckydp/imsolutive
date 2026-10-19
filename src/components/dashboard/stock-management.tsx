@@ -90,7 +90,7 @@ interface ProductData {
   parentProduct?: { id: string; sku: string; name: string } | null;
   childProducts?: Array<{ id: string; sku: string; name: string }>;
   variants?: Array<{ id: string; color: string; colorHex: string; qty: number; barcode: string; type?: string; price?: number | null }>;
-  boms?: Array<{ materialVariantId: string; qty: number; materialVariant?: { materialId: string } }>;
+  boms?: Array<{ materialId: string; materialVariantId: string | null; qty: number }>;
   _expanded?: boolean;
 }
 

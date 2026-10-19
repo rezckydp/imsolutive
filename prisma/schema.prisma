@@ -69,13 +69,22 @@ model Product {
 // bahan baku pelengkap (packaging & filament), separate from Product (barang
 // jadi) and BoothSettings/addon (booth domain).
 model Material {
-  id        String   @id @default(cuid())
-  name      String
-  unit      String   @default("pcs")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  name        String
+  unit        String   @default("pcs")
+  // Not every Material has variants (e.g. "Thankyou Card" is just 1 kind,
+  // unlike "Kardus"/"Filament" with many sizes/colors) — when false, stock
+  // lives directly on this row and there are no MaterialVariant children.
+  hasVariants Boolean  @default(true)
+  stock       Int?     // only used when hasVariants = false
+  minStock    Int?     // only used when hasVariants = false
+  barcode     String?  @unique // only used when hasVariants = false
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  variants MaterialVariant[]
+  variants  MaterialVariant[]
+  boms      ProductBOM[]
+  movements MaterialMovement[]
 }
 
 model MaterialVariant {
@@ -93,13 +102,15 @@ model MaterialVariant {
   boms      ProductBOM[]
 }
 
-// Log of every stock movement for a MaterialVariant — "Riwayat Ambil
-// Material" tab. productId/productLabel are filled in only for "Dipakai
-// Produksi" entries so a deduct can be traced back to the Product that
-// consumed it.
+// Log of every stock movement — "Riwayat Ambil Material" tab. materialId is
+// always set; materialVariantId only when the movement is against a
+// variant-ful Material ("—" in the Riwayat table otherwise). productId/
+// productLabel are filled in only for "Dipakai Produksi" entries so a
+// deduct can be traced back to the Product that consumed it.
 model MaterialMovement {
   id                String   @id @default(cuid())
-  materialVariantId String
+  materialId        String
+  materialVariantId String?
   qty               Int      // positive = masuk, negative = keluar/dipakai
   source            String   // "Scan Terima Material" | "Dipakai Produksi" | "Manual"
   username          String   @default("")
@@ -107,23 +118,28 @@ model MaterialMovement {
   productLabel      String   @default("")
   createdAt         DateTime @default(now())
 
-  materialVariant MaterialVariant @relation(fields: [materialVariantId], references: [id], onDelete: Cascade)
+  material        Material         @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  materialVariant MaterialVariant? @relation(fields: [materialVariantId], references: [id], onDelete: Cascade)
 }
 
 // BOM (Material Pelengkap) checklist on a Product's own form
 // (ims-feature-bom-checklist-product-form.md) — shared by every color of
-// THIS Product row (not per color/variant).
+// THIS Product row (not per color/variant). materialVariantId is only set
+// when the Material is variant-ful; null means the deduct hits
+// Material.stock directly (e.g. "Thankyou Card").
 model ProductBOM {
   id                String   @id @default(cuid())
   productId         String
-  materialVariantId String
+  materialId        String
+  materialVariantId String?
   qty               Int      @default(1)
   createdAt         DateTime @default(now())
 
-  product         Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
-  materialVariant MaterialVariant @relation(fields: [materialVariantId], references: [id], onDelete: Cascade)
+  product         Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  material        Material         @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  materialVariant MaterialVariant? @relation(fields: [materialVariantId], references: [id], onDelete: Cascade)
 
-  @@unique([productId, materialVariantId])
+  @@unique([productId, materialId])
 }
 
 // Bundle Pricing Engine — kategori yang produknya boleh dicampur dalam 1

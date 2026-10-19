@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
             orderBy: { sortOrder: "asc" },
             include: { partColors: { orderBy: { color: "asc" } } },
           },
-          boms: { include: { materialVariant: { include: { material: true } } } },
+          boms: { include: { material: true, materialVariant: true } },
         },
         orderBy: { createdAt: "desc" },
         skip,
@@ -109,9 +109,10 @@ export async function POST(request: NextRequest) {
       ? {
           boms: {
             create: bom
-              .filter((b: { materialVariantId?: string }) => b.materialVariantId)
-              .map((b: { materialVariantId: string; qty?: number }) => ({
-                materialVariantId: b.materialVariantId,
+              .filter((b: { materialId?: string }) => b.materialId)
+              .map((b: { materialId: string; materialVariantId?: string | null; qty?: number }) => ({
+                materialId: b.materialId,
+                materialVariantId: b.materialVariantId || null,
                 qty: b.qty && b.qty > 0 ? b.qty : 1,
               })),
           },
@@ -364,7 +365,7 @@ export async function POST(request: NextRequest) {
           orderBy: { sortOrder: "asc" },
           include: { partColors: { orderBy: { color: "asc" } } },
         },
-        boms: { include: { materialVariant: { include: { material: true } } } },
+        boms: { include: { material: true, materialVariant: true } },
       },
     });
 

@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
 
     await db.materialMovement.create({
       data: {
+        materialId: variant.materialId,
         materialVariantId: variant.id,
         qty: 1,
         source: "Scan Terima Material",

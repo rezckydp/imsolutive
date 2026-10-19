@@ -42,6 +42,7 @@ export async function PUT(
     if (newStock !== undefined && newStock !== existing.stock) {
       await db.materialMovement.create({
         data: {
+          materialId: existing.materialId,
           materialVariantId: id,
           qty: newStock - existing.stock,
           source: "Manual",

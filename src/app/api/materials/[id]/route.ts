@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getCurrentUser } from "@/lib/current-user";
 
-// PUT update a Material (Nama, Unit)
+// PUT update a Material — Nama/Unit always; for hasVariants=false rows also
+// Stock/Min Stock/Barcode (inline edit straight from the detail card). A
+// direct stock edit here is a manual correction, logged same as the rest.
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = getCurrentUser(request);
   try {
     const { id } = await params;
     const body = await request.json();
@@ -17,14 +21,39 @@ export async function PUT(
       return NextResponse.json({ error: "Material tidak ditemukan" }, { status: 404 });
     }
 
+    const barcode = body.barcode !== undefined ? (body.barcode || "").toString().trim() || null : undefined;
+    if (!existing.hasVariants && barcode && barcode !== existing.barcode) {
+      const barcodeConflict = await db.material.findUnique({ where: { barcode } });
+      if (barcodeConflict) {
+        return NextResponse.json({ error: `Barcode "${barcode}" sudah dipakai Material lain` }, { status: 409 });
+      }
+    }
+
+    const newStock = !existing.hasVariants && body.stock !== undefined ? (parseInt(body.stock, 10) || 0) : undefined;
+
     const material = await db.material.update({
       where: { id },
       data: {
         ...(name !== undefined && name !== "" && { name }),
         ...(unit !== undefined && unit !== "" && { unit }),
+        ...(!existing.hasVariants && newStock !== undefined && { stock: newStock }),
+        ...(!existing.hasVariants && body.minStock !== undefined && { minStock: parseInt(body.minStock, 10) || 0 }),
+        ...(!existing.hasVariants && barcode !== undefined && { barcode }),
       },
       include: { variants: { orderBy: { label: "asc" } } },
     });
+
+    if (newStock !== undefined && existing.stock !== null && newStock !== existing.stock) {
+      await db.materialMovement.create({
+        data: {
+          materialId: id,
+          qty: newStock - existing.stock,
+          source: "Manual",
+          username: user?.username ?? "unknown",
+          productLabel: existing.name,
+        },
+      });
+    }
 
     return NextResponse.json(material);
   } catch (error) {
@@ -33,7 +62,7 @@ export async function PUT(
   }
 }
 
-// DELETE a Material — cascades its variants, their BOM links and movement log.
+// DELETE a Material — cascades its variants, BOM links and movement log.
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
