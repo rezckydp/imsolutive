@@ -46,6 +46,7 @@ import {
   type MatrixRow,
 } from '@/components/dashboard/variant-matrix-builder';
 import { MergeMatrixDialog } from '@/components/dashboard/merge-matrix-dialog';
+import { ProductBomChecklist, type BomChecklistHandle } from '@/components/dashboard/product-bom-checklist';
 
 // ============ TYPES ============
 
@@ -89,6 +90,7 @@ interface ProductData {
   parentProduct?: { id: string; sku: string; name: string } | null;
   childProducts?: Array<{ id: string; sku: string; name: string }>;
   variants?: Array<{ id: string; color: string; colorHex: string; qty: number; barcode: string; type?: string; price?: number | null }>;
+  boms?: Array<{ materialVariantId: string; qty: number; materialVariant?: { materialId: string } }>;
   _expanded?: boolean;
 }
 
@@ -307,6 +309,8 @@ export function StockManagement() {
   // ============ VARIANT MATRIX BUILDER WIRING ============
   const addMatrixRef = useRef<MatrixBuilderHandle>(null);
   const editMatrixRef = useRef<MatrixBuilderHandle>(null);
+  const addBomRef = useRef<BomChecklistHandle>(null);
+  const editBomRef = useRef<BomChecklistHandle>(null);
 
   // Seed rows for the Add dialog's matrix builder from newProduct.variants /
   // typeVariants (already populated correctly by openAddDialog/handleParentSelect
@@ -532,6 +536,7 @@ export function StockManagement() {
         name: newProduct.name.trim(),
         minStock: newProduct.minStock,
         variasi1Name,
+        bom: addBomRef.current?.getPayload() ?? [],
       };
 
       if (newProduct.productType === 'variant' && newProduct.parentProductId) {
@@ -619,6 +624,7 @@ export function StockManagement() {
           estPrintMinutes: editEstPrintMinutes.trim() ? parseInt(editEstPrintMinutes, 10) : null,
           variasi1Name,
           variants: variantsPayload,
+          bom: editBomRef.current?.getPayload() ?? [],
         }),
       });
 
@@ -1268,6 +1274,9 @@ export function StockManagement() {
                 childMode={newProduct.productType === 'variant'}
               />
             </div>
+
+            {/* Material Pelengkap (BOM) checklist */}
+            {showAddDialog && <ProductBomChecklist ref={addBomRef} />}
           </div>
 
           <DialogFooter className="gap-2">
@@ -1500,6 +1509,9 @@ export function StockManagement() {
                     />
                   )}
                 </div>
+
+                {/* Material Pelengkap (BOM) checklist */}
+                <ProductBomChecklist key={editProduct.id} ref={editBomRef} initialBom={editProduct.boms} />
               </div>
 
               <DialogFooter className="gap-2">

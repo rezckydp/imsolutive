@@ -26,6 +26,7 @@ export async function GET(
           orderBy: { sortOrder: "asc" },
           include: { partColors: { orderBy: { color: "asc" } } },
         },
+        boms: { include: { materialVariant: { include: { material: true } } } },
       },
     });
 
@@ -55,7 +56,7 @@ export async function PUT(
   try {
     const { sku } = await params;
     const body = await request.json();
-    const { sku: newSku, name, minStock, estPrintMinutes, variasi1Name, variants, parts } = body;
+    const { sku: newSku, name, minStock, estPrintMinutes, variasi1Name, variants, parts, bom } = body;
 
     // Check product exists
     const existing = await db.product.findUnique({
@@ -328,6 +329,23 @@ export async function PUT(
       }
     }
 
+    // Handle BOM checklist — replace all rows with the checked state submitted
+    // (ims-feature-bom-checklist-product-form.md §Behavior simpan). Optional:
+    // only touched when the field is present at all.
+    if (bom !== undefined && Array.isArray(bom)) {
+      await db.productBOM.deleteMany({ where: { productId: existing.id } });
+      const validRows = bom.filter((b: { materialVariantId?: string; qty?: number }) => b.materialVariantId);
+      if (validRows.length > 0) {
+        await db.productBOM.createMany({
+          data: validRows.map((b: { materialVariantId: string; qty?: number }) => ({
+            productId: existing.id,
+            materialVariantId: b.materialVariantId,
+            qty: b.qty && b.qty > 0 ? b.qty : 1,
+          })),
+        });
+      }
+    }
+
     // Return updated product with variants, parts, partColors, and group info
     const updated = await db.product.findUnique({
       where: { sku: currentSku },
@@ -344,6 +362,7 @@ export async function PUT(
           orderBy: { sortOrder: "asc" },
           include: { partColors: { orderBy: { color: "asc" } } },
         },
+        boms: { include: { materialVariant: { include: { material: true } } } },
       },
     });
 

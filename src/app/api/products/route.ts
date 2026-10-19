@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
             orderBy: { sortOrder: "asc" },
             include: { partColors: { orderBy: { color: "asc" } } },
           },
+          boms: { include: { materialVariant: { include: { material: true } } } },
         },
         orderBy: { createdAt: "desc" },
         skip,
@@ -103,7 +104,19 @@ export async function POST(request: NextRequest) {
   const user = getCurrentUser(request);
   try {
     const body = await request.json();
-    const { sku, name, minStock, estPrintMinutes, variasi1Name, variants, parts, parentProductId } = body;
+    const { sku, name, minStock, estPrintMinutes, variasi1Name, variants, parts, parentProductId, bom } = body;
+    const bomCreate = Array.isArray(bom) && bom.length > 0
+      ? {
+          boms: {
+            create: bom
+              .filter((b: { materialVariantId?: string }) => b.materialVariantId)
+              .map((b: { materialVariantId: string; qty?: number }) => ({
+                materialVariantId: b.materialVariantId,
+                qty: b.qty && b.qty > 0 ? b.qty : 1,
+              })),
+          },
+        }
+      : {};
 
     if (!sku || !name) {
       return NextResponse.json(
@@ -201,6 +214,7 @@ export async function POST(request: NextRequest) {
                 })
               ),
             },
+            ...bomCreate,
           },
           include: {
             parentProduct: {
@@ -248,6 +262,7 @@ export async function POST(request: NextRequest) {
                 barcode: null,
               })),
             },
+            ...bomCreate,
           },
           include: {
             parentProduct: {
@@ -335,6 +350,7 @@ export async function POST(request: NextRequest) {
               ),
             },
           }),
+        ...bomCreate,
       },
       include: {
         parentProduct: {
@@ -348,6 +364,7 @@ export async function POST(request: NextRequest) {
           orderBy: { sortOrder: "asc" },
           include: { partColors: { orderBy: { color: "asc" } } },
         },
+        boms: { include: { materialVariant: { include: { material: true } } } },
       },
     });
 

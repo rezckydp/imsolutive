@@ -102,6 +102,32 @@ export async function POST(request: NextRequest) {
     });
     await syncStockToGroup(variant.id, 1);
 
+    // BOM deduct (ims-feature-bom-checklist-product-form.md) — this scan is
+    // the moment 1 physical pcs of the Product is confirmed in hand, so every
+    // Material it consumes gets decremented here. Deduct never blocks the
+    // scan and is allowed to go negative — a low-stock badge on Inventory
+    // Management is the only consequence.
+    const boms = await db.productBOM.findMany({
+      where: { productId: variant.product.id },
+      include: { materialVariant: { include: { material: true } } },
+    });
+    for (const b of boms) {
+      await db.materialVariant.update({
+        where: { id: b.materialVariantId },
+        data: { stock: { decrement: b.qty } },
+      });
+      await db.materialMovement.create({
+        data: {
+          materialVariantId: b.materialVariantId,
+          qty: -b.qty,
+          source: "Dipakai Produksi",
+          username: user?.username ?? "unknown",
+          productId: variant.product.id,
+          productLabel: variant.product.sku,
+        },
+      });
+    }
+
     const groupVariantIds = await getGroupVariantIds(variant.product.id);
     for (const vid of groupVariantIds) {
       await refreshOrderItemStatuses(vid);

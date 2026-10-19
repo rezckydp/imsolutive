@@ -76,6 +76,26 @@ export async function POST(request: NextRequest) {
     });
     await syncStockToGroup(variantId, -1);
 
+    // Reverse the BOM deduct receive-scan made for this pcs — exact inverse,
+    // same as the rest of undo-scan.
+    const boms = await db.productBOM.findMany({ where: { productId: variant.product.id } });
+    for (const b of boms) {
+      await db.materialVariant.update({
+        where: { id: b.materialVariantId },
+        data: { stock: { increment: b.qty } },
+      });
+      await db.materialMovement.create({
+        data: {
+          materialVariantId: b.materialVariantId,
+          qty: b.qty,
+          source: "Manual",
+          username: user?.username ?? "unknown",
+          productId: variant.product.id,
+          productLabel: `${variant.product.sku} — Undo Scan`,
+        },
+      });
+    }
+
     const groupVariantIds = await getGroupVariantIds(variant.product.id);
     for (const vid of groupVariantIds) {
       await refreshOrderItemStatuses(vid);
