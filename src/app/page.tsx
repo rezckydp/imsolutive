@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Sidebar } from '@/components/dashboard/sidebar';
 import { Header } from '@/components/dashboard/header';
 import { ThemeToggle } from '@/components/dashboard/theme-toggle';
-import { LowStockCard, type LowStockItem, type PipelineItem, type RecommendationItem } from '@/components/dashboard/low-stock-card';
+import { type LowStockItem, type PipelineItem, type RecommendationItem } from '@/components/dashboard/low-stock-card';
 import { PrintQueueCard, type PrintQueueItem } from '@/components/dashboard/print-queue-card';
 import { InProductionCard, type ProductionItem } from '@/components/dashboard/in-production-card';
 import { ProductionHistoryCard, type ProductionHistoryItem } from '@/components/dashboard/production-history-card';
@@ -771,35 +771,48 @@ export default function Home() {
               </div>
             )}
 
-            {/* Recent Order — moved up: primary place to send items to Print Queue */}
+            {/* Recent Order — moved up: primary place to send items to Print Queue.
+                Rekomendasi tab (ims-feature-move-recommendation-to-tab.md) now
+                hosts what used to be the standalone Recommendation card below. */}
             <div className="mb-3 md:mb-4">
               <RecentOrderCard
                 items={recentOrderItems}
                 pipelineByVariantId={pipelineByVariantId}
                 loading={loading}
                 onDataChange={fetchDashboardData}
+                minusItems={minusStockItems}
+                pipelineItems={pipelineItems}
+                recommendationItems={recommendationItems}
+                recommendationLoading={recommendationLoading}
+                onSendToPrintQueue={handleSendToPrintQueue}
               />
             </div>
 
-            {/* Middle Row: Stok Minus / Pipeline, Print Queue, In Production */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4 mb-3 md:mb-4">
-              <LowStockCard minusItems={minusStockItems} pipelineItems={pipelineItems} recommendationItems={recommendationItems} recommendationLoading={recommendationLoading} loading={loading} onSendToPrintQueue={handleSendToPrintQueue} />
-              <PrintQueueCard
-                items={printQueueItems}
-                loading={loading}
-                onRemoveItem={handleRemovePrintItem}
-                onUpdateItem={handleUpdatePrintItem}
-                onSendToProduction={handleSendToProduction}
-              />
-              <InProductionCard
-                items={productionItems}
-                loading={loading}
-                onComplete={handleCompleteProduction}
-                onSendBack={handleSendBackToPrintQueue}
-                onWriteOff={handleWriteOff}
-                onAdd={() => setAddNewOpen(true)}
-                onUpdatePrinter={() => fetchDashboardData()}
-              />
+            {/* Middle Row: Print Queue, In Production — was 3 equal columns
+                alongside Recommendation; now 2 columns at a 1:2 ratio since
+                In Production needs more width for its columns
+                (ims-feature-move-recommendation-to-tab.md) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-3 md:mb-4">
+              <div className="md:col-span-1">
+                <PrintQueueCard
+                  items={printQueueItems}
+                  loading={loading}
+                  onRemoveItem={handleRemovePrintItem}
+                  onUpdateItem={handleUpdatePrintItem}
+                  onSendToProduction={handleSendToProduction}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <InProductionCard
+                  items={productionItems}
+                  loading={loading}
+                  onComplete={handleCompleteProduction}
+                  onSendBack={handleSendBackToPrintQueue}
+                  onWriteOff={handleWriteOff}
+                  onAdd={() => setAddNewOpen(true)}
+                  onUpdatePrinter={() => fetchDashboardData()}
+                />
+              </div>
             </div>
 
             {/* Bottom Row: Leaderboard + Production History */}

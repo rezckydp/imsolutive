@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight, Printer, Loader2, AlertTriangle, PackageX, Sparkles, CheckCircle2 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 
@@ -52,6 +51,12 @@ interface LowStockCardProps {
   recommendationLoading?: boolean;
   loading?: boolean;
   onSendToPrintQueue?: (variantId: string, qty?: number) => void;
+  // true when hosted inside another Card's content (Recent Order's
+  // "Rekomendasi" tab — ims-feature-move-recommendation-to-tab.md) — drops
+  // the outer Card chrome (border/shadow/padding) so it doesn't nest inside
+  // the host's own Card. Everything else (sub-tabs, table, print buttons)
+  // is unchanged.
+  embedded?: boolean;
 }
 
 function SkeletonRows() {
@@ -83,7 +88,7 @@ function SkeletonRows() {
   );
 }
 
-export function LowStockCard({ minusItems = [], pipelineItems = [], recommendationItems = [], recommendationLoading = false, loading = false, onSendToPrintQueue }: LowStockCardProps) {
+export function LowStockCard({ minusItems = [], pipelineItems = [], recommendationItems = [], recommendationLoading = false, loading = false, onSendToPrintQueue, embedded = false }: LowStockCardProps) {
   const [tab, setTab] = useState<'minus' | 'pipeline' | 'reco'>('minus');
   const [page, setPage] = useState(0);
   const [sendingId, setSendingId] = useState<string | null>(null);
@@ -115,10 +120,10 @@ export function LowStockCard({ minusItems = [], pipelineItems = [], recommendati
   const isPipeline = tab === 'pipeline';
 
   return (
-    <Card className="rounded-xl shadow-sm border-0">
-      <CardHeader className="pb-3 px-4 pt-4">
+    <div className={embedded ? '' : 'bg-[var(--card)] rounded-xl shadow-sm'}>
+      <div className={embedded ? 'pb-3' : 'pb-3 px-4 pt-4'}>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <CardTitle className="text-sm font-semibold text-[var(--t-heading)]">
+          <div className="text-sm font-semibold text-[var(--t-heading)]">
             {isReco ? (
               <span className="flex items-center gap-1.5">
                 <Sparkles className="w-4 h-4 text-[var(--brand)]" />
@@ -135,7 +140,7 @@ export function LowStockCard({ minusItems = [], pipelineItems = [], recommendati
                 Pipeline
               </span>
             )}
-          </CardTitle>
+          </div>
           <div className="flex items-center gap-2">
             {/* Toggle Button */}
             <div className="flex items-center bg-[var(--surface)] rounded-lg p-0.5">
@@ -217,8 +222,8 @@ export function LowStockCard({ minusItems = [], pipelineItems = [], recommendati
             </div>
           </div>
         </div>
-      </CardHeader>
-      <CardContent className="px-4 pb-4 pt-0">
+      </div>
+      <div className={embedded ? '' : 'px-4 pb-4 pt-0'}>
         <div className="rounded-lg border border-[var(--bd)] overflow-x-auto -webkit-overflow-scrolling-touch">
           <table className="w-full min-w-[440px]">
             <thead>
@@ -375,7 +380,7 @@ export function LowStockCard({ minusItems = [], pipelineItems = [], recommendati
             </tbody>
           </table>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

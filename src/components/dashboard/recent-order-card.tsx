@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { CheckCircle2, Clock, Eye, Pencil, Trash2, AlertCircle, ChevronDown, ChevronUp, ShoppingCart, Printer, ArrowRight, RefreshCw, Factory, Sparkles, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { LowStockCard, type LowStockItem, type PipelineItem, type RecommendationItem } from '@/components/dashboard/low-stock-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -65,6 +66,14 @@ interface RecentOrderCardProps {
   pipelineByVariantId?: Record<string, PipelineStatusLite>;
   loading?: boolean;
   onDataChange?: () => void;
+  // "Rekomendasi" tab (ims-feature-move-recommendation-to-tab.md) — same
+  // data/content the standalone Recommendation card used to show, just
+  // relocated here as a 4th tab.
+  minusItems?: LowStockItem[];
+  pipelineItems?: PipelineItem[];
+  recommendationItems?: RecommendationItem[];
+  recommendationLoading?: boolean;
+  onSendToPrintQueue?: (variantId: string, qty?: number) => void;
 }
 
 function TableSkeleton() {
@@ -145,11 +154,21 @@ function PrintQuickPick({
   );
 }
 
-export function RecentOrderCard({ items = [], pipelineByVariantId = {}, loading = false, onDataChange }: RecentOrderCardProps) {
+export function RecentOrderCard({
+  items = [],
+  pipelineByVariantId = {},
+  loading = false,
+  onDataChange,
+  minusItems = [],
+  pipelineItems = [],
+  recommendationItems = [],
+  recommendationLoading = false,
+  onSendToPrintQueue,
+}: RecentOrderCardProps) {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'oldest' | 'newest'>('oldest');
-  const [viewMode, setViewMode] = useState<'summary' | 'picking' | 'adjustment'>('picking');
+  const [viewMode, setViewMode] = useState<'summary' | 'picking' | 'adjustment' | 'rekomendasi'>('picking');
   const [expanded, setExpanded] = useState(false);
   const [readyExpanded, setReadyExpanded] = useState(false);
   const [bulkPrintingOrderId, setBulkPrintingOrderId] = useState<string | null>(null);
@@ -710,25 +729,42 @@ export function RecentOrderCard({ items = [], pipelineByVariantId = {}, loading 
                     {adjustmentCount}
                   </span>
                 </button>
+                <button
+                  onClick={() => setViewMode('rekomendasi')}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                    viewMode === 'rekomendasi' ? 'bg-[var(--card)] text-[var(--t-heading)] shadow-sm' : 'text-[var(--t-muted)] hover:text-[var(--t-heading)]'
+                  }`}
+                >
+                  <Sparkles className="w-3 h-3" />
+                  Rekomendasi
+                  {recommendationItems.length > 0 && (
+                    <span className={`text-[10px] px-1.5 py-0 rounded-full ${viewMode === 'rekomendasi' ? 'bg-[var(--brand)]/10 text-[var(--brand)]' : 'bg-[var(--bd)] text-[var(--t-muted)]'}`}>
+                      {recommendationItems.length}
+                    </span>
+                  )}
+                </button>
               </div>
               <div className="flex items-center gap-2">
-                {viewMode !== 'adjustment' && (
+                {(viewMode === 'summary' || viewMode === 'picking') && (
                   <Badge className="text-[11px] px-2 py-0 rounded-full bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]/30 gap-1" variant="outline">
                     <Clock className="w-2.5 h-2.5" />
                     {notReadyCount} Belum Ready
                   </Badge>
                 )}
-                <button
-                  onClick={handleResync}
-                  disabled={syncing}
-                  title="Sinkronkan status In Queue dengan Print Queue"
-                  className="text-[11px] text-[var(--t-muted)] hover:text-[var(--brand)] flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-3 h-3 ${syncing ? 'animate-spin' : ''}`} />
-                  {syncing ? 'Syncing...' : 'Sync Status'}
-                </button>
+                {viewMode !== 'rekomendasi' && (
+                  <button
+                    onClick={handleResync}
+                    disabled={syncing}
+                    title="Sinkronkan status In Queue dengan Print Queue"
+                    className="text-[11px] text-[var(--t-muted)] hover:text-[var(--brand)] flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${syncing ? 'animate-spin' : ''}`} />
+                    {syncing ? 'Syncing...' : 'Sync Status'}
+                  </button>
+                )}
               </div>
             </div>
+            {viewMode !== 'rekomendasi' && (
             <div className="flex items-center gap-2">
               <div className="relative">
                 <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--t-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -765,9 +801,23 @@ export function RecentOrderCard({ items = [], pipelineByVariantId = {}, loading 
                 </select>
               )}
             </div>
+            )}
           </div>
         </CardHeader>
         <CardContent className="px-4 pb-4 pt-0">
+          {/* ============ REKOMENDASI TAB ============ */}
+          {viewMode === 'rekomendasi' && (
+            <LowStockCard
+              embedded
+              minusItems={minusItems}
+              pipelineItems={pipelineItems}
+              recommendationItems={recommendationItems}
+              recommendationLoading={recommendationLoading}
+              loading={loading}
+              onSendToPrintQueue={onSendToPrintQueue}
+            />
+          )}
+
           {/* ============ SUMMARY TAB ============ */}
           {viewMode === 'summary' && (
             <div className="rounded-xl border border-[var(--bd)] overflow-hidden">
