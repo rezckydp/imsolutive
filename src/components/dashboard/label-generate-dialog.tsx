@@ -13,8 +13,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { drawLabel, type TemplateElements, type LabelFontOverride } from '@/lib/label-render';
+import { drawLabel, type TemplateElements, type LabelFontOverride, type FontOverride } from '@/lib/label-render';
 import { FontSizeSlider } from '@/components/dashboard/label-font-slider';
+import { FontFamilySelect } from '@/components/dashboard/label-font-family-select';
+
+interface FontState {
+  size: number;
+  family: string;
+}
 
 export interface LabelData {
   id: string;
@@ -56,10 +62,10 @@ export function LabelGenerateDialog({ open, onOpenChange, editingLabel, template
   const [keterangan, setKeterangan] = useState('');
   const [showKeterangan, setShowKeterangan] = useState(true);
   const [showSwatch, setShowSwatch] = useState(true);
-  const [fontSku, setFontSku] = useState(32);
-  const [fontName, setFontName] = useState(19);
-  const [fontKet, setFontKet] = useState(16);
-  const [fontSwatch, setFontSwatch] = useState(24);
+  const [fontSku, setFontSku] = useState<FontState>({ size: 32, family: 'Poppins' });
+  const [fontName, setFontName] = useState<FontState>({ size: 19, family: 'Inter' });
+  const [fontKet, setFontKet] = useState<FontState>({ size: 16, family: 'Inter' });
+  const [fontSwatch, setFontSwatch] = useState<FontState>({ size: 24, family: 'Inter' });
   const [saving, setSaving] = useState(false);
 
   const [catalogQuery, setCatalogQuery] = useState('');
@@ -82,10 +88,10 @@ export function LabelGenerateDialog({ open, onOpenChange, editingLabel, template
       setKeterangan(editingLabel.keterangan || '');
       setShowKeterangan(editingLabel.fonts?.show?.keterangan ?? (template.keterangan.show ?? true));
       setShowSwatch(editingLabel.fonts?.show?.swatch ?? (template.swatch.show ?? true));
-      setFontSku(editingLabel.fonts?.sku ?? template.sku.fontSize);
-      setFontName(editingLabel.fonts?.name ?? template.name.fontSize);
-      setFontKet(editingLabel.fonts?.keterangan ?? template.keterangan.fontSize);
-      setFontSwatch(editingLabel.fonts?.swatch ?? template.swatch.fontSize);
+      setFontSku({ size: editingLabel.fonts?.sku?.size ?? template.sku.fontSize, family: editingLabel.fonts?.sku?.family ?? template.sku.fontFamily ?? 'Poppins' });
+      setFontName({ size: editingLabel.fonts?.name?.size ?? template.name.fontSize, family: editingLabel.fonts?.name?.family ?? template.name.fontFamily ?? 'Inter' });
+      setFontKet({ size: editingLabel.fonts?.keterangan?.size ?? template.keterangan.fontSize, family: editingLabel.fonts?.keterangan?.family ?? template.keterangan.fontFamily ?? 'Inter' });
+      setFontSwatch({ size: editingLabel.fonts?.swatch?.size ?? template.swatch.fontSize, family: editingLabel.fonts?.swatch?.family ?? template.swatch.fontFamily ?? 'Inter' });
     } else {
       setType('produk');
       setSourceMode('katalog');
@@ -97,10 +103,10 @@ export function LabelGenerateDialog({ open, onOpenChange, editingLabel, template
       setKeterangan('');
       setShowKeterangan(template.keterangan.show ?? true);
       setShowSwatch(template.swatch.show ?? true);
-      setFontSku(template.sku.fontSize);
-      setFontName(template.name.fontSize);
-      setFontKet(template.keterangan.fontSize);
-      setFontSwatch(template.swatch.fontSize);
+      setFontSku({ size: template.sku.fontSize, family: template.sku.fontFamily ?? 'Poppins' });
+      setFontName({ size: template.name.fontSize, family: template.name.fontFamily ?? 'Inter' });
+      setFontKet({ size: template.keterangan.fontSize, family: template.keterangan.fontFamily ?? 'Inter' });
+      setFontSwatch({ size: template.swatch.fontSize, family: template.swatch.fontFamily ?? 'Inter' });
     }
     setCatalogQuery('');
     setCatalogRows([]);
@@ -177,17 +183,29 @@ export function LabelGenerateDialog({ open, onOpenChange, editingLabel, template
     setColor(row.color);
   };
 
+  const diffFont = (current: FontState, defaultSize: number, defaultFamily: string): FontOverride | undefined => {
+    const override: FontOverride = {};
+    if (current.size !== defaultSize) override.size = current.size;
+    if (current.family !== defaultFamily) override.family = current.family;
+    return Object.keys(override).length > 0 ? override : undefined;
+  };
+
   const buildFonts = useCallback((): LabelFontOverride | null => {
     const fonts: LabelFontOverride = {};
-    if (fontSku !== template.sku.fontSize) fonts.sku = fontSku;
-    if (fontName !== template.name.fontSize) fonts.name = fontName;
-    if (fontKet !== template.keterangan.fontSize) fonts.keterangan = fontKet;
-    if (fontSwatch !== template.swatch.fontSize) fonts.swatch = fontSwatch;
+    const sku = diffFont(fontSku, template.sku.fontSize, template.sku.fontFamily ?? 'Poppins');
+    const name = diffFont(fontName, template.name.fontSize, template.name.fontFamily ?? 'Inter');
+    const keterangan = diffFont(fontKet, template.keterangan.fontSize, template.keterangan.fontFamily ?? 'Inter');
+    const swatch = diffFont(fontSwatch, template.swatch.fontSize, template.swatch.fontFamily ?? 'Inter');
+    if (sku) fonts.sku = sku;
+    if (name) fonts.name = name;
+    if (keterangan) fonts.keterangan = keterangan;
+    if (swatch) fonts.swatch = swatch;
     const show: { keterangan?: boolean; swatch?: boolean } = {};
     if (showKeterangan !== (template.keterangan.show ?? true)) show.keterangan = showKeterangan;
     if (showSwatch !== (template.swatch.show ?? true)) show.swatch = showSwatch;
     if (Object.keys(show).length > 0) fonts.show = show;
     return Object.keys(fonts).length > 0 ? fonts : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fontSku, fontName, fontKet, fontSwatch, showKeterangan, showSwatch, template]);
 
   // Live preview
@@ -369,11 +387,18 @@ export function LabelGenerateDialog({ open, onOpenChange, editingLabel, template
             </div>
 
             <div className="space-y-3 p-3 rounded-lg bg-[var(--surface-tint-3)] border border-[var(--bd)]">
-              <p className="text-xs font-semibold text-[var(--t-heading)]">Font Size (override label ini)</p>
-              <FontSizeSlider label="Nama SKU" value={fontSku} onChange={setFontSku} />
-              <FontSizeSlider label="Nama Produk" value={fontName} onChange={setFontName} />
-              <FontSizeSlider label="Keterangan" value={fontKet} onChange={setFontKet} />
-              <FontSizeSlider label="Warna" value={fontSwatch} onChange={setFontSwatch} />
+              <p className="text-xs font-semibold text-[var(--t-heading)]">Font (override label ini)</p>
+              {([
+                { label: 'Nama SKU', value: fontSku, set: setFontSku },
+                { label: 'Nama Produk', value: fontName, set: setFontName },
+                { label: 'Keterangan', value: fontKet, set: setFontKet },
+                { label: 'Warna', value: fontSwatch, set: setFontSwatch },
+              ] as const).map(({ label, value, set }) => (
+                <div key={label} className="space-y-2 pb-2 border-b border-[var(--bd)] last:border-b-0 last:pb-0">
+                  <FontSizeSlider label={label} value={value.size} onChange={(v) => set((p) => ({ ...p, size: v }))} />
+                  <FontFamilySelect label="Font Family" value={value.family} onChange={(v) => set((p) => ({ ...p, family: v }))} />
+                </div>
+              ))}
             </div>
           </div>
         </div>

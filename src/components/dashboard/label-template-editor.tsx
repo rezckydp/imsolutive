@@ -15,6 +15,7 @@ import {
   type TextBox,
 } from '@/lib/label-render';
 import { FontSizeSlider } from '@/components/dashboard/label-font-slider';
+import { FontFamilySelect } from '@/components/dashboard/label-font-family-select';
 
 type ElementKey = 'qr' | 'sku' | 'name' | 'keterangan' | 'swatch';
 const ELEMENT_LABELS: Record<ElementKey, string> = {
@@ -221,6 +222,10 @@ export function LabelTemplateEditor({ onBack }: Props) {
     setElements((prev) => ({ ...prev, [key]: { ...prev[key], fontSize: value } }));
   };
 
+  const updateFontFamily = (key: 'sku' | 'name' | 'keterangan' | 'swatch', family: string) => {
+    setElements((prev) => ({ ...prev, [key]: { ...prev[key], fontFamily: family } }));
+  };
+
   const toggleShow = (key: 'keterangan' | 'swatch') => {
     setElements((prev) => ({ ...prev, [key]: { ...prev[key], show: !(prev[key].show ?? true) } }));
   };
@@ -351,14 +356,20 @@ export function LabelTemplateEditor({ onBack }: Props) {
           </Button>
 
           <div className="space-y-3 p-3 rounded-lg bg-[var(--surface-tint-3)] border border-[var(--bd)]">
-            <p className="text-xs font-semibold text-[var(--t-heading)]">Font Size</p>
+            <p className="text-xs font-semibold text-[var(--t-heading)]">Font</p>
             {FONT_ELEMENTS.map((key) => (
-              <FontSizeSlider
-                key={key}
-                label={ELEMENT_LABELS[key]}
-                value={elements[key].fontSize}
-                onChange={(v) => updateFontSize(key, v)}
-              />
+              <div key={key} className="space-y-2 pb-2 border-b border-[var(--bd)] last:border-b-0 last:pb-0">
+                <FontSizeSlider
+                  label={ELEMENT_LABELS[key]}
+                  value={elements[key].fontSize}
+                  onChange={(v) => updateFontSize(key, v)}
+                />
+                <FontFamilySelect
+                  label="Font Family"
+                  value={elements[key].fontFamily}
+                  onChange={(v) => updateFontFamily(key, v)}
+                />
+              </div>
             ))}
           </div>
 
