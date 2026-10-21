@@ -14,6 +14,7 @@ import { BarcodeScanner } from '@/components/dashboard/barcode-scanner';
 import { CombinedEntryDialog } from '@/components/dashboard/combined-entry-dialog';
 import { InventoryBoothPage } from '@/components/dashboard/inventory-booth';
 import { WarehouseManagementPage, type WarehouseSubTab } from '@/components/dashboard/warehouse-management';
+import { LabelStudioPage } from '@/components/dashboard/label-studio';
 import { ProductionManagement } from '@/components/dashboard/production-management';
 import { StockOpname } from '@/components/dashboard/stock-opname';
 import { SettingsPage } from '@/components/dashboard/settings-page';
@@ -576,6 +577,7 @@ export default function Home() {
   const showDashboard = activeNavItem === 'dashboard';
   const showWarehouseManagement = activeNavItem === 'warehouse-management';
   const showInventoryBooth = activeNavItem === 'inventory-booth';
+  const showLabelStudio = activeNavItem === 'label-studio';
   const showPrinterDatabase = activeNavItem === 'printer-database';
   const showColorVariant = activeNavItem === 'color-variant';
   const showProduction = activeNavItem === 'production';
@@ -589,6 +591,8 @@ export default function Home() {
     ? 'Warehouse Management'
     : showInventoryBooth
     ? 'Inventory Booth'
+    : showLabelStudio
+    ? 'Label Studio'
     : showPrinterDatabase
     ? '3D Printer'
     : showColorVariant
@@ -841,6 +845,11 @@ export default function Home() {
           <InventoryBoothPage />
         )}
 
+        {/* ========== LABEL STUDIO VIEW ========== */}
+        {showLabelStudio && (
+          <LabelStudioPage />
+        )}
+
         {/* ========== PRINTER DATABASE VIEW ========== */}
         {showPrinterDatabase && (
           <PrinterDatabase />
@@ -867,7 +876,7 @@ export default function Home() {
         )}
 
         {/* ========== PLACEHOLDER FOR OTHER NAV ITEMS ========== */}
-        {!showDashboard && !showWarehouseManagement && !showInventoryBooth && !showPrinterDatabase && !showColorVariant && !showProduction && !showStockOpname && !showSettings && (
+        {!showDashboard && !showWarehouseManagement && !showInventoryBooth && !showLabelStudio && !showPrinterDatabase && !showColorVariant && !showProduction && !showStockOpname && !showSettings && (
           <>
             <div className="hidden md:block">
               <Header title={headerTitle} />

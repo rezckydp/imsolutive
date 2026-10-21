@@ -21,6 +21,7 @@ import {
   Database,
   FileCheck,
   Warehouse,
+  QrCode,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -46,6 +47,7 @@ const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'warehouse-management', label: 'Warehouse Management', icon: Warehouse },
   { id: 'inventory-booth', label: 'Inventory Booth', icon: ShoppingBag },
+  { id: 'label-studio', label: 'Label Studio', icon: QrCode },
   { id: 'order-lists', label: 'Order Lists', icon: ClipboardList },
   { id: 'production', label: 'Production', icon: Factory },
   { id: 'stock-opname', label: 'Stock Opname', icon: FileCheck },

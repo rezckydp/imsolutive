@@ -486,3 +486,37 @@ model BoothProductionPlan {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
+
+// Label Studio (ims-feature-label-studio-*.md) — shared layout for the
+// 50x30mm QR label, positions/sizes stored in internal px (~12px/mm,
+// 600x360 total). Single row per category; "default" covers both Produk
+// and Material for now, but the category column lets a per-category
+// template be added later without a schema change (generate falls back to
+// "default" when no category-specific row exists).
+model LabelTemplate {
+  id        String   @id @default(cuid())
+  category  String   @default("default")
+  elements  String   // JSON: { qr, sku, name, keterangan, swatch } each {x,y,w,h,fontSize?,maxLines?,show?}
+  guides    String   @default("{\"v\":[],\"h\":[]}") // JSON: { v: number[], h: number[] }
+  updatedAt DateTime @updatedAt
+  updatedBy String   @default("")
+}
+
+// One saved, reprintable QR label — created manually via "+ Generate Label",
+// never auto-created when a SKU/Material is added. sourceRef is the
+// ProductVariant.id / MaterialVariant.id / Material.id (hasVariants=false)
+// it was generated from, null for a fully manual/custom label.
+model Label {
+  id          String   @id @default(cuid())
+  type        String   // "produk" | "material"
+  sourceRef   String?
+  skuName     String
+  qrCode      String   // encoded value — intentionally separate from skuName
+  productName String
+  color       String   @default("")
+  keterangan  String?
+  fonts       String?  // JSON nullable: { sku?, name?, keterangan?, swatch?, show?: { keterangan?, swatch? } } — per-label override
+  createdAt   DateTime @default(now())
+  createdBy   String   @default("")
+  updatedAt   DateTime @updatedAt
+}
