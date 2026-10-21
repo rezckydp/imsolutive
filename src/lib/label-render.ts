@@ -106,7 +106,7 @@ export const DEFAULT_TEMPLATE_ELEMENTS: TemplateElements = {
   sku: { x: 280, y: 48, w: 280, h: 40, fontSize: 32, fontFamily: "Poppins" },
   name: { x: 280, y: 92, w: 292, h: 52, fontSize: 19, fontFamily: "Inter", maxLines: 2 },
   keterangan: { x: 280, y: 158, w: 260, h: 24, fontSize: 16, fontFamily: "Inter", show: true },
-  swatch: { x: 280, y: 290, w: 160, h: 34, fontSize: 24, fontFamily: "Inter", show: true },
+  swatch: { x: 280, y: 290, w: 160, h: 26, fontSize: 24, fontFamily: "Inter", show: true },
 };
 
 export interface Guides {
@@ -253,18 +253,25 @@ export async function drawLabel(
     ctx.restore();
   }
 
-  // Swatch — outline circle (never filled with the real color) + warna text
+  // Swatch — circle indicator + warna text. Fill is automatic from the
+  // color name: "Hitam"/"Black" (case-insensitive) fills solid black,
+  // anything else stays outline-only — never the real color.
   const swatchBox = template.swatch;
   const swatchShow = fonts?.show?.swatch ?? swatchBox.show ?? true;
   if (swatchShow && color && color.trim()) {
     const swatchFontSize = fonts?.swatch?.size ?? swatchBox.fontSize;
     const swatchFontFamily = fonts?.swatch?.family ?? swatchBox.fontFamily;
-    const radius = Math.min(swatchBox.h, swatchFontSize * 1.4) / 2;
+    const isBlack = /^(hitam|black)$/i.test(color.trim());
+    const radius = swatchBox.h / 2;
     const cx = swatchBox.x + radius;
     const cy = swatchBox.y + swatchBox.h / 2;
     ctx.save();
     ctx.beginPath();
     ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    if (isBlack) {
+      ctx.fillStyle = "#000000";
+      ctx.fill();
+    }
     ctx.lineWidth = 2;
     ctx.strokeStyle = "#000000";
     ctx.stroke();

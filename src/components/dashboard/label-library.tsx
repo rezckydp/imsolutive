@@ -107,7 +107,7 @@ export function LabelLibrary({ onOpenEditor }: Props) {
     if (!dataUrl) return;
     const win = window.open('', '_blank', 'width=420,height=320');
     if (!win) {
-      alert('Browser memblokir jendela print — izinkan pop-up buat Label Studio dulu.');
+      alert('Browser memblokir jendela print — izinkan pop-up buat QR Label dulu.');
       return;
     }
     win.document.write(`<!doctype html><html><head><title>Print Label</title><style>
@@ -143,7 +143,7 @@ export function LabelLibrary({ onOpenEditor }: Props) {
     <div>
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-[var(--t-heading)]">Label Studio</h1>
+          <h1 className="text-2xl font-bold text-[var(--t-heading)]">QR Label</h1>
           <p className="text-sm text-[var(--t-body)] mt-1">Library Label QR — Produk & Material</p>
         </div>
         <div className="flex items-center gap-2">

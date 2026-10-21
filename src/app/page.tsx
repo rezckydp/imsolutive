@@ -592,7 +592,7 @@ export default function Home() {
     : showInventoryBooth
     ? 'Inventory Booth'
     : showLabelStudio
-    ? 'Label Studio'
+    ? 'QR Label'
     : showPrinterDatabase
     ? '3D Printer'
     : showColorVariant

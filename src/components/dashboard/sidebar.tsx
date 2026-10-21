@@ -47,7 +47,7 @@ const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'warehouse-management', label: 'Warehouse Management', icon: Warehouse },
   { id: 'inventory-booth', label: 'Inventory Booth', icon: ShoppingBag },
-  { id: 'label-studio', label: 'Label Studio', icon: QrCode },
+  { id: 'label-studio', label: 'QR Label', icon: QrCode },
   { id: 'order-lists', label: 'Order Lists', icon: ClipboardList },
   { id: 'production', label: 'Production', icon: Factory },
   { id: 'stock-opname', label: 'Stock Opname', icon: FileCheck },
