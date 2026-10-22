@@ -286,3 +286,28 @@ export async function drawLabel(
     ctx.restore();
   }
 }
+
+// Opens the browser's print dialog on a page sized to exactly 50mm x 30mm
+// per page, one page per entry in `dataUrls` (in order) — printing N copies
+// of a label is just repeating its data URL N times in this array. Used by
+// both the QR Label Library's own Print button and the post-"Simpan
+// Pesanan" print popup (ims-feature-print-popup-input-pesanan.md), so a
+// batch of several SKUs — each at its own qty — becomes one print dialog
+// instead of one per label.
+export function printLabelPages(dataUrls: string[]): boolean {
+  if (dataUrls.length === 0) return true;
+  const win = window.open("", "_blank", "width=420,height=320");
+  if (!win) return false;
+
+  const imgs = dataUrls.map((u) => `<img src="${u}" />`).join("");
+  win.document.write(`<!doctype html><html><head><title>Print Label</title><style>
+    @page { size: 50mm 30mm; margin: 0; }
+    html, body { margin: 0; padding: 0; }
+    img { width: 50mm; height: 30mm; display: block; page-break-after: always; }
+    img:last-child { page-break-after: auto; }
+  </style></head><body>${imgs}<script>
+    window.onload = function () { window.focus(); window.print(); };
+  </script></body></html>`);
+  win.document.close();
+  return true;
+}

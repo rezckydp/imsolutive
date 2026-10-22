@@ -35,6 +35,7 @@ import {
   Undo2,
   PackageCheck,
 } from 'lucide-react';
+import { OrderPrintPopup, type OrderPrintRow } from '@/components/dashboard/order-print-popup';
 
 type ScannerMode = 'order' | 'receive';
 // Pesanan's own sub-tabs — Produksi lives here now instead of as a
@@ -156,6 +157,7 @@ export function BarcodeScanner({
   const [lookingUp, setLookingUp] = useState(false);
   const [lookupError, setLookupError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [printPopup, setPrintPopup] = useState<{ orderNo: string; rows: OrderPrintRow[] } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isProcessing = useRef(false);
 
@@ -623,6 +625,27 @@ export function BarcodeScanner({
           return;
         }
 
+        // Tally per unique SKU+varian (ims-feature-print-popup-input-
+        // pesanan.md) — the popup is per-SKU, not per-scan, so sum qty
+        // across every scan of the same variant before showing it.
+        const tally = new Map<string, OrderPrintRow>();
+        for (const item of validItems) {
+          const existing = tally.get(item.variantId);
+          if (existing) {
+            existing.qty += item.qty;
+          } else {
+            tally.set(item.variantId, {
+              variantId: item.variantId,
+              code: item.code,
+              sku: item.sku,
+              productName: item.productName,
+              color: item.color,
+              type: item.type,
+              qty: item.qty,
+            });
+          }
+        }
+
         setItems([]);
         setLookupError('');
         setPickingListNo('');
@@ -630,6 +653,7 @@ export function BarcodeScanner({
         resetPdfUpload();
         onOrderCreated?.();
         onOpenChange(false);
+        setPrintPopup({ orderNo, rows: Array.from(tally.values()) });
       } else {
         for (const item of validItems) {
           await fetch('/api/production', {
@@ -680,6 +704,7 @@ export function BarcodeScanner({
   const totalQty = items.reduce((sum, i) => (i.variantId ? sum + i.qty : sum), 0);
 
   return (
+    <>
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent
         className="
@@ -1240,5 +1265,13 @@ export function BarcodeScanner({
         </div>
       </DialogContent>
     </Dialog>
+
+    <OrderPrintPopup
+      open={!!printPopup}
+      onOpenChange={(v) => !v && setPrintPopup(null)}
+      orderNo={printPopup?.orderNo ?? ''}
+      rows={printPopup?.rows ?? []}
+    />
+    </>
   );
 }

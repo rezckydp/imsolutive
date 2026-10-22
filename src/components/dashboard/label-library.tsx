@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import {
   drawLabel,
+  printLabelPages,
   DEFAULT_TEMPLATE_ELEMENTS,
   type TemplateElements,
 } from '@/lib/label-render';
@@ -105,19 +106,9 @@ export function LabelLibrary({ onOpenEditor }: Props) {
   const handlePrint = async (label: LabelRow) => {
     const dataUrl = await renderToDataUrl(label, template);
     if (!dataUrl) return;
-    const win = window.open('', '_blank', 'width=420,height=320');
-    if (!win) {
+    if (!printLabelPages([dataUrl])) {
       alert('Browser memblokir jendela print — izinkan pop-up buat QR Label dulu.');
-      return;
     }
-    win.document.write(`<!doctype html><html><head><title>Print Label</title><style>
-      @page { size: 50mm 30mm; margin: 0; }
-      html, body { margin: 0; padding: 0; }
-      img { width: 50mm; height: 30mm; display: block; }
-    </style></head><body>
-      <img src="${dataUrl}" onload="window.focus();window.print();" />
-    </body></html>`);
-    win.document.close();
   };
 
   const handleDeleteConfirm = async () => {

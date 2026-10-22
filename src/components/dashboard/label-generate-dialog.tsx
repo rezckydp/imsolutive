@@ -42,16 +42,31 @@ interface CatalogRow {
   color: string;
 }
 
+// Seeds a brand-new (not-yet-saved) label straight from a Katalog match —
+// e.g. the "Generate Label dulu →" link in the post-"Simpan Pesanan" print
+// popup — bypassing the manual search-and-pick step. Still a fresh label
+// (POSTed, not PUT) once saved.
+export interface LabelPrefill {
+  type: 'produk' | 'material';
+  sourceRef: string;
+  skuName: string;
+  qrCode: string;
+  productName: string;
+  color: string;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editingLabel?: LabelData | null;
+  prefill?: LabelPrefill | null;
   template: TemplateElements;
   onSaved: () => void;
 }
 
-export function LabelGenerateDialog({ open, onOpenChange, editingLabel, template, onSaved }: Props) {
+export function LabelGenerateDialog({ open, onOpenChange, editingLabel, prefill, template, onSaved }: Props) {
   const isEditing = !!editingLabel;
+  const skipPicker = isEditing || !!prefill;
   const [type, setType] = useState<'produk' | 'material'>('produk');
   const [sourceMode, setSourceMode] = useState<'katalog' | 'manual'>('katalog');
   const [sourceRef, setSourceRef] = useState<string | null>(null);
@@ -93,13 +108,13 @@ export function LabelGenerateDialog({ open, onOpenChange, editingLabel, template
       setFontKet({ size: editingLabel.fonts?.keterangan?.size ?? template.keterangan.fontSize, family: editingLabel.fonts?.keterangan?.family ?? template.keterangan.fontFamily ?? 'Inter' });
       setFontSwatch({ size: editingLabel.fonts?.swatch?.size ?? template.swatch.fontSize, family: editingLabel.fonts?.swatch?.family ?? template.swatch.fontFamily ?? 'Inter' });
     } else {
-      setType('produk');
+      setType(prefill?.type ?? 'produk');
       setSourceMode('katalog');
-      setSourceRef(null);
-      setSkuName('');
-      setQrCode('');
-      setProductName('');
-      setColor('');
+      setSourceRef(prefill?.sourceRef ?? null);
+      setSkuName(prefill?.skuName ?? '');
+      setQrCode(prefill?.qrCode ?? '');
+      setProductName(prefill?.productName ?? '');
+      setColor(prefill?.color ?? '');
       setKeterangan('');
       setShowKeterangan(template.keterangan.show ?? true);
       setShowSwatch(template.swatch.show ?? true);
@@ -111,11 +126,11 @@ export function LabelGenerateDialog({ open, onOpenChange, editingLabel, template
     setCatalogQuery('');
     setCatalogRows([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, editingLabel]);
+  }, [open, editingLabel, prefill]);
 
   // Katalog search
   useEffect(() => {
-    if (!open || isEditing || sourceMode !== 'katalog') return;
+    if (!open || skipPicker || sourceMode !== 'katalog') return;
     const timer = setTimeout(async () => {
       setCatalogLoading(true);
       try {
@@ -272,7 +287,7 @@ export function LabelGenerateDialog({ open, onOpenChange, editingLabel, template
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Left: form */}
           <div className="space-y-3">
-            {!isEditing && (
+            {!skipPicker && (
               <>
                 <div className="space-y-1.5">
                   <Label className="text-sm font-medium text-[var(--t-heading)]">Tipe</Label>
