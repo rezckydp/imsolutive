@@ -339,7 +339,7 @@ export function ScanMaterialDialog({ open, onOpenChange, onChanged }: Props) {
               onKeyDown={(e) => { if (e.key === 'Enter') handleScanSubmit(); }}
               placeholder="Scan atau ketik barcode..."
               disabled={busy}
-              className="w-full h-11 text-sm bg-[var(--surface)] border border-[var(--bd)] rounded-lg px-3 font-mono text-[var(--t-heading)] placeholder:text-[var(--t-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--brand)]/30 disabled:opacity-60"
+              className="w-full h-14 text-base bg-[var(--surface)] border border-[var(--bd)] rounded-lg px-4 font-mono text-[var(--t-heading)] placeholder:text-[var(--t-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--brand)]/30 disabled:opacity-60"
             />
             {feedback && (
               <div className={`flex items-center gap-2 p-2.5 rounded-lg text-xs ${
@@ -363,35 +363,35 @@ export function ScanMaterialDialog({ open, onOpenChange, onChanged }: Props) {
             <div className="flex gap-2">
               <button
                 onClick={() => setDirection('in')}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium border cursor-pointer ${
+                className={`flex-1 flex items-center justify-center gap-1.5 py-4 rounded-lg text-base font-semibold border-2 cursor-pointer ${
                   direction === 'in' ? 'bg-[var(--success)]/10 border-[var(--success)]/40 text-[var(--success)]' : 'border-[var(--bd)] text-[var(--t-body)]'
                 }`}
               >
-                <ArrowDownToLine className="w-4 h-4" /> Input (+)
+                <ArrowDownToLine className="w-5 h-5" /> Input (+)
               </button>
               <button
                 onClick={() => setDirection('out')}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium border cursor-pointer ${
+                className={`flex-1 flex items-center justify-center gap-1.5 py-4 rounded-lg text-base font-semibold border-2 cursor-pointer ${
                   direction === 'out' ? 'bg-[var(--danger)]/10 border-[var(--danger)]/40 text-[var(--danger)]' : 'border-[var(--bd)] text-[var(--t-body)]'
                 }`}
               >
-                <ArrowUpFromLine className="w-4 h-4" /> Output (−)
+                <ArrowUpFromLine className="w-5 h-5" /> Output (−)
               </button>
             </div>
             <div className="space-y-1.5">
               <Label className="text-sm font-medium text-[var(--t-heading)]">Jumlah ({unitLabel(matched.unit)})</Label>
-              <Input type="number" min={1} value={qtyInput} onChange={(e) => setQtyInput(e.target.value)} className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg" />
+              <Input type="number" min={1} value={qtyInput} onChange={(e) => setQtyInput(e.target.value)} className="h-14 text-lg bg-[var(--surface)] border-[var(--bd)] rounded-lg" />
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={resetToScanning} disabled={busy} className="rounded-full flex-1">
+              <Button variant="outline" onClick={resetToScanning} disabled={busy} className="rounded-full flex-1 h-12 text-base">
                 Batal
               </Button>
               <Button
                 onClick={handleConfirmSubmit}
                 disabled={busy || !qtyInput || parseInt(qtyInput, 10) <= 0}
-                className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white rounded-full flex-1 disabled:opacity-50"
+                className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white rounded-full flex-1 h-12 text-base disabled:opacity-50"
               >
-                {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Submit'}
+                {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Submit'}
               </Button>
             </div>
           </div>
@@ -406,13 +406,13 @@ export function ScanMaterialDialog({ open, onOpenChange, onChanged }: Props) {
               </p>
             </div>
             <div className="flex flex-col gap-2">
-              <Button variant="outline" onClick={openLinkSearch} className="rounded-full w-full justify-center">
+              <Button variant="outline" onClick={openLinkSearch} className="rounded-full w-full justify-center h-12 text-base">
                 Link ke item yang sudah ada
               </Button>
-              <Button onClick={openRegisterNew} className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white rounded-full w-full">
+              <Button onClick={openRegisterNew} className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white rounded-full w-full h-12 text-base">
                 Daftar sebagai item baru
               </Button>
-              <Button variant="outline" onClick={resetToScanning} className="rounded-full w-full">
+              <Button variant="outline" onClick={resetToScanning} className="rounded-full w-full h-12 text-base">
                 Batal
               </Button>
             </div>

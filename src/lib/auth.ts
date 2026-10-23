@@ -14,7 +14,12 @@ export interface SessionPayload {
   iat: number; // issued-at, ms epoch
 }
 
-const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+// 1 year — was 7 days. The Scan Material page is meant to run unattended on
+// a dedicated device (ims-feature-warehouse-management-scan-material.md,
+// "sesi login harus persistent"), so nobody has to log back in there every
+// week. Applies to every session, not just that page — this app has no
+// concept of a per-device session length.
+const SESSION_MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
 const PBKDF2_ITERATIONS = 100_000;
 
 export function getCredentials(): { username: string; password: string } {

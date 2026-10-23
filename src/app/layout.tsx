@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
@@ -20,9 +20,23 @@ export const metadata: Metadata = {
   description: "Modern inventory management system for tracking stock, orders, and production.",
   keywords: ["Solutive", "Inventory", "Management", "Dashboard", "Stock"],
   authors: [{ name: "Solutive Team" }],
+  manifest: "/manifest.webmanifest",
   icons: {
     icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
   },
+  // "Add to Home Screen" on iOS for the Scan Material kiosk device
+  // (ims-feature-warehouse-management-scan-material.md) — opens fullscreen,
+  // no Safari chrome, once launched from the home-screen icon.
+  appleWebApp: {
+    capable: true,
+    title: "Solutive",
+    statusBarStyle: "default",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#4a6741",
 };
 
 export default function RootLayout({
