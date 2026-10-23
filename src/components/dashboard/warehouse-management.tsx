@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import { StockManagement } from '@/components/dashboard/stock-management';
 import { MaterialCatalogTab, RiwayatTab } from '@/components/dashboard/inventory-management';
+import { FilamentTab } from '@/components/dashboard/filament-tab';
 
-export type WarehouseSubTab = 'produk' | 'material' | 'riwayat';
+export type WarehouseSubTab = 'produk' | 'material' | 'filament' | 'riwayat';
 
 interface WarehouseManagementPageProps {
   // Deep-link from the Dashboard low-stock notification bell — jump straight
@@ -54,6 +55,14 @@ export function WarehouseManagementPage({ initialSubTab, selectMaterialId, onDee
           Material
         </button>
         <button
+          onClick={() => setTab('filament')}
+          className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+            tab === 'filament' ? 'bg-[var(--card)] text-[var(--brand)] shadow-sm' : 'text-[var(--t-body)] hover:text-[var(--t-heading)]'
+          }`}
+        >
+          Filament
+        </button>
+        <button
           onClick={() => setTab('riwayat')}
           className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
             tab === 'riwayat' ? 'bg-[var(--card)] text-[var(--brand)] shadow-sm' : 'text-[var(--t-body)] hover:text-[var(--t-heading)]'
@@ -67,6 +76,7 @@ export function WarehouseManagementPage({ initialSubTab, selectMaterialId, onDee
       {tab === 'material' && (
         <MaterialCatalogTab selectMaterialId={tab === 'material' ? selectMaterialId : null} onSelectConsumed={onDeepLinkConsumed} />
       )}
+      {tab === 'filament' && <FilamentTab />}
       {tab === 'riwayat' && <RiwayatTab />}
     </div>
   );

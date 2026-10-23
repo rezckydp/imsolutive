@@ -4,8 +4,14 @@ import { getCurrentUser } from "@/lib/current-user";
 
 // POST /api/materials/scan/new — submit of the "Input Data Filament" popup
 // that appears when a scanned barcode doesn't match any MaterialVariant yet.
-// Finds-or-creates the Material named "Filament {Jenis} — {Brand}", then
-// creates a new MaterialVariant under it (label = Warna, stock = 1).
+// Finds-or-creates the single shared "Filament" Material (same one the
+// Filament tab's own "+ Tambah Filament Baru" uses — ims-feature-warehouse-
+// management-filament-tab.md) and creates a new MaterialVariant under it
+// with label = Warna, brand/materialType = Brand/Jenis as their own
+// columns. NOTE: this still increments by +1 per scan (one physical roll),
+// same as before — the Filament tab tracks stock in grams, so a roll
+// scanned in here lands as "+1" until someone corrects it to the actual
+// gram weight via Edit/quick-add on the Filament tab.
 export async function POST(request: NextRequest) {
   const user = getCurrentUser(request);
   try {
@@ -24,21 +30,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Barcode "${barcode}" sudah terdaftar` }, { status: 409 });
     }
 
-    const materialName = jenis && brand
-      ? `Filament ${jenis} — ${brand}`
-      : jenis
-        ? `Filament ${jenis}`
-        : brand
-          ? `Filament — ${brand}`
-          : "Filament";
-
-    let material = await db.material.findFirst({ where: { name: materialName } });
+    let material = await db.material.findFirst({ where: { name: "Filament" } });
     if (!material) {
-      material = await db.material.create({ data: { name: materialName, unit: "roll", hasVariants: true } });
+      material = await db.material.create({ data: { name: "Filament", unit: "gram", hasVariants: true } });
     }
 
     const variant = await db.materialVariant.create({
-      data: { materialId: material.id, label: warna, stock: 1, minStock: 0, barcode },
+      data: {
+        materialId: material.id,
+        label: warna,
+        stock: 1,
+        minStock: 0,
+        barcode,
+        brand: brand || null,
+        materialType: jenis || null,
+      },
     });
 
     await db.materialMovement.create({

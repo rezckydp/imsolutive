@@ -13,6 +13,8 @@ export async function POST(
     const stock = Number.isFinite(body.stock) ? body.stock : parseInt(body.stock, 10) || 0;
     const minStock = Number.isFinite(body.minStock) ? body.minStock : parseInt(body.minStock, 10) || 0;
     const barcode = (body.barcode || "").toString().trim() || null;
+    const brand = body.brand !== undefined ? (body.brand || "").toString().trim() || null : null;
+    const materialType = body.materialType !== undefined ? (body.materialType || "").toString().trim() || null : null;
 
     if (!label) {
       return NextResponse.json({ error: "Label Varian wajib diisi" }, { status: 400 });
@@ -34,7 +36,7 @@ export async function POST(
     }
 
     const variant = await db.materialVariant.create({
-      data: { materialId: id, label, stock, minStock, barcode },
+      data: { materialId: id, label, stock, minStock, barcode, brand, materialType },
     });
 
     return NextResponse.json(variant, { status: 201 });

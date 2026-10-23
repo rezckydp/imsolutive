@@ -26,6 +26,8 @@ interface MaterialVariantRow {
   label: string;
   stock: number;
   minStock: number;
+  brand?: string | null;
+  materialType?: string | null;
 }
 
 interface MaterialRow {
@@ -51,7 +53,8 @@ function computeLowStockItems(materials: MaterialRow[]): LowStockNotifItem[] {
     if (m.hasVariants) {
       for (const v of m.variants) {
         if (v.stock < v.minStock) {
-          items.push({ materialId: m.id, label: `${m.name} — ${v.label}`, stock: v.stock, minStock: v.minStock, diff: v.minStock - v.stock });
+          const variantLabel = [v.brand, v.label].filter(Boolean).join(' - ') + (v.materialType ? ` (${v.materialType})` : '');
+          items.push({ materialId: m.id, label: `${m.name} — ${variantLabel}`, stock: v.stock, minStock: v.minStock, diff: v.minStock - v.stock });
         }
       }
     } else {

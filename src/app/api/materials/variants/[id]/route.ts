@@ -36,6 +36,8 @@ export async function PUT(
         ...(newStock !== undefined && { stock: newStock }),
         ...(body.minStock !== undefined && { minStock: parseInt(body.minStock, 10) || 0 }),
         ...(barcode !== undefined && { barcode }),
+        ...(body.brand !== undefined && { brand: (body.brand || "").toString().trim() || null }),
+        ...(body.materialType !== undefined && { materialType: (body.materialType || "").toString().trim() || null }),
       },
     });
 

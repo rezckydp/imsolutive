@@ -16,6 +16,15 @@ interface MaterialVariantData {
   id: string;
   label: string;
   stock: number;
+  brand?: string | null;
+  materialType?: string | null;
+}
+
+// Filament variants carry brand/materialType (e.g. "eSUN - Black (PLA)")
+// instead of just the color label, so they're identifiable in the dropdown.
+function variantDisplayLabel(v: MaterialVariantData): string {
+  const parts = [v.brand, v.label].filter(Boolean).join(' - ');
+  return v.materialType ? `${parts} (${v.materialType})` : parts;
 }
 
 interface MaterialData {
@@ -171,7 +180,7 @@ export const ProductBomChecklist = forwardRef<BomChecklistHandle, Props>(functio
                           <SelectContent>
                             {m.variants.map((v) => (
                               <SelectItem key={v.id} value={v.id}>
-                                {v.label} (stok: {v.stock})
+                                {variantDisplayLabel(v)} (stok: {v.stock})
                               </SelectItem>
                             ))}
                           </SelectContent>

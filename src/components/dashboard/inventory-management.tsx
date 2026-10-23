@@ -85,7 +85,9 @@ export function MaterialCatalogTab({ selectMaterialId, onSelectConsumed }: Mater
     try {
       const res = await fetch('/api/materials');
       const data = await res.json();
-      const list: MaterialData[] = data.materials || [];
+      // Filament moved out to its own sub-tab (ims-feature-warehouse-
+      // management-filament-tab.md) — this list is non-filament Material only.
+      const list: MaterialData[] = (data.materials || []).filter((m: MaterialData) => !isFilamentMaterialName(m.name));
       setMaterials(list);
       setSelectedId((prev) => (prev && list.some((m) => m.id === prev)) ? prev : (list[0]?.id || ''));
     } catch {
