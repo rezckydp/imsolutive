@@ -625,25 +625,41 @@ export function BarcodeScanner({
           return;
         }
 
-        // Tally per unique SKU+varian (ims-feature-print-popup-input-
-        // pesanan.md) — the popup is per-SKU, not per-scan, so sum qty
-        // across every scan of the same variant before showing it.
-        const tally = new Map<string, OrderPrintRow>();
+        const createdOrder = await res.json();
+
+        // Only SKUs still "belum ready" after this order's own deduction
+        // get a print row, at the deficit qty — not the full order qty
+        // (ims-feature-print-popup-input-pesanan.md §Filter). variant.qty
+        // in the response is the stock AFTER this order's decrement, so
+        // "how far negative it went" is exactly the deficit: that holds
+        // even when the same variantId appears on more than one OrderItem
+        // (e.g. Req. Color rows, which never stack), because the qty this
+        // order consumed and the qty that cancels it out of the stock
+        // snapshot are the same number either way.
+        const finalQtyByVariant = new Map<string, number>();
+        const codeByVariant = new Map<string, string>();
         for (const item of validItems) {
-          const existing = tally.get(item.variantId);
-          if (existing) {
-            existing.qty += item.qty;
-          } else {
-            tally.set(item.variantId, {
-              variantId: item.variantId,
-              code: item.code,
-              sku: item.sku,
-              productName: item.productName,
-              color: item.color,
-              type: item.type,
-              qty: item.qty,
+          if (!codeByVariant.has(item.variantId)) codeByVariant.set(item.variantId, item.code);
+        }
+        const infoByVariant = new Map<string, { sku: string; productName: string; color: string; type: string }>();
+        for (const oi of (createdOrder.orderItems || [])) {
+          finalQtyByVariant.set(oi.variantId, oi.variant.qty);
+          if (!infoByVariant.has(oi.variantId)) {
+            infoByVariant.set(oi.variantId, {
+              sku: oi.variant.product.sku,
+              productName: oi.variant.product.name,
+              color: oi.variant.color,
+              type: oi.variant.type,
             });
           }
+        }
+        const rows: OrderPrintRow[] = [];
+        for (const [variantId, finalQty] of finalQtyByVariant) {
+          const needed = Math.max(0, -finalQty);
+          if (needed <= 0) continue;
+          const info = infoByVariant.get(variantId);
+          if (!info) continue;
+          rows.push({ variantId, code: codeByVariant.get(variantId) || info.sku, qty: needed, ...info });
         }
 
         setItems([]);
@@ -653,7 +669,7 @@ export function BarcodeScanner({
         resetPdfUpload();
         onOrderCreated?.();
         onOpenChange(false);
-        setPrintPopup({ orderNo, rows: Array.from(tally.values()) });
+        if (rows.length > 0) setPrintPopup({ orderNo, rows });
       } else {
         for (const item of validItems) {
           await fetch('/api/production', {
