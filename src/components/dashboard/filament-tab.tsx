@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Plus, Pencil, Trash2, Minus, Weight, ArrowUpDown } from 'lucide-react';
+import { Plus, Pencil, Trash2, Minus, Weight, ArrowUpDown, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -31,12 +31,18 @@ interface MaterialVariantRaw {
   minStock: number;
   brand: string | null;
   materialType: string | null;
+  knownBarcodes: string | null;
 }
 
 interface MaterialRaw {
   id: string;
   name: string;
   variants: MaterialVariantRaw[];
+}
+
+interface ColorOption {
+  name: string;
+  status: string;
 }
 
 interface FilamentRow {
@@ -47,6 +53,17 @@ interface FilamentRow {
   materialType: string;
   stock: number;
   minStock: number;
+  knownBarcodes: string[];
+}
+
+function parseKnownBarcodes(raw: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter((b) => typeof b === 'string') : [];
+  } catch {
+    return [];
+  }
 }
 
 function isFilamentMaterial(name: string) {
@@ -62,7 +79,7 @@ async function ensureFilamentMaterialId(materials: MaterialRaw[]): Promise<strin
   const res = await fetch('/api/materials', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: 'Filament', unit: 'gram', hasVariants: true }),
+    body: JSON.stringify({ name: 'Filament', unit: 'roll', hasVariants: true }),
   });
   const data = await res.json();
   return data.id;
@@ -70,6 +87,7 @@ async function ensureFilamentMaterialId(materials: MaterialRaw[]): Promise<strin
 
 export function FilamentTab() {
   const [materials, setMaterials] = useState<MaterialRaw[]>([]);
+  const [colors, setColors] = useState<ColorOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<'brand' | 'color'>('brand');
   const [adjustDrafts, setAdjustDrafts] = useState<Record<string, string>>({});
@@ -89,6 +107,15 @@ export function FilamentTab() {
 
   useEffect(() => { fetchMaterials(); }, [fetchMaterials]);
 
+  useEffect(() => {
+    fetch('/api/colors')
+      .then((res) => res.json())
+      .then((data) => setColors(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
+
+  const activeColorNames = useMemo(() => colors.filter((c) => c.status === 'Active').map((c) => c.name), [colors]);
+
   const rows = useMemo(() => {
     const out: FilamentRow[] = [];
     for (const m of materials) {
@@ -102,15 +129,16 @@ export function FilamentTab() {
           materialType: v.materialType || '',
           stock: v.stock,
           minStock: v.minStock,
+          knownBarcodes: parseKnownBarcodes(v.knownBarcodes),
         });
       }
     }
     return out.sort((a, b) => (sortBy === 'brand' ? a.brand.localeCompare(b.brand) : a.color.localeCompare(b.color)));
   }, [materials, sortBy]);
 
-  // ============ QUICK ADD/SUBTRACT STOCK ============
+  // ============ QUICK ADD/SUBTRACT STOCK — empty input defaults to 1 Roll ============
   const handleQuickAdjust = async (row: FilamentRow, sign: 1 | -1) => {
-    const amount = parseInt(adjustDrafts[row.id] || '0', 10);
+    const amount = adjustDrafts[row.id]?.trim() ? parseInt(adjustDrafts[row.id], 10) : 1;
     if (!amount || amount <= 0) return;
     setAdjustingId(row.id);
     try {
@@ -143,6 +171,8 @@ export function FilamentTab() {
   const [formJenisCustom, setFormJenisCustom] = useState('');
   const [formStock, setFormStock] = useState('0');
   const [formMinStock, setFormMinStock] = useState('0');
+  const [formBarcodes, setFormBarcodes] = useState<string[]>([]);
+  const [formNewBarcode, setFormNewBarcode] = useState('');
   const [saving, setSaving] = useState(false);
 
   const openAdd = () => {
@@ -153,6 +183,8 @@ export function FilamentTab() {
     setFormJenisCustom('');
     setFormStock('0');
     setFormMinStock('0');
+    setFormBarcodes([]);
+    setFormNewBarcode('');
     setFormOpen(true);
   };
 
@@ -169,7 +201,20 @@ export function FilamentTab() {
     }
     setFormStock(String(row.stock));
     setFormMinStock(String(row.minStock));
+    setFormBarcodes(row.knownBarcodes);
+    setFormNewBarcode('');
     setFormOpen(true);
+  };
+
+  const addFormBarcode = () => {
+    const code = formNewBarcode.trim();
+    if (!code || formBarcodes.includes(code)) return;
+    setFormBarcodes((prev) => [...prev, code]);
+    setFormNewBarcode('');
+  };
+
+  const removeFormBarcode = (code: string) => {
+    setFormBarcodes((prev) => prev.filter((b) => b !== code));
   };
 
   const handleSaveForm = async () => {
@@ -187,6 +232,7 @@ export function FilamentTab() {
             materialType: jenis,
             stock: parseInt(formStock, 10) || 0,
             minStock: parseInt(formMinStock, 10) || 0,
+            knownBarcodes: formBarcodes,
           }),
         });
         if (!res.ok) {
@@ -205,6 +251,7 @@ export function FilamentTab() {
             materialType: jenis,
             stock: parseInt(formStock, 10) || 0,
             minStock: parseInt(formMinStock, 10) || 0,
+            knownBarcodes: formBarcodes,
           }),
         });
         if (!res.ok) {
@@ -276,7 +323,7 @@ export function FilamentTab() {
                 <th className="px-4 py-3 font-medium">Brand</th>
                 <th className="px-4 py-3 font-medium">Warna</th>
                 <th className="px-4 py-3 font-medium">Jenis Bahan</th>
-                <th className="px-4 py-3 font-medium">Stok (gram)</th>
+                <th className="px-4 py-3 font-medium">Stok (Roll)</th>
                 <th className="px-4 py-3 font-medium">Quick Add/Kurangi</th>
                 <th className="px-4 py-3 font-medium text-right">Actions</th>
               </tr>
@@ -290,7 +337,7 @@ export function FilamentTab() {
                     <td className="px-4 py-2.5 text-[var(--t-body)]">{row.color}</td>
                     <td className="px-4 py-2.5 text-[var(--t-body)]">{row.materialType || '—'}</td>
                     <td className="px-4 py-2.5">
-                      <span className={`font-semibold ${isLow ? 'text-[var(--danger)]' : 'text-[var(--t-heading)]'}`}>{row.stock}g</span>
+                      <span className={`font-semibold ${isLow ? 'text-[var(--danger)]' : 'text-[var(--t-heading)]'}`}>{row.stock} Roll</span>
                       {isLow && (
                         <Badge className="ml-2 text-[10px] px-1.5 py-0 rounded-full bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]/30" variant="outline">
                           Low Stock
@@ -302,7 +349,7 @@ export function FilamentTab() {
                         <Input
                           type="number"
                           min={0}
-                          placeholder="gram"
+                          placeholder="Roll"
                           value={adjustDrafts[row.id] || ''}
                           onChange={(e) => setAdjustDrafts((prev) => ({ ...prev, [row.id]: e.target.value }))}
                           className="h-8 w-20 text-xs bg-[var(--surface)] border-[var(--bd)]"
@@ -356,7 +403,20 @@ export function FilamentTab() {
             </div>
             <div className="space-y-1.5">
               <Label className="text-sm font-medium text-[var(--t-heading)]">Warna *</Label>
-              <Input value={formColor} onChange={(e) => setFormColor(e.target.value)} placeholder="e.g. Black" className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg" />
+              {activeColorNames.length === 0 ? (
+                <p className="text-[11px] text-[var(--t-muted)]">Belum ada Color Variant — tambah dulu di Database &gt; Color Variant.</p>
+              ) : (
+                <Select value={formColor} onValueChange={setFormColor}>
+                  <SelectTrigger className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg">
+                    <SelectValue placeholder="Pilih warna..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeColorNames.map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label className="text-sm font-medium text-[var(--t-heading)]">Jenis Bahan</Label>
@@ -382,12 +442,42 @@ export function FilamentTab() {
             </div>
             <div className="flex gap-3">
               <div className="space-y-1.5">
-                <Label className="text-sm font-medium text-[var(--t-heading)]">Stok (gram)</Label>
+                <Label className="text-sm font-medium text-[var(--t-heading)]">Stok (Roll)</Label>
                 <Input type="number" value={formStock} onChange={(e) => setFormStock(e.target.value)} className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg w-28" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-sm font-medium text-[var(--t-heading)]">Min Stock (gram)</Label>
+                <Label className="text-sm font-medium text-[var(--t-heading)]">Min Stock (Roll)</Label>
                 <Input type="number" value={formMinStock} onChange={(e) => setFormMinStock(e.target.value)} className="h-10 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg w-28" />
+              </div>
+            </div>
+
+            {/* Barcode kemasan — Filament bisa punya lebih dari satu (beda
+                batch/supplier), dipakai buat lookup di Scan Material */}
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-[var(--t-heading)]">Barcode Kemasan <span className="font-normal text-[var(--t-muted)]">(opt)</span></Label>
+              {formBarcodes.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-1.5">
+                  {formBarcodes.map((code) => (
+                    <span key={code} className="inline-flex items-center gap-1 text-[11px] font-mono bg-[var(--surface)] border border-[var(--bd)] rounded-full pl-2.5 pr-1 py-0.5">
+                      {code}
+                      <button onClick={() => removeFormBarcode(code)} className="p-0.5 rounded-full hover:bg-[var(--danger)]/10 text-[var(--t-muted)] hover:text-[var(--danger)] cursor-pointer">
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Input
+                  value={formNewBarcode}
+                  onChange={(e) => setFormNewBarcode(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addFormBarcode(); } }}
+                  placeholder="Scan/ketik barcode kemasan"
+                  className="h-9 text-xs bg-[var(--surface)] border-[var(--bd)] rounded-lg font-mono flex-1"
+                />
+                <Button type="button" variant="outline" onClick={addFormBarcode} className="h-9 px-3 text-xs rounded-lg">
+                  Tambah
+                </Button>
               </div>
             </div>
           </div>

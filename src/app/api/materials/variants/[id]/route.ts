@@ -38,6 +38,11 @@ export async function PUT(
         ...(barcode !== undefined && { barcode }),
         ...(body.brand !== undefined && { brand: (body.brand || "").toString().trim() || null }),
         ...(body.materialType !== undefined && { materialType: (body.materialType || "").toString().trim() || null }),
+        ...(body.knownBarcodes !== undefined && {
+          knownBarcodes: Array.isArray(body.knownBarcodes) && body.knownBarcodes.length > 0
+            ? JSON.stringify(body.knownBarcodes.filter((b: unknown) => typeof b === "string" && b.trim()))
+            : null,
+        }),
       },
     });
 

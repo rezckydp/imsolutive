@@ -15,6 +15,9 @@ export async function POST(
     const barcode = (body.barcode || "").toString().trim() || null;
     const brand = body.brand !== undefined ? (body.brand || "").toString().trim() || null : null;
     const materialType = body.materialType !== undefined ? (body.materialType || "").toString().trim() || null : null;
+    const knownBarcodes = Array.isArray(body.knownBarcodes) && body.knownBarcodes.length > 0
+      ? JSON.stringify(body.knownBarcodes.filter((b: unknown) => typeof b === "string" && b.trim()))
+      : null;
 
     if (!label) {
       return NextResponse.json({ error: "Label Varian wajib diisi" }, { status: 400 });
@@ -36,7 +39,7 @@ export async function POST(
     }
 
     const variant = await db.materialVariant.create({
-      data: { materialId: id, label, stock, minStock, barcode, brand, materialType },
+      data: { materialId: id, label, stock, minStock, barcode, brand, materialType, knownBarcodes },
     });
 
     return NextResponse.json(variant, { status: 201 });

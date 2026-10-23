@@ -100,6 +100,12 @@ model MaterialVariant {
   // tab can filter/sort/display them without parsing strings.
   brand        String?
   materialType String?
+  // JSON array of strings — a Filament item can have more than one known
+  // packaging barcode (different batches/suppliers print different codes
+  // for the same Brand+Warna+Jenis) — ims-feature-warehouse-management-
+  // scan-material.md. The singular `barcode` column above stays as-is for
+  // every other Material/Variant's single-barcode case.
+  knownBarcodes String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

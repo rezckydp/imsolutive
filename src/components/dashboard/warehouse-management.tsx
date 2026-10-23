@@ -1,9 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { ScanLine } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { StockManagement } from '@/components/dashboard/stock-management';
 import { MaterialCatalogTab, RiwayatTab } from '@/components/dashboard/inventory-management';
 import { FilamentTab } from '@/components/dashboard/filament-tab';
+import { ScanMaterialDialog } from '@/components/dashboard/scan-material-dialog';
 
 export type WarehouseSubTab = 'produk' | 'material' | 'filament' | 'riwayat';
 
@@ -17,6 +20,8 @@ interface WarehouseManagementPageProps {
 
 export function WarehouseManagementPage({ initialSubTab, selectMaterialId, onDeepLinkConsumed }: WarehouseManagementPageProps) {
   const [tab, setTab] = useState<WarehouseSubTab>('produk');
+  const [scanOpen, setScanOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (initialSubTab) {
@@ -34,6 +39,10 @@ export function WarehouseManagementPage({ initialSubTab, selectMaterialId, onDee
           <h1 className="text-2xl font-bold text-[var(--t-heading)]">Warehouse Management</h1>
           <p className="text-sm text-[var(--t-body)] mt-1">Produk, Material, & riwayat pergerakan stok</p>
         </div>
+        <Button onClick={() => setScanOpen(true)} variant="outline" className="rounded-full px-4 h-9 text-sm border-[var(--bd)]">
+          <ScanLine className="w-4 h-4 mr-1.5" />
+          Scan Material
+        </Button>
       </div>
 
       {/* Sub-tab Switcher */}
@@ -74,10 +83,16 @@ export function WarehouseManagementPage({ initialSubTab, selectMaterialId, onDee
 
       {tab === 'produk' && <StockManagement />}
       {tab === 'material' && (
-        <MaterialCatalogTab selectMaterialId={tab === 'material' ? selectMaterialId : null} onSelectConsumed={onDeepLinkConsumed} />
+        <MaterialCatalogTab key={refreshKey} selectMaterialId={tab === 'material' ? selectMaterialId : null} onSelectConsumed={onDeepLinkConsumed} />
       )}
-      {tab === 'filament' && <FilamentTab />}
-      {tab === 'riwayat' && <RiwayatTab />}
+      {tab === 'filament' && <FilamentTab key={refreshKey} />}
+      {tab === 'riwayat' && <RiwayatTab key={refreshKey} />}
+
+      <ScanMaterialDialog
+        open={scanOpen}
+        onOpenChange={setScanOpen}
+        onChanged={() => setRefreshKey((k) => k + 1)}
+      />
     </div>
   );
 }
