@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { ScanLine, Search, ArrowDownToLine, ArrowUpFromLine, Loader2, AlertTriangle, Camera, CameraOff } from 'lucide-react';
+import { ScanLine, Search, ArrowDownToLine, ArrowUpFromLine, Loader2, AlertTriangle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -77,13 +77,7 @@ export function ScanMaterialDialog({ open, onOpenChange, onChanged }: Props) {
   const [regMinStock, setRegMinStock] = useState('0');
   const [colorOptions, setColorOptions] = useState<string[]>([]);
 
-  const [cameraOn, setCameraOn] = useState(false);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-
   const scanInputRef = useRef<HTMLInputElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const cameraControlsRef = useRef<{ stop: () => void } | null>(null);
-  const processingRef = useRef(false);
 
   const resetToScanning = () => {
     setStage('scanning');
@@ -97,9 +91,6 @@ export function ScanMaterialDialog({ open, onOpenChange, onChanged }: Props) {
       setStage('scanning');
       setFeedback(null);
       setTimeout(() => scanInputRef.current?.focus(), 50);
-    } else {
-      setCameraOn(false);
-      setCameraError(null);
     }
   }, [open]);
 
@@ -120,10 +111,9 @@ export function ScanMaterialDialog({ open, onOpenChange, onChanged }: Props) {
     }
   }, [stage, colorOptions.length]);
 
-  const processCode = async (rawCode: string) => {
-    const code = rawCode.trim();
-    if (!code || processingRef.current) return;
-    processingRef.current = true;
+  const handleScanSubmit = async () => {
+    const code = scanInput.trim();
+    if (!code || busy) return;
     setBusy(true);
     setFeedback(null);
     try {
@@ -141,43 +131,10 @@ export function ScanMaterialDialog({ open, onOpenChange, onChanged }: Props) {
     } catch {
       setFeedback({ type: 'error', text: 'Gagal mencari barcode' });
     } finally {
-      processingRef.current = false;
       setBusy(false);
       setScanInput('');
     }
   };
-
-  const handleScanSubmit = () => processCode(scanInput);
-
-  // Camera scanning (ZXing) — only active while on the 'scanning' stage with
-  // the camera toggled on; stops automatically once a code is matched/unknown
-  // so the same frame can't be decoded twice while the confirm UI is up.
-  useEffect(() => {
-    if (!(open && cameraOn && stage === 'scanning' && videoRef.current)) return;
-    let stopped = false;
-    setCameraError(null);
-    import('@zxing/browser').then(({ BrowserMultiFormatReader }) => {
-      if (stopped || !videoRef.current) return;
-      const reader = new BrowserMultiFormatReader();
-      reader
-        .decodeFromVideoDevice(undefined, videoRef.current, (result) => {
-          if (result) processCode(result.getText());
-        })
-        .then((controls) => {
-          if (stopped) controls.stop();
-          else cameraControlsRef.current = controls;
-        })
-        .catch(() => {
-          setCameraError('Gagal akses kamera. Pastikan izin kamera diizinkan & domain diakses lewat HTTPS.');
-          setCameraOn(false);
-        });
-    });
-    return () => {
-      stopped = true;
-      cameraControlsRef.current?.stop();
-      cameraControlsRef.current = null;
-    };
-  }, [open, cameraOn, stage]);
 
   const handleConfirmSubmit = async () => {
     const qty = parseInt(qtyInput, 10);
@@ -384,34 +341,6 @@ export function ScanMaterialDialog({ open, onOpenChange, onChanged }: Props) {
               disabled={busy}
               className="w-full h-14 text-base bg-[var(--surface)] border border-[var(--bd)] rounded-lg px-4 font-mono text-[var(--t-heading)] placeholder:text-[var(--t-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--brand)]/30 disabled:opacity-60"
             />
-
-            <div className="flex items-center gap-2">
-              <div className="flex-1 h-px bg-[var(--bd)]" />
-              <span className="text-[11px] text-[var(--t-muted)]">atau</span>
-              <div className="flex-1 h-px bg-[var(--bd)]" />
-            </div>
-
-            {!cameraOn ? (
-              <Button variant="outline" onClick={() => setCameraOn(true)} className="rounded-full w-full h-12 text-base gap-2">
-                <Camera className="w-5 h-5" /> Buka Kamera
-              </Button>
-            ) : (
-              <div className="space-y-2">
-                <div className="relative rounded-lg overflow-hidden border border-[var(--bd)] bg-black aspect-square">
-                  <video ref={videoRef} muted playsInline autoPlay className="w-full h-full object-cover" />
-                </div>
-                <Button variant="outline" onClick={() => setCameraOn(false)} className="rounded-full w-full h-11 text-sm gap-2">
-                  <CameraOff className="w-4 h-4" /> Tutup Kamera
-                </Button>
-              </div>
-            )}
-
-            {cameraError && (
-              <div className="flex items-start gap-2 p-2.5 rounded-lg text-xs bg-[var(--danger)]/10 text-[var(--danger)] border border-[var(--danger)]/30">
-                {cameraError}
-              </div>
-            )}
-
             {feedback && (
               <div className={`flex items-center gap-2 p-2.5 rounded-lg text-xs ${
                 feedback.type === 'ok'
@@ -421,7 +350,7 @@ export function ScanMaterialDialog({ open, onOpenChange, onChanged }: Props) {
                 {feedback.text}
               </div>
             )}
-            <p className="text-[11px] text-[var(--t-muted)]">Tekan Enter buat submit barcode (scanner fisik), atau arahin kamera ke barcode. Mode scan tetap terbuka buat scan berikutnya.</p>
+            <p className="text-[11px] text-[var(--t-muted)]">Tekan Enter buat submit barcode, mode scan tetap terbuka buat scan berikutnya.</p>
           </div>
         )}
 

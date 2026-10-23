@@ -34,6 +34,8 @@ import {
   AlertTriangle,
   Undo2,
   PackageCheck,
+  Camera,
+  CameraOff,
 } from 'lucide-react';
 import { OrderPrintPopup, type OrderPrintRow } from '@/components/dashboard/order-print-popup';
 
@@ -160,6 +162,14 @@ export function BarcodeScanner({
   const [printPopup, setPrintPopup] = useState<{ orderNo: string; rows: OrderPrintRow[] } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isProcessing = useRef(false);
+
+  // Camera scanning (ZXing) — shared by both "Pesanan" and "Terima Stok",
+  // since both just feed decoded codes into the same manual-lookup flow
+  // (ims-hotfix-camera-scan-terima-stok.md).
+  const [cameraOn, setCameraOn] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const cameraControlsRef = useRef<{ stop: () => void } | null>(null);
 
   // For production mode
   const [printers, setPrinters] = useState<Array<{ id: string; name: string; status: string }>>([]);
@@ -413,15 +423,23 @@ export function BarcodeScanner({
     }
   };
 
-  // ============ MANUAL LOOKUP ============
+  // ============ MANUAL LOOKUP (shared with camera decode) ============
+
+  // Both the typed/physical-scanner input and the camera decoder feed the
+  // exact same lookup flow — no separate logic per input method.
+  const processScannedCode = useCallback(async (code: string) => {
+    const trimmed = code.trim();
+    if (!trimmed) return;
+    if (mode === 'receive') {
+      await handleReceiveScan(trimmed);
+    } else {
+      await handleScan(trimmed);
+    }
+  }, [mode, handleReceiveScan, handleScan]);
 
   const handleManualLookup = async () => {
     if (!manualCode.trim()) return;
-    if (mode === 'receive') {
-      await handleReceiveScan(manualCode.trim());
-    } else {
-      await handleScan(manualCode.trim());
-    }
+    await processScannedCode(manualCode);
     setManualCode('');
     // Focus will be restored by the lookingUp useEffect above
   };
@@ -429,6 +447,40 @@ export function BarcodeScanner({
   const handleManualKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleManualLookup();
   };
+
+  // Manual input (and the camera toggle beside it) is hidden only while
+  // reviewing an uploaded PDF picking list.
+  const showManualInput = !(mode === 'order' && orderSubMode === 'pdf');
+
+  // Camera scanning — only runs while the manual-input row is showing and
+  // the camera is toggled on; stops automatically otherwise (PDF sub-mode,
+  // dialog closed, or user closes it) so it can't decode into a closed UI.
+  useEffect(() => {
+    if (!(open && cameraOn && showManualInput && videoRef.current)) return;
+    let stopped = false;
+    setCameraError(null);
+    import('@zxing/browser').then(({ BrowserMultiFormatReader }) => {
+      if (stopped || !videoRef.current) return;
+      const reader = new BrowserMultiFormatReader();
+      reader
+        .decodeFromVideoDevice(undefined, videoRef.current, (result) => {
+          if (result) processScannedCode(result.getText());
+        })
+        .then((controls) => {
+          if (stopped) controls.stop();
+          else cameraControlsRef.current = controls;
+        })
+        .catch(() => {
+          setCameraError('Gagal akses kamera. Pastikan izin kamera diizinkan & domain diakses lewat HTTPS.');
+          setCameraOn(false);
+        });
+    });
+    return () => {
+      stopped = true;
+      cameraControlsRef.current?.stop();
+      cameraControlsRef.current = null;
+    };
+  }, [open, cameraOn, showManualInput, processScannedCode]);
 
   // ============ PDF UPLOAD (Picking List) ============
 
@@ -712,6 +764,8 @@ export function BarcodeScanner({
       setTodayTotal(null);
       setNotePromptItemId(null);
       setNotePromptValue('');
+      setCameraOn(false);
+      setCameraError(null);
     }
     onOpenChange(val);
   };
@@ -858,29 +912,60 @@ export function BarcodeScanner({
             </div>
           )}
 
-          {/* Manual Input */}
-          {!(mode === 'order' && orderSubMode === 'pdf') && (
-            <div className="mt-3 flex gap-2 flex-shrink-0">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--t-muted)]" />
-                <Input
-                  ref={inputRef}
-                  value={manualCode}
-                  onChange={(e) => setManualCode(e.target.value)}
-                  onKeyDown={handleManualKeyDown}
-                  placeholder="Ketik barcode atau SKU..."
-                  disabled={lookingUp}
-                  autoFocus
-                  className="pl-9 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg h-11"
-                />
+          {/* Manual Input + Camera */}
+          {showManualInput && (
+            <div className="mt-3 flex-shrink-0 space-y-2">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--t-muted)]" />
+                  <Input
+                    ref={inputRef}
+                    value={manualCode}
+                    onChange={(e) => setManualCode(e.target.value)}
+                    onKeyDown={handleManualKeyDown}
+                    placeholder="Ketik barcode atau SKU..."
+                    disabled={lookingUp}
+                    autoFocus
+                    className="pl-9 text-sm bg-[var(--surface)] border-[var(--bd)] rounded-lg h-11"
+                  />
+                </div>
+                <Button
+                  onClick={handleManualLookup}
+                  disabled={lookingUp || !manualCode.trim()}
+                  className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white h-11 px-5 rounded-lg flex-shrink-0 disabled:opacity-50"
+                >
+                  {lookingUp ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                </Button>
               </div>
-              <Button
-                onClick={handleManualLookup}
-                disabled={lookingUp || !manualCode.trim()}
-                className="bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-white h-11 px-5 rounded-lg flex-shrink-0 disabled:opacity-50"
-              >
-                {lookingUp ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-              </Button>
+
+              {!cameraOn ? (
+                <Button
+                  variant="outline"
+                  onClick={() => setCameraOn(true)}
+                  className="rounded-lg w-full h-11 text-sm gap-2 border-[var(--bd)]"
+                >
+                  <Camera className="w-4 h-4" /> Buka Kamera
+                </Button>
+              ) : (
+                <div className="space-y-2">
+                  <div className="relative rounded-lg overflow-hidden border border-[var(--bd)] bg-black aspect-square max-h-[260px]">
+                    <video ref={videoRef} muted playsInline autoPlay className="w-full h-full object-cover" />
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => setCameraOn(false)}
+                    className="rounded-lg w-full h-10 text-sm gap-2 border-[var(--bd)]"
+                  >
+                    <CameraOff className="w-4 h-4" /> Tutup Kamera
+                  </Button>
+                </div>
+              )}
+
+              {cameraError && (
+                <div className="p-2.5 rounded-lg text-xs bg-[var(--danger)]/10 text-[var(--danger)] border border-[var(--danger)]/30">
+                  {cameraError}
+                </div>
+              )}
             </div>
           )}
 
