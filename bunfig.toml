@@ -1,0 +1,7 @@
+[install]
+# Tencent Cloud's mirror (mirrors.tencentyun.com, often the system default on
+# Tencent VPS) doesn't carry every package — notably qrcode, jspdf,
+# pdf-parse, @types/qrcode and @zxing/browser all 404 there. npmmirror.com
+# (Alibaba's official China npm mirror) carries the full npm registry and is
+# still fast from mainland China, so pin to it here for this project.
+registry = "https://registry.npmmirror.com/"
