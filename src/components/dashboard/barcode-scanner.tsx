@@ -68,6 +68,12 @@ interface ReceiveScanEntry {
 const isRequestColorVariant = (color: string, type: string) =>
   color.toLowerCase().includes('req') || type.toLowerCase().includes('req');
 
+// "Custom Race Stats" SKUs (e.g. FM001-D13-CRS) carry engrave data the buyer
+// supplies at order time — detected by SKU suffix, not a hardcoded list, so
+// any future product using the same "-CRS" naming is covered automatically
+// (ims-feature-input-pesanan-catatan-race-stats.md).
+const isRaceStatsVariant = (sku: string) => sku.trim().toUpperCase().endsWith('-CRS');
+
 interface ScannedItem {
   id: string;
   code: string;
@@ -292,7 +298,10 @@ export function BarcodeScanner({
         };
 
         setItems((prev) => {
-          const existing = !isRequestColorVariant(result.color || '', result.variantType || '') && prev.find((i) => i.variantId === result.variantId);
+          const existing =
+            !isRequestColorVariant(result.color || '', result.variantType || '') &&
+            !isRaceStatsVariant(result.sku) &&
+            prev.find((i) => i.variantId === result.variantId);
           if (existing) {
             return prev.map((i) =>
               i.variantId === result.variantId ? { ...i, qty: i.qty + 1 } : i
@@ -320,7 +329,10 @@ export function BarcodeScanner({
         };
 
         setItems((prev) => {
-          const existing = !isRequestColorVariant(v.color || '', v.type || '') && prev.find((i) => i.variantId === v.id);
+          const existing =
+            !isRequestColorVariant(v.color || '', v.type || '') &&
+            !isRaceStatsVariant(result.sku) &&
+            prev.find((i) => i.variantId === v.id);
           if (existing) {
             return prev.map((i) =>
               i.variantId === v.id ? { ...i, qty: i.qty + 1 } : i
@@ -654,6 +666,16 @@ export function BarcodeScanner({
     if (!isProductionTab && !pickingListNo.trim()) {
       setLookupError('No. Picking List wajib diisi sebelum submit');
       return;
+    }
+
+    if (!isProductionTab) {
+      const missingRaceStats = validItems.filter((i) => isRaceStatsVariant(i.sku) && !i.note.trim());
+      if (missingRaceStats.length > 0) {
+        setLookupError(
+          `Catatan Race Stats wajib diisi untuk ${missingRaceStats.map((i) => i.sku).join(', ')}`
+        );
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -1208,6 +1230,22 @@ export function BarcodeScanner({
                             onChange={(e) => updateItemNote(item.id, e.target.value)}
                             placeholder="Tulis warna yang diminta customer..."
                             className="w-full h-7 text-xs bg-[var(--warning)]/5 border border-[var(--warning)]/20 rounded-md px-2 text-[var(--warning-darker)] placeholder:text-[var(--warning)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--warning)]/30"
+                          />
+                        </div>
+                      )}
+
+                      {/* Catatan Race Stats — required for Custom Race Stats SKUs (-CRS) */}
+                      {item.variantId && isRaceStatsVariant(item.sku) && (
+                        <div className="mt-1.5">
+                          <label className="text-[10px] font-semibold text-[var(--info)] flex items-center gap-1 mb-1">
+                            Catatan Race Stats <span className="text-[var(--danger)]">*</span>
+                          </label>
+                          <textarea
+                            value={item.note}
+                            onChange={(e) => updateItemNote(item.id, e.target.value)}
+                            placeholder="Nama event, waktu finish, jarak, dll..."
+                            rows={2}
+                            className="w-full text-xs bg-[var(--info)]/5 border border-[var(--info)]/25 rounded-md px-2 py-1.5 text-[var(--t-heading)] placeholder:text-[var(--info)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--info)]/30 resize-none"
                           />
                         </div>
                       )}
