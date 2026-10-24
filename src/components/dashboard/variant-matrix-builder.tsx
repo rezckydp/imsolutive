@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useImperativeHandle, forwardRef, useMemo } from 'react';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Settings2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 
 // ============ TYPES ============
 
@@ -17,6 +18,12 @@ export interface MatrixRow {
   price: string; // controlled-input string; parsed to Int on submit
   qty: number;
   barcode: string;
+  // Dynamic Input Pesanan note field, per variant (ims-feature-input-pesanan-
+  // catatan-dinamis.md) — same meaning as in the simple Produk form.
+  requiresOrderNotes: boolean;
+  orderNotesLabel: string;
+  orderNotesPlaceholder: string;
+  orderNotesRequired: boolean;
 }
 
 export interface MatrixBuilderHandle {
@@ -74,6 +81,10 @@ export function buildVariantMatrixPayload(
     qty: r.qty,
     barcode: r.barcode.trim() || null,
     price: r.price.trim() ? parseInt(r.price, 10) : null,
+    requiresOrderNotes: r.requiresOrderNotes,
+    orderNotesLabel: r.requiresOrderNotes ? (r.orderNotesLabel.trim() || null) : null,
+    orderNotesPlaceholder: r.requiresOrderNotes ? (r.orderNotesPlaceholder.trim() || null) : null,
+    orderNotesRequired: r.orderNotesRequired,
   }));
   return [...upserts, ...deleted];
 }
@@ -90,6 +101,29 @@ export const VariantMatrixBuilder = forwardRef<MatrixBuilderHandle, Props>(funct
   const [applyPrice, setApplyPrice] = useState('');
   const [applyStock, setApplyStock] = useState('');
   const [applyBarcode, setApplyBarcode] = useState('');
+  // Which rows have their "Butuh Catatan Tambahan" settings panel open
+  // (ims-feature-input-pesanan-catatan-dinamis.md) — keyed the same way as rows.
+  const [expandedNotesRows, setExpandedNotesRows] = useState<Set<string>>(new Set());
+
+  const toggleNotesExpanded = (key: string) => {
+    setExpandedNotesRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const updateRowNotes = (
+    variasi1: string,
+    color: string,
+    field: 'requiresOrderNotes' | 'orderNotesLabel' | 'orderNotesPlaceholder' | 'orderNotesRequired',
+    value: string | boolean
+  ) => {
+    setRows((prev) =>
+      prev.map((r) => (r.variasi1 === variasi1 && r.color === color ? { ...r, [field]: value } : r))
+    );
+  };
 
   useImperativeHandle(ref, () => ({
     getRows: () => rows,
@@ -151,6 +185,10 @@ export const VariantMatrixBuilder = forwardRef<MatrixBuilderHandle, Props>(funct
         price: '',
         qty: 0,
         barcode: suggestBarcode(masterSku, name, c.name),
+        requiresOrderNotes: false,
+        orderNotesLabel: '',
+        orderNotesPlaceholder: '',
+        orderNotesRequired: true,
       }));
       return [...prev, ...newRows];
     });
@@ -171,6 +209,10 @@ export const VariantMatrixBuilder = forwardRef<MatrixBuilderHandle, Props>(funct
         price: '',
         qty: 0,
         barcode: suggestBarcode(masterSku, v1, name),
+        requiresOrderNotes: false,
+        orderNotesLabel: '',
+        orderNotesPlaceholder: '',
+        orderNotesRequired: true,
       }));
       return [...prev, ...newRows];
     });
@@ -199,38 +241,94 @@ export const VariantMatrixBuilder = forwardRef<MatrixBuilderHandle, Props>(funct
 
   const availableColors = dbColors.filter((c) => !colors.some((x) => x.name.toLowerCase() === c.name.toLowerCase()));
 
-  const renderRow = (row: MatrixRow) => (
-    <div
-      key={`${row.variasi1}::${row.color}`}
-      className="grid grid-cols-[auto_1fr_90px_90px_1fr] gap-2 px-3 py-2 items-center border-t border-[var(--surface-2)] first:border-t-0"
-    >
-      <span className="w-5 h-5 rounded-full border border-[var(--bd)] flex-shrink-0" style={{ backgroundColor: row.colorHex }} />
-      <span className="text-sm text-[var(--t-heading)] truncate">{row.color}</span>
-      <Input
-        type="number"
-        min={0}
-        value={row.price}
-        onChange={(e) => updateRow(row.variasi1, row.color, 'price', e.target.value)}
-        placeholder="Rp"
-        className="h-8 text-xs bg-[var(--card)] border-[var(--bd)] rounded-lg"
-      />
-      <Input
-        type="number"
-        min={0}
-        disabled={childMode}
-        value={row.qty}
-        onChange={(e) => updateRow(row.variasi1, row.color, 'qty', parseInt(e.target.value) || 0)}
-        title={childMode ? 'Stok sync dari Master' : undefined}
-        className="h-8 text-xs bg-[var(--card)] border-[var(--bd)] rounded-lg disabled:opacity-60"
-      />
-      <Input
-        value={row.barcode}
-        onChange={(e) => updateRow(row.variasi1, row.color, 'barcode', e.target.value)}
-        placeholder="Barcode/SKU"
-        className="h-8 text-xs bg-[var(--card)] border-[var(--bd)] rounded-lg"
-      />
-    </div>
-  );
+  const renderRow = (row: MatrixRow) => {
+    const rowKey = `${row.variasi1}::${row.color}`;
+    const notesOpen = expandedNotesRows.has(rowKey);
+    return (
+      <div key={rowKey} className="border-t border-[var(--surface-2)] first:border-t-0">
+        <div className="grid grid-cols-[auto_1fr_90px_90px_1fr_auto] gap-2 px-3 py-2 items-center">
+          <span className="w-5 h-5 rounded-full border border-[var(--bd)] flex-shrink-0" style={{ backgroundColor: row.colorHex }} />
+          <span className="text-sm text-[var(--t-heading)] truncate">{row.color}</span>
+          <Input
+            type="number"
+            min={0}
+            value={row.price}
+            onChange={(e) => updateRow(row.variasi1, row.color, 'price', e.target.value)}
+            placeholder="Rp"
+            className="h-8 text-xs bg-[var(--card)] border-[var(--bd)] rounded-lg"
+          />
+          <Input
+            type="number"
+            min={0}
+            disabled={childMode}
+            value={row.qty}
+            onChange={(e) => updateRow(row.variasi1, row.color, 'qty', parseInt(e.target.value) || 0)}
+            title={childMode ? 'Stok sync dari Master' : undefined}
+            className="h-8 text-xs bg-[var(--card)] border-[var(--bd)] rounded-lg disabled:opacity-60"
+          />
+          <Input
+            value={row.barcode}
+            onChange={(e) => updateRow(row.variasi1, row.color, 'barcode', e.target.value)}
+            placeholder="Barcode/SKU"
+            className="h-8 text-xs bg-[var(--card)] border-[var(--bd)] rounded-lg"
+          />
+          <button
+            type="button"
+            onClick={() => toggleNotesExpanded(rowKey)}
+            title="Butuh Catatan Tambahan? (Input Pesanan)"
+            className={`w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-colors flex-shrink-0 ${
+              row.requiresOrderNotes
+                ? 'bg-[var(--info)]/10 text-[var(--info)]'
+                : 'text-[var(--t-muted)] hover:bg-[var(--surface)]'
+            }`}
+          >
+            <Settings2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {notesOpen && (
+          <div className="px-3 pb-2.5 space-y-2 bg-[var(--surface)]/60 rounded-b-lg -mt-0.5">
+            <div className="flex items-center justify-between pt-2">
+              <Label className="text-[11px] text-[var(--t-body)]">Butuh Catatan Tambahan? (Input Pesanan)</Label>
+              <Switch
+                checked={row.requiresOrderNotes}
+                onCheckedChange={(checked) => updateRowNotes(row.variasi1, row.color, 'requiresOrderNotes', checked)}
+              />
+            </div>
+            {row.requiresOrderNotes && (
+              <>
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-[var(--t-body)]">Label Catatan</Label>
+                  <Input
+                    value={row.orderNotesLabel}
+                    onChange={(e) => updateRowNotes(row.variasi1, row.color, 'orderNotesLabel', e.target.value)}
+                    placeholder="e.g. Catatan Race Stats (default: Catatan Tambahan)"
+                    className="h-8 text-xs bg-[var(--card)] border-[var(--bd)] rounded-lg"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-[var(--t-body)]">Placeholder <span className="font-normal text-[var(--t-muted)]">(opt)</span></Label>
+                  <Input
+                    value={row.orderNotesPlaceholder}
+                    onChange={(e) => updateRowNotes(row.variasi1, row.color, 'orderNotesPlaceholder', e.target.value)}
+                    placeholder="e.g. Contoh: Jakarta Marathon 2026 - Full Marathon - 3:45:12"
+                    className="h-8 text-xs bg-[var(--card)] border-[var(--bd)] rounded-lg"
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-[11px] text-[var(--t-body)]">Wajib diisi?</Label>
+                  <Switch
+                    checked={row.orderNotesRequired}
+                    onCheckedChange={(checked) => updateRowNotes(row.variasi1, row.color, 'orderNotesRequired', checked)}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -369,12 +467,13 @@ export const VariantMatrixBuilder = forwardRef<MatrixBuilderHandle, Props>(funct
                   {variasi1Name}: {group}
                 </div>
               )}
-              <div className="grid grid-cols-[auto_1fr_90px_90px_1fr] gap-2 px-3 py-1.5 bg-[var(--surface-2)] items-end">
+              <div className="grid grid-cols-[auto_1fr_90px_90px_1fr_auto] gap-2 px-3 py-1.5 bg-[var(--surface-2)] items-end">
                 <span />
                 <span className="text-[11px] font-medium text-[var(--t-muted)] uppercase tracking-wide">Warna</span>
                 <span className="text-[11px] font-medium text-[var(--t-muted)] uppercase tracking-wide">Harga</span>
                 <span className="text-[11px] font-medium text-[var(--t-muted)] uppercase tracking-wide">Stock</span>
                 <span className="text-[11px] font-medium text-[var(--t-muted)] uppercase tracking-wide">Barcode/SKU</span>
+                <span className="w-7" />
               </div>
               {rows.filter((r) => r.variasi1 === group).map(renderRow)}
             </div>

@@ -50,7 +50,8 @@ export interface RecentOrderItem {
   currentStock: number;
   itemStatus: string;       // Ready, Not Ready, In Queue (from OrderItem.status)
   orderStatus: string;      // Pending, Processing, Completed, Cancelled (from Order.status)
-  note: string;             // Custom color note
+  note: string;             // Custom color note / dynamic order-time note
+  orderNotesLabel?: string; // Label for `note` when it's a dynamic field (ims-feature-input-pesanan-catatan-dinamis.md), blank for the old Req. Color note
   createdAt: string;
 }
 
@@ -1079,7 +1080,8 @@ export function RecentOrderCard({
                               <div className="min-w-0">
                                 <span className="text-sm text-[var(--t-body)]">{item.color}{item.type ? ` - ${item.type}` : ''}</span>
                                 {item.note && (
-                                  <p className="text-[11px] text-[var(--warning)] font-medium truncate max-w-[120px]" title={item.note}>
+                                  <p className="text-[11px] text-[var(--warning)] font-medium truncate max-w-[120px]" title={item.orderNotesLabel ? `${item.orderNotesLabel}: ${item.note}` : item.note}>
+                                    {item.orderNotesLabel && <span className="font-semibold">{item.orderNotesLabel}: </span>}
                                     {item.note}
                                   </p>
                                 )}
@@ -1290,7 +1292,10 @@ export function RecentOrderCard({
                             <span className="text-xs text-[var(--t-heading)] font-medium ml-1">× {item.orderedQty}</span>
                           </div>
                           {item.note && (
-                            <p className="text-[11px] text-[var(--warning)] font-medium mt-1">{item.note}</p>
+                            <p className="text-[11px] text-[var(--warning)] font-medium mt-1">
+                              {item.orderNotesLabel && <span className="font-semibold">{item.orderNotesLabel}: </span>}
+                              {item.note}
+                            </p>
                           )}
                         </div>
 

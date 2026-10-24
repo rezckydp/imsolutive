@@ -68,11 +68,7 @@ interface ReceiveScanEntry {
 const isRequestColorVariant = (color: string, type: string) =>
   color.toLowerCase().includes('req') || type.toLowerCase().includes('req');
 
-// "Custom Race Stats" SKUs (e.g. FM001-D13-CRS) carry engrave data the buyer
-// supplies at order time — detected by SKU suffix, not a hardcoded list, so
-// any future product using the same "-CRS" naming is covered automatically
-// (ims-feature-input-pesanan-catatan-race-stats.md).
-const isRaceStatsVariant = (sku: string) => sku.trim().toUpperCase().endsWith('-CRS');
+const DEFAULT_ORDER_NOTES_LABEL = 'Catatan Tambahan';
 
 interface ScannedItem {
   id: string;
@@ -85,7 +81,24 @@ interface ScannedItem {
   type: string;
   qty: number;
   note: string;
-  variantOptions?: Array<{ id: string; color: string; colorHex: string; type: string; qty: number }>;
+  // Per-variant toggle set in the Produk form (ims-feature-input-pesanan-
+  // catatan-dinamis.md) — replaces the old hardcoded "-CRS suffix" detection,
+  // so any product can opt into an order-time note field without new code.
+  requiresOrderNotes: boolean;
+  orderNotesLabel: string;
+  orderNotesPlaceholder: string;
+  orderNotesRequired: boolean;
+  variantOptions?: Array<{
+    id: string;
+    color: string;
+    colorHex: string;
+    type: string;
+    qty: number;
+    requiresOrderNotes: boolean;
+    orderNotesLabel: string | null;
+    orderNotesPlaceholder: string | null;
+    orderNotesRequired: boolean;
+  }>;
 }
 
 interface BarcodeScannerProps {
@@ -107,7 +120,21 @@ export async function lookupBarcode(code: string): Promise<{
   colorHex?: string;
   variantType?: string;
   qty?: number;
-  variants?: Array<{ id: string; color: string; colorHex: string; type: string; qty: number }>;
+  requiresOrderNotes?: boolean;
+  orderNotesLabel?: string | null;
+  orderNotesPlaceholder?: string | null;
+  orderNotesRequired?: boolean;
+  variants?: Array<{
+    id: string;
+    color: string;
+    colorHex: string;
+    type: string;
+    qty: number;
+    requiresOrderNotes: boolean;
+    orderNotesLabel: string | null;
+    orderNotesPlaceholder: string | null;
+    orderNotesRequired: boolean;
+  }>;
 } | null> {
   try {
     const res = await fetch(`/api/barcode/lookup?code=${encodeURIComponent(code.trim())}`);
@@ -124,6 +151,10 @@ export async function lookupBarcode(code: string): Promise<{
         colorHex: data.colorHex,
         variantType: data.type || '',
         qty: data.qty,
+        requiresOrderNotes: !!data.requiresOrderNotes,
+        orderNotesLabel: data.orderNotesLabel,
+        orderNotesPlaceholder: data.orderNotesPlaceholder,
+        orderNotesRequired: data.orderNotesRequired ?? true,
       };
     }
 
@@ -295,12 +326,16 @@ export function BarcodeScanner({
           type: result.variantType || '',
           qty: 1,
           note: '',
+          requiresOrderNotes: !!result.requiresOrderNotes,
+          orderNotesLabel: result.orderNotesLabel || DEFAULT_ORDER_NOTES_LABEL,
+          orderNotesPlaceholder: result.orderNotesPlaceholder || '',
+          orderNotesRequired: result.orderNotesRequired ?? true,
         };
 
         setItems((prev) => {
           const existing =
             !isRequestColorVariant(result.color || '', result.variantType || '') &&
-            !isRaceStatsVariant(result.sku) &&
+            !result.requiresOrderNotes &&
             prev.find((i) => i.variantId === result.variantId);
           if (existing) {
             return prev.map((i) =>
@@ -326,12 +361,16 @@ export function BarcodeScanner({
           type: v.type || '',
           qty: 1,
           note: '',
+          requiresOrderNotes: !!v.requiresOrderNotes,
+          orderNotesLabel: v.orderNotesLabel || DEFAULT_ORDER_NOTES_LABEL,
+          orderNotesPlaceholder: v.orderNotesPlaceholder || '',
+          orderNotesRequired: v.orderNotesRequired ?? true,
         };
 
         setItems((prev) => {
           const existing =
             !isRequestColorVariant(v.color || '', v.type || '') &&
-            !isRaceStatsVariant(result.sku) &&
+            !v.requiresOrderNotes &&
             prev.find((i) => i.variantId === v.id);
           if (existing) {
             return prev.map((i) =>
@@ -357,6 +396,10 @@ export function BarcodeScanner({
           qty: 1,
           variantOptions: result.variants,
           note: '',
+          requiresOrderNotes: false,
+          orderNotesLabel: DEFAULT_ORDER_NOTES_LABEL,
+          orderNotesPlaceholder: '',
+          orderNotesRequired: true,
         };
         setItems((prev) => [newItem, ...prev]);
       }
@@ -593,6 +636,10 @@ export function BarcodeScanner({
           color: selected?.color || '',
           colorHex: selected?.colorHex || '#000000',
           type: selected?.type || '',
+          requiresOrderNotes: !!selected?.requiresOrderNotes,
+          orderNotesLabel: selected?.orderNotesLabel || DEFAULT_ORDER_NOTES_LABEL,
+          orderNotesPlaceholder: selected?.orderNotesPlaceholder || '',
+          orderNotesRequired: selected?.orderNotesRequired ?? true,
           variantOptions: undefined,
         };
       })
@@ -669,10 +716,12 @@ export function BarcodeScanner({
     }
 
     if (!isProductionTab) {
-      const missingRaceStats = validItems.filter((i) => isRaceStatsVariant(i.sku) && !i.note.trim());
-      if (missingRaceStats.length > 0) {
+      const missingNotes = validItems.filter((i) => i.requiresOrderNotes && i.orderNotesRequired && !i.note.trim());
+      if (missingNotes.length > 0) {
         setLookupError(
-          `Catatan Race Stats wajib diisi untuk ${missingRaceStats.map((i) => i.sku).join(', ')}`
+          missingNotes
+            .map((i) => `${i.orderNotesLabel || DEFAULT_ORDER_NOTES_LABEL} wajib diisi untuk ${i.code || i.sku}`)
+            .join('; ')
         );
         return;
       }
@@ -1234,16 +1283,19 @@ export function BarcodeScanner({
                         </div>
                       )}
 
-                      {/* Catatan Race Stats — required for Custom Race Stats SKUs (-CRS) */}
-                      {item.variantId && isRaceStatsVariant(item.sku) && (
+                      {/* Dynamic order-notes field — toggled per variant in the Produk form
+                          (ims-feature-input-pesanan-catatan-dinamis.md), label/placeholder/
+                          required-ness all come from that variant's own settings. */}
+                      {item.variantId && item.requiresOrderNotes && (
                         <div className="mt-1.5">
                           <label className="text-[10px] font-semibold text-[var(--info)] flex items-center gap-1 mb-1">
-                            Catatan Race Stats <span className="text-[var(--danger)]">*</span>
+                            {item.orderNotesLabel || DEFAULT_ORDER_NOTES_LABEL}
+                            {item.orderNotesRequired && <span className="text-[var(--danger)]">*</span>}
                           </label>
                           <textarea
                             value={item.note}
                             onChange={(e) => updateItemNote(item.id, e.target.value)}
-                            placeholder="Nama event, waktu finish, jarak, dll..."
+                            placeholder={item.orderNotesPlaceholder || ''}
                             rows={2}
                             className="w-full text-xs bg-[var(--info)]/5 border border-[var(--info)]/25 rounded-md px-2 py-1.5 text-[var(--t-heading)] placeholder:text-[var(--info)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--info)]/30 resize-none"
                           />

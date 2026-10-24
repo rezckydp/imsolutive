@@ -205,13 +205,17 @@ export async function POST(request: NextRequest) {
               // Price is NOT inherited from master — each Variasi×Warna
               // combination gets its own price, set manually (variant-matrix-spec.md).
               create: syncedVariants.map(
-                (v: { color?: string; type?: string; colorHex?: string; qty?: number; barcode?: string; price?: number | string | null }) => ({
+                (v: { color?: string; type?: string; colorHex?: string; qty?: number; barcode?: string; price?: number | string | null; requiresOrderNotes?: boolean; orderNotesLabel?: string | null; orderNotesPlaceholder?: string | null; orderNotesRequired?: boolean }) => ({
                   color: v.color || "",
                   colorHex: v.colorHex || "#2d3436",
                   type: v.type || "",
                   qty: v.qty ?? 0,
                   barcode: v.barcode || null,
                   price: v.price != null && v.price !== "" ? parseInt(String(v.price), 10) : null,
+                  requiresOrderNotes: v.requiresOrderNotes ?? false,
+                  orderNotesLabel: v.orderNotesLabel || null,
+                  orderNotesPlaceholder: v.orderNotesPlaceholder || null,
+                  orderNotesRequired: v.orderNotesRequired ?? true,
                 })
               ),
             },
@@ -261,6 +265,10 @@ export async function POST(request: NextRequest) {
                 type: v.type || "",
                 qty: v.qty, // Sync from master
                 barcode: null,
+                requiresOrderNotes: v.requiresOrderNotes,
+                orderNotesLabel: v.orderNotesLabel,
+                orderNotesPlaceholder: v.orderNotesPlaceholder,
+                orderNotesRequired: v.orderNotesRequired,
               })),
             },
             ...bomCreate,
@@ -298,13 +306,17 @@ export async function POST(request: NextRequest) {
           variants.length > 0 && {
             variants: {
               create: variants.map(
-                (v: { color?: string; type?: string; colorHex?: string; qty?: number; barcode?: string; price?: number | string | null }) => ({
+                (v: { color?: string; type?: string; colorHex?: string; qty?: number; barcode?: string; price?: number | string | null; requiresOrderNotes?: boolean; orderNotesLabel?: string | null; orderNotesPlaceholder?: string | null; orderNotesRequired?: boolean }) => ({
                   color: v.color || "",
                   colorHex: v.colorHex || "#2d3436",
                   type: v.type || "",
                   qty: v.qty ?? 0,
                   barcode: v.barcode || null,
                   price: v.price != null && v.price !== "" ? parseInt(String(v.price), 10) : null,
+                  requiresOrderNotes: v.requiresOrderNotes ?? false,
+                  orderNotesLabel: v.orderNotesLabel || null,
+                  orderNotesPlaceholder: v.orderNotesPlaceholder || null,
+                  orderNotesRequired: v.orderNotesRequired ?? true,
                 })
               ),
             },

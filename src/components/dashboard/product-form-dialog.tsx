@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 
 
 interface Variant {
@@ -23,6 +24,13 @@ interface Variant {
   type: string;
   qty: string;
   barcode: string;
+  // Dynamic Input Pesanan note field (ims-feature-input-pesanan-catatan-
+  // dinamis.md) — set per variant, not per product, since need can differ
+  // between variants of the same product (e.g. Frame Only vs Custom Race Stats).
+  requiresOrderNotes: boolean;
+  orderNotesLabel: string;
+  orderNotesPlaceholder: string;
+  orderNotesRequired: boolean;
 }
 
 interface ProductFormDialogProps {
@@ -40,6 +48,10 @@ interface ProductFormDialogProps {
       colorHex: string;
       qty: number;
       barcode: string | null;
+      requiresOrderNotes?: boolean;
+      orderNotesLabel?: string | null;
+      orderNotesPlaceholder?: string | null;
+      orderNotesRequired?: boolean;
     }>;
   } | null;
   onSaved: () => void;
@@ -75,6 +87,10 @@ function createEmptyVariant(): Variant {
     type: '',
     qty: '0',
     barcode: '',
+    requiresOrderNotes: false,
+    orderNotesLabel: '',
+    orderNotesPlaceholder: '',
+    orderNotesRequired: true,
   };
 }
 
@@ -105,6 +121,10 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
           type: (v as any).type || '',
           qty: String(v.qty),
           barcode: v.barcode || '',
+          requiresOrderNotes: v.requiresOrderNotes ?? false,
+          orderNotesLabel: v.orderNotesLabel || '',
+          orderNotesPlaceholder: v.orderNotesPlaceholder || '',
+          orderNotesRequired: v.orderNotesRequired ?? true,
         })),
       });
     } else {
@@ -124,7 +144,7 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
     setError('');
   };
 
-  const updateVariant = (index: number, field: keyof Variant, value: string) => {
+  const updateVariant = (index: number, field: keyof Variant, value: string | boolean) => {
     setForm((prev) => ({
       ...prev,
       variants: prev.variants.map((v, i) =>
@@ -198,6 +218,10 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
           type: v.type?.trim() || "",
           qty: parseInt(v.qty, 10) || 0,
           barcode: v.barcode.trim() || null,
+          requiresOrderNotes: v.requiresOrderNotes,
+          orderNotesLabel: v.requiresOrderNotes ? (v.orderNotesLabel.trim() || null) : null,
+          orderNotesPlaceholder: v.requiresOrderNotes ? (v.orderNotesPlaceholder.trim() || null) : null,
+          orderNotesRequired: v.orderNotesRequired,
         })),
       };
 
@@ -411,6 +435,49 @@ export function ProductFormDialog({ open, onOpenChange, product, onSaved }: Prod
                             className="h-8 text-xs bg-[var(--card)] border-[var(--bd)] focus-visible:ring-1 focus-visible:ring-[var(--brand)]/30"
                           />
                         </div>
+                      </div>
+
+                      {/* Butuh Catatan Tambahan — dynamic Input Pesanan note field,
+                          per variant (ims-feature-input-pesanan-catatan-dinamis.md) */}
+                      <div className="pt-1.5 border-t border-[var(--bd)] space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-[11px] text-[var(--t-body)] uppercase tracking-wider">Butuh Catatan Tambahan?</Label>
+                          <Switch
+                            checked={variant.requiresOrderNotes}
+                            onCheckedChange={(checked) => updateVariant(actualIdx, 'requiresOrderNotes', checked)}
+                          />
+                        </div>
+                        {variant.requiresOrderNotes && (
+                          <div className="space-y-2 pl-0.5">
+                            <div className="space-y-1">
+                              <Label className="text-[11px] text-[var(--t-body)]">Label Catatan</Label>
+                              <Input
+                                value={variant.orderNotesLabel}
+                                onChange={(e) => updateVariant(actualIdx, 'orderNotesLabel', e.target.value)}
+                                placeholder="e.g. Catatan Race Stats (default: Catatan Tambahan)"
+                                className="h-8 text-xs bg-[var(--card)] border-[var(--bd)] focus-visible:ring-1 focus-visible:ring-[var(--brand)]/30"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-[11px] text-[var(--t-body)]">
+                                Placeholder <span className="font-normal text-[var(--t-muted)]">(opt)</span>
+                              </Label>
+                              <Input
+                                value={variant.orderNotesPlaceholder}
+                                onChange={(e) => updateVariant(actualIdx, 'orderNotesPlaceholder', e.target.value)}
+                                placeholder="e.g. Contoh: Jakarta Marathon 2026 - Full Marathon - 3:45:12"
+                                className="h-8 text-xs bg-[var(--card)] border-[var(--bd)] focus-visible:ring-1 focus-visible:ring-[var(--brand)]/30"
+                              />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <Label className="text-[11px] text-[var(--t-body)]">Wajib diisi?</Label>
+                              <Switch
+                                checked={variant.orderNotesRequired}
+                                onCheckedChange={(checked) => updateVariant(actualIdx, 'orderNotesRequired', checked)}
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );

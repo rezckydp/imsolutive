@@ -25,6 +25,7 @@ export interface PrintQueueItem {
   qty: number;
   status: string;
   note: string;
+  orderNotesLabel?: string;
 }
 
 interface PrintQueueCardProps {
@@ -208,7 +209,8 @@ export function PrintQueueCard({ items = [], loading = false, onRemoveItem, onUp
                         <div className="min-w-0">
                           <span className="text-sm text-[var(--t-body)]">{item.color}{item.type ? ` - ${item.type}` : ''}</span>
                           {item.note && (
-                            <p className="text-[11px] text-[var(--warning)] font-medium truncate max-w-[100px]" title={item.note}>
+                            <p className="text-[11px] text-[var(--warning)] font-medium truncate max-w-[100px]" title={item.orderNotesLabel ? `${item.orderNotesLabel}: ${item.note}` : item.note}>
+                              {item.orderNotesLabel && <span className="font-semibold">{item.orderNotesLabel}: </span>}
                               {item.note}
                             </p>
                           )}

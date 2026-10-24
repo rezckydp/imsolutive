@@ -89,7 +89,7 @@ interface ProductData {
   parentProductId?: string | null;
   parentProduct?: { id: string; sku: string; name: string } | null;
   childProducts?: Array<{ id: string; sku: string; name: string }>;
-  variants?: Array<{ id: string; color: string; colorHex: string; qty: number; barcode: string; type?: string; price?: number | null }>;
+  variants?: Array<{ id: string; color: string; colorHex: string; qty: number; barcode: string; type?: string; price?: number | null; requiresOrderNotes?: boolean; orderNotesLabel?: string | null; orderNotesPlaceholder?: string | null; orderNotesRequired?: boolean }>;
   boms?: Array<{ materialId: string; materialVariantId: string | null; qty: number }>;
   _expanded?: boolean;
 }
@@ -326,6 +326,10 @@ export function StockManagement() {
         price: '',
         qty: v.qty,
         barcode: v.barcode,
+        requiresOrderNotes: false,
+        orderNotesLabel: '',
+        orderNotesPlaceholder: '',
+        orderNotesRequired: true,
       }));
     const typeRows: MatrixRow[] = typeVariants
       .filter((tv) => tv.type.trim())
@@ -336,6 +340,10 @@ export function StockManagement() {
         price: '',
         qty: tv.qty,
         barcode: tv.barcode,
+        requiresOrderNotes: false,
+        orderNotesLabel: '',
+        orderNotesPlaceholder: '',
+        orderNotesRequired: true,
       }));
     return [...colorRows, ...typeRows];
   }, [newProduct.variants, typeVariants]);
@@ -354,6 +362,10 @@ export function StockManagement() {
       price: v.price != null ? String(v.price) : '',
       qty: v.qty,
       barcode: v.barcode || '',
+      requiresOrderNotes: v.requiresOrderNotes ?? false,
+      orderNotesLabel: v.orderNotesLabel || '',
+      orderNotesPlaceholder: v.orderNotesPlaceholder || '',
+      orderNotesRequired: v.orderNotesRequired ?? true,
     }));
   }, [editProduct]);
 

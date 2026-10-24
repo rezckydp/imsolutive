@@ -55,6 +55,10 @@ export async function GET(request: NextRequest) {
       type: variant.type,
       qty: variant.qty,
       barcode: variant.barcode,
+      requiresOrderNotes: variant.requiresOrderNotes,
+      orderNotesLabel: variant.orderNotesLabel,
+      orderNotesPlaceholder: variant.orderNotesPlaceholder,
+      orderNotesRequired: variant.orderNotesRequired,
     });
   } catch (error) {
     console.error("Error looking up barcode:", error);

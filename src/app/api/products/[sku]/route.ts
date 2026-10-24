@@ -170,6 +170,10 @@ export async function PUT(
               ...(v.qty !== undefined && { qty: v.qty }),
               ...(v.barcode !== undefined && { barcode: v.barcode || null }),
               ...(v.price !== undefined && { price: v.price === "" || v.price === null ? null : parseInt(String(v.price), 10) }),
+              ...(v.requiresOrderNotes !== undefined && { requiresOrderNotes: !!v.requiresOrderNotes }),
+              ...(v.orderNotesLabel !== undefined && { orderNotesLabel: v.orderNotesLabel || null }),
+              ...(v.orderNotesPlaceholder !== undefined && { orderNotesPlaceholder: v.orderNotesPlaceholder || null }),
+              ...(v.orderNotesRequired !== undefined && { orderNotesRequired: !!v.orderNotesRequired }),
             },
           });
           if (oldVariant) {
@@ -205,6 +209,10 @@ export async function PUT(
               qty: v.qty ?? 0,
               barcode: v.barcode || null,
               price: v.price != null && v.price !== "" ? parseInt(String(v.price), 10) : null,
+              requiresOrderNotes: !!v.requiresOrderNotes,
+              orderNotesLabel: v.orderNotesLabel || null,
+              orderNotesPlaceholder: v.orderNotesPlaceholder || null,
+              orderNotesRequired: v.orderNotesRequired ?? true,
             },
           });
           await logActivity({
@@ -225,6 +233,10 @@ export async function PUT(
                   type: v.type || "",
                   qty: v.qty ?? 0,
                   barcode: null,
+                  requiresOrderNotes: !!v.requiresOrderNotes,
+                  orderNotesLabel: v.orderNotesLabel || null,
+                  orderNotesPlaceholder: v.orderNotesPlaceholder || null,
+                  orderNotesRequired: v.orderNotesRequired ?? true,
                 },
               });
             }

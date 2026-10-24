@@ -209,6 +209,15 @@ model ProductVariant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Dynamic per-item note at Input Pesanan (ims-feature-input-pesanan-catatan-
+  // dinamis.md) — replaces the old "-CRS suffix" auto-detect. Set manually per
+  // variant so any future product needing custom order-time data (engrave
+  // text, custom size, etc.) just toggles this on instead of being coded in.
+  requiresOrderNotes    Boolean @default(false)
+  orderNotesLabel       String? // shown as the field's label in Input Pesanan + Picking List
+  orderNotesPlaceholder String?
+  orderNotesRequired    Boolean @default(true) // only relevant when requiresOrderNotes is true
+
   product          Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
   printQueueItems   PrintQueueItem[]
   productionItems   ProductionItem[]

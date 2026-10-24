@@ -74,6 +74,7 @@ interface DashboardData {
       color: string;
       colorHex: string;
       type: string;
+      orderNotesLabel?: string | null;
       product: {
         sku: string;
         name: string;
@@ -96,6 +97,7 @@ interface DashboardData {
       color: string;
       colorHex: string;
       type: string;
+      orderNotesLabel?: string | null;
       product: {
         sku: string;
         name: string;
@@ -131,12 +133,14 @@ interface DashboardData {
       id: string;
       qty: number;
       status: string;
+      note?: string;
       variant: {
         id: string;
         color: string;
         colorHex: string;
         type: string;
         qty: number;
+        orderNotesLabel?: string | null;
         product: {
           sku: string;
           name: string;
@@ -499,6 +503,7 @@ export default function Home() {
     qty: item.qty,
     status: item.status,
     note: item.note || '',
+    orderNotesLabel: item.variant.orderNotesLabel || '',
   }));
 
   const productionItems: ProductionItem[] = (dashboardData?.productionItems ?? []).map((item) => ({
@@ -516,6 +521,7 @@ export default function Home() {
     writeOffQty: item.writeOffQty,
     scheduledDoneAt: item.scheduledDoneAt,
     note: item.note || variantNoteMap[item.variantId] || '',
+    orderNotesLabel: item.variant.orderNotesLabel || '',
     createdAt: item.createdAt,
   }));
 
@@ -566,6 +572,7 @@ export default function Home() {
         itemStatus: item.status,       // Ready, Not Ready, In Queue (from DB)
         orderStatus: order.status,      // Pending, Processing, Completed, Cancelled
         note: item.note || '',
+        orderNotesLabel: item.variant.orderNotesLabel || '',
         createdAt: order.createdAt,
       };
     })
