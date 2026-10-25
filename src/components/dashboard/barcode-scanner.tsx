@@ -32,7 +32,6 @@ import {
   Upload,
   FileText,
   AlertTriangle,
-  Undo2,
   PackageCheck,
   Camera,
   CameraOff,
@@ -217,7 +216,10 @@ export function BarcodeScanner({
   // index 0 — reset only when the modal closes, not on mode switch.
   const [scanHistory, setScanHistory] = useState<ReceiveScanEntry[]>([]);
   const [todayTotal, setTodayTotal] = useState<number | null>(null);
-  const [undoingLast, setUndoingLast] = useState(false);
+  // Key (sku|color|type) of the row currently being cancelled — only that
+  // row's (x) is disabled while the reversal calls are in flight
+  // (ims-hotfix-cancel-item-terima-stok.md, replaces "Undo Scan Terakhir").
+  const [cancellingKey, setCancellingKey] = useState<string | null>(null);
 
   // Auto-popup Note prompt right after a Req. Color item is scanned
   // (ims-feature-auto-popup-note-request-color.md) — Picking List/Adjustment
@@ -453,28 +455,37 @@ export function BarcodeScanner({
     }
   }, [onStockReceived]);
 
-  const handleUndoLastScan = async () => {
-    const last = scanHistory[0];
-    if (!last) return;
-    setUndoingLast(true);
+  // Cancel an entire session-rundown row at once (not a single-unit undo) —
+  // reverses stock/BOM/activity-log for every unit in that row by replaying
+  // the same per-unit undo-scan call once per matching scanHistory entry
+  // (each can carry its own jobId), then drops them all from the list.
+  const handleCancelGroup = async (sku: string, color: string, type: string) => {
+    const key = `${sku}|${color}|${type}`;
+    const entries = scanHistory.filter((s) => `${s.sku}|${s.color}|${s.type}` === key);
+    if (entries.length === 0 || cancellingKey) return;
+    setCancellingKey(key);
     try {
-      const res = await fetch('/api/stock/undo-scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ variantId: last.variantId, jobId: last.jobId }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setLookupError(data.error || 'Gagal undo scan');
-        return;
+      let lastTodayTotal: number | null = null;
+      for (const entry of entries) {
+        const res = await fetch('/api/stock/undo-scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ variantId: entry.variantId, jobId: entry.jobId }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setLookupError(data.error || 'Gagal membatalkan item');
+          return;
+        }
+        lastTodayTotal = data.todayTotal;
       }
-      setScanHistory((prev) => prev.slice(1));
-      setTodayTotal(data.todayTotal);
+      setScanHistory((prev) => prev.filter((s) => `${s.sku}|${s.color}|${s.type}` !== key));
+      if (lastTodayTotal != null) setTodayTotal(lastTodayTotal);
       onStockReceived?.();
     } catch {
-      setLookupError('Gagal undo scan. Coba lagi.');
+      setLookupError('Gagal membatalkan item. Coba lagi.');
     } finally {
-      setUndoingLast(false);
+      setCancellingKey(null);
     }
   };
 
@@ -1404,14 +1415,6 @@ export function BarcodeScanner({
                       Tanpa job produksi — tetap dicatat, dicek manual kalau sering kejadian
                     </p>
                   )}
-                  <button
-                    onClick={handleUndoLastScan}
-                    disabled={undoingLast}
-                    className="mt-2 w-full flex items-center justify-center gap-1.5 h-8 rounded-lg bg-[var(--card)] border border-[var(--bd)] text-xs font-medium text-[var(--t-body)] hover:text-[var(--danger)] hover:border-[var(--danger)]/30 transition-colors cursor-pointer disabled:opacity-50"
-                  >
-                    {undoingLast ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Undo2 className="w-3.5 h-3.5" />}
-                    Undo Scan Terakhir
-                  </button>
                 </div>
               )}
 
@@ -1428,16 +1431,30 @@ export function BarcodeScanner({
                         return map;
                       }, new Map<string, { sku: string; color: string; colorHex: string; type: string; count: number }>())
                         .values()
-                    ).map((row) => (
-                      <div key={`${row.sku}|${row.color}|${row.type}`} className="flex items-center justify-between px-2 py-1.5 rounded-md">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 border border-[var(--bd)]" style={{ backgroundColor: row.colorHex }} />
-                          <span className="text-xs font-semibold text-[var(--t-heading)] bg-[var(--surface-2)] px-1.5 py-0.5 rounded flex-shrink-0">{row.sku}</span>
-                          <span className="text-xs text-[var(--t-body)] truncate">{row.color}{row.type ? ` - ${row.type}` : ''}</span>
+                    ).map((row) => {
+                      const key = `${row.sku}|${row.color}|${row.type}`;
+                      const cancelling = cancellingKey === key;
+                      return (
+                        <div key={key} className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-md">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 border border-[var(--bd)]" style={{ backgroundColor: row.colorHex }} />
+                            <span className="text-xs font-semibold text-[var(--t-heading)] bg-[var(--surface-2)] px-1.5 py-0.5 rounded flex-shrink-0">{row.sku}</span>
+                            <span className="text-xs text-[var(--t-body)] truncate">{row.color}{row.type ? ` - ${row.type}` : ''}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <span className="text-sm font-bold text-[var(--success)]">×{row.count}</span>
+                            <button
+                              onClick={() => handleCancelGroup(row.sku, row.color, row.type)}
+                              disabled={!!cancellingKey}
+                              title="Batalkan item ini"
+                              className="w-6 h-6 rounded-md flex items-center justify-center text-[var(--t-muted)] hover:text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-colors cursor-pointer disabled:opacity-40"
+                            >
+                              {cancelling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
                         </div>
-                        <span className="text-sm font-bold text-[var(--success)] flex-shrink-0">×{row.count}</span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               ) : !lookingUp && (
