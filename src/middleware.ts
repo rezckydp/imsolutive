@@ -24,6 +24,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Read-only API for bysolutive.id — no session cookie here; each route
+  // checks its own bearer token + loopback-only access (lib/public-api.ts).
+  if (pathname.startsWith('/api/public/v1/')) {
+    return NextResponse.next();
+  }
+
   // For API routes, check session and return 401 if not authenticated.
   // Forward the identity as headers so route handlers can read it without
   // re-verifying the cookie themselves (e.g. to gate admin-only endpoints).
