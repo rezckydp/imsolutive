@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { CheckCircle2, Clock, Eye, Pencil, Trash2, AlertCircle, ChevronDown, ChevronUp, ShoppingCart, Printer, ArrowRight, RefreshCw, Factory, Sparkles, Loader2 } from 'lucide-react';
+import { CheckCircle2, Clock, Eye, Pencil, Trash2, AlertCircle, ChevronDown, ChevronUp, ShoppingCart, Printer, ArrowRight, RefreshCw, Factory, Sparkles, Loader2, StickyNote, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LowStockCard, type LowStockItem, type PipelineItem, type RecommendationItem } from '@/components/dashboard/low-stock-card';
 import { Badge } from '@/components/ui/badge';
@@ -88,6 +88,15 @@ function TableSkeleton() {
     </tr>
   );
 }
+
+// Above this, a Catatan value (any label — Req. Color, dynamic per-variant
+// notes like Combo/Custom Race Stats, etc.) is truncated + made clickable
+// (popup) in the Summary table instead of inline, so a long note like race
+// stats data doesn't blow up the row height (ims-hotfix-summary-table-notes-
+// display.md §B). 24 comfortably fits the spec's own "short" example
+// ("FUCHSIA / HIJAU TOSCA", 21 chars) inline while still truncating
+// genuinely long notes like race-stats data.
+const NOTE_INLINE_MAX_LENGTH = 24;
 
 function formatDate(isoString: string) {
   const d = new Date(isoString);
@@ -186,6 +195,10 @@ export function RecentOrderCard({
   };
   const [syncing, setSyncing] = useState(false);
   const [detailOrderId, setDetailOrderId] = useState<string | null>(null);
+  // Full-text popup for long Catatan values in the Summary table's Warna
+  // column (ims-hotfix-summary-table-notes-display.md §B) — inline text would
+  // blow up the row height for long notes like FM001's race-stats data.
+  const [noteModal, setNoteModal] = useState<{ sku: string; color: string; note: string } | null>(null);
   const [deleteItemTarget, setDeleteItemTarget] = useState<{ orderId: string; itemId: string; sku: string; color: string } | null>(null);
   const [editingItem, setEditingItem] = useState<RecentOrderItem | null>(null);
   const [editQty, setEditQty] = useState<number>(1);
@@ -886,8 +899,18 @@ export function RecentOrderCard({
                               <span className="w-3 h-3 rounded-full flex-shrink-0 border border-gray-300" style={{ backgroundColor: g.colorHex }} />
                               <div>
                                 <span className="text-sm text-[var(--t-body)]">{g.color}{g.type ? ` - ${g.type}` : ''}</span>
-                                {isRequestColorType(g.type) && g.items[0]?.note && (
-                                  <p className="text-[11px] text-[var(--warning)] font-semibold">{g.items[0].note}</p>
+                                {g.items[0]?.note && (
+                                  g.items[0].note.length > NOTE_INLINE_MAX_LENGTH ? (
+                                    <button
+                                      onClick={() => setNoteModal({ sku: g.groupSku, color: `${g.color}${g.type ? ` - ${g.type}` : ''}`, note: g.items[0].note })}
+                                      className="flex items-center gap-1 text-[11px] text-[var(--warning)] font-semibold hover:underline cursor-pointer"
+                                    >
+                                      <StickyNote className="w-3 h-3 flex-shrink-0" />
+                                      {g.items[0].note.slice(0, NOTE_INLINE_MAX_LENGTH)}...
+                                    </button>
+                                  ) : (
+                                    <p className="text-[11px] text-[var(--warning)] font-semibold">{g.items[0].note}</p>
+                                  )
                                 )}
                               </div>
                             </div>
@@ -1492,6 +1515,27 @@ export function RecentOrderCard({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!noteModal} onOpenChange={(o) => !o && setNoteModal(null)}>
+        <DialogContent className="sm:max-w-sm rounded-xl">
+          <DialogHeader>
+            <DialogTitle className="text-[var(--t-heading)] flex items-center gap-2">
+              <StickyNote className="w-4 h-4 text-[var(--warning)]" />
+              Catatan
+            </DialogTitle>
+            <DialogDescription>
+              {noteModal?.sku}{noteModal?.color ? ` — ${noteModal.color}` : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <p className="text-sm text-[var(--t-body)] whitespace-pre-wrap">{noteModal?.note}</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNoteModal(null)} className="rounded-lg">
+              <X className="w-3.5 h-3.5 mr-1" />
+              Tutup
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
