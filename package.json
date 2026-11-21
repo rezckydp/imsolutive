@@ -13,7 +13,8 @@
     "db:reset": "prisma migrate reset",
     "seed": "bun run prisma/seed.ts",
     "migrate:variant-price": "bun run prisma/migrate-variant-price.ts",
-    "migrate:scanned-qty": "bun run prisma/migrate-scanned-qty.ts"
+    "migrate:scanned-qty": "bun run prisma/migrate-scanned-qty.ts",
+    "migrate:request-color-note": "bun run prisma/migrate-request-color-note.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

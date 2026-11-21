@@ -89,7 +89,7 @@ interface ProductData {
   parentProductId?: string | null;
   parentProduct?: { id: string; sku: string; name: string } | null;
   childProducts?: Array<{ id: string; sku: string; name: string }>;
-  variants?: Array<{ id: string; color: string; colorHex: string; qty: number; barcode: string; type?: string; price?: number | null; requiresOrderNotes?: boolean; orderNotesLabel?: string | null; orderNotesPlaceholder?: string | null; orderNotesRequired?: boolean }>;
+  variants?: Array<{ id: string; color: string; colorHex: string; qty: number; barcode: string; type?: string; price?: number | null; requestColorNote?: boolean; requiresOrderNotes?: boolean; orderNotesLabel?: string | null; orderNotesPlaceholder?: string | null; orderNotesRequired?: boolean }>;
   boms?: Array<{ materialId: string; materialVariantId: string | null; qty: number }>;
   _expanded?: boolean;
 }
@@ -326,6 +326,7 @@ export function StockManagement() {
         price: '',
         qty: v.qty,
         barcode: v.barcode,
+        requestColorNote: false,
         requiresOrderNotes: false,
         orderNotesLabel: '',
         orderNotesPlaceholder: '',
@@ -340,6 +341,7 @@ export function StockManagement() {
         price: '',
         qty: tv.qty,
         barcode: tv.barcode,
+        requestColorNote: false,
         requiresOrderNotes: false,
         orderNotesLabel: '',
         orderNotesPlaceholder: '',
@@ -362,6 +364,7 @@ export function StockManagement() {
       price: v.price != null ? String(v.price) : '',
       qty: v.qty,
       barcode: v.barcode || '',
+      requestColorNote: v.requestColorNote ?? false,
       requiresOrderNotes: v.requiresOrderNotes ?? false,
       orderNotesLabel: v.orderNotesLabel || '',
       orderNotesPlaceholder: v.orderNotesPlaceholder || '',

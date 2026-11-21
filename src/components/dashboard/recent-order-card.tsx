@@ -50,9 +50,54 @@ export interface RecentOrderItem {
   currentStock: number;
   itemStatus: string;       // Ready, Not Ready, In Queue (from OrderItem.status)
   orderStatus: string;      // Pending, Processing, Completed, Cancelled (from Order.status)
-  note: string;             // Custom color note / dynamic order-time note
-  orderNotesLabel?: string; // Label for `note` when it's a dynamic field (ims-feature-input-pesanan-catatan-dinamis.md), blank for the old Req. Color note
+  note: string;             // Catatan Custom Text (notesType === 'custom_text')
+  // ims-feature-custom-engrave-request-warna.md — generalizes the old
+  // Request Color popup + splits the old generic "Catatan" field into a
+  // structured Custom Note (Race Stats OR Custom Text, chosen per transaction).
+  colorNote?: string;              // "Warna yang diminta", separate from Catatan Custom
+  notesType?: 'race_stats' | 'custom_text' | null;
+  raceStatsData?: string | null;   // JSON string: { bib, nama, event, distance, pace, time }
+  engraveDesignDone?: boolean;     // laser-engrave design file done (checklist)
+  requestColorNote?: boolean;      // variant setting: show Req. Warna popup
+  requiresOrderNotes?: boolean;    // variant setting: needs a Custom Note
+  orderNotesLabel?: string;        // Custom Text field label
+  orderNotesPlaceholder?: string;
+  orderNotesRequired?: boolean;
   createdAt: string;
+}
+
+export interface RaceStatsData {
+  bib: string;
+  nama: string;
+  event: string;
+  distance: string;
+  pace: string;
+  time: string;
+}
+
+export function parseRaceStatsData(raw: string | null | undefined): RaceStatsData | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return {
+      bib: parsed.bib || '',
+      nama: parsed.nama || '',
+      event: parsed.event || '',
+      distance: parsed.distance || '',
+      pace: parsed.pace || '',
+      time: parsed.time || '',
+    };
+  } catch {
+    return null;
+  }
+}
+
+// A quick one-line summary for compact displays (card tag, print queue note).
+// "belum diisi" when the customer hasn't filled anything in yet.
+export function summarizeRaceStats(data: RaceStatsData | null): string {
+  if (!data) return '';
+  const bits = [data.event, data.bib && `BIB ${data.bib}`, data.nama].filter(Boolean);
+  return bits.join(' · ');
 }
 
 interface PipelineStatusLite {
@@ -97,6 +142,18 @@ function TableSkeleton() {
 // ("FUCHSIA / HIJAU TOSCA", 21 chars) inline while still truncating
 // genuinely long notes like race-stats data.
 const NOTE_INLINE_MAX_LENGTH = 24;
+
+// Race Stats' 6 fields, in display order (ims-feature-custom-engrave-
+// request-warna.md §C/F) — all free text, no dropdowns (Distance/Pace come
+// in too many formats to constrain).
+const RACE_STATS_FIELDS: Array<[keyof RaceStatsData, string]> = [
+  ['bib', 'No BIB'],
+  ['nama', 'Nama'],
+  ['event', 'Event'],
+  ['distance', 'Distance'],
+  ['pace', 'Pace'],
+  ['time', 'Total Time'],
+];
 
 function formatDate(isoString: string) {
   const d = new Date(isoString);
@@ -197,8 +254,21 @@ export function RecentOrderCard({
   const [detailOrderId, setDetailOrderId] = useState<string | null>(null);
   // Full-text popup for long Catatan values in the Summary table's Warna
   // column (ims-hotfix-summary-table-notes-display.md §B) — inline text would
-  // blow up the row height for long notes like FM001's race-stats data.
-  const [noteModal, setNoteModal] = useState<{ sku: string; color: string; note: string } | null>(null);
+  // blow up the row height for long notes like FM001's race-stats data. Also
+  // reused by the Picking List/PICK detail card's Custom Text tag and Race
+  // Stats tag (ims-feature-custom-engrave-request-warna.md §E).
+  const [noteModal, setNoteModal] = useState<{
+    sku: string;
+    color: string;
+    kind: 'text' | 'race_stats';
+    text?: string;
+    raceStats?: RaceStatsData;
+  } | null>(null);
+  // "Lihat Semua Custom Engrave" summary popup (§F) — which PICK's items to
+  // show; filter is local UI state, not tied to any one order.
+  const [engraveOrderId, setEngraveOrderId] = useState<string | null>(null);
+  const [engraveFilter, setEngraveFilter] = useState<'all' | 'done' | 'pending'>('all');
+  const [togglingEngraveId, setTogglingEngraveId] = useState<string | null>(null);
   const [deleteItemTarget, setDeleteItemTarget] = useState<{ orderId: string; itemId: string; sku: string; color: string } | null>(null);
   const [editingItem, setEditingItem] = useState<RecentOrderItem | null>(null);
   const [editQty, setEditQty] = useState<number>(1);
@@ -461,7 +531,13 @@ export function RecentOrderCard({
     items: RecentOrderItem[];
     oldestCreatedAt: string;
   }
-  const isRequestColorType = (type: string) => type.toLowerCase().includes('req');
+  // Items carrying per-unit custom data (Req. Warna and/or Catatan Custom —
+  // ims-feature-custom-engrave-request-warna.md §A) must never be rolled up
+  // together in Summary, same reasoning as the old "Req. Color" special-case
+  // this replaces: each unit's own colorNote/race-stats/custom-text would get
+  // lost if two units shared one row. Driven by the variant's own toggles now,
+  // not a "req" guess against the color/type text.
+  const needsPerUnitRow = (it: RecentOrderItem) => !!it.requestColorNote || !!it.requiresOrderNotes;
 
   // Summary counts BOTH Picking List and Adjustment (Not Ready = real print
   // need regardless of source). This is intentionally different from
@@ -476,7 +552,7 @@ export function RecentOrderCard({
     // rows with their own urgency/qty, not stack into one misleading row
     // (ims-recent-order-ux-fixes.md §1). Same orderNo (e.g. a re-sync) still
     // merges, since that's genuinely the same list.
-    const key = isRequestColorType(it.type)
+    const key = needsPerUnitRow(it)
       ? `${it.groupSku}|reqcolor|${it.id}`
       : `${it.groupSku}|${it.color}|${it.type}|${it.orderNo}`;
     if (!summaryMap.has(key)) {
@@ -697,6 +773,107 @@ export function RecentOrderCard({
   // Stats
   const notReadyCount = viewItems.filter((i) => i.itemStatus === 'Not Ready').length;
 
+  // Toggle "Tandai sudah dibuat desainnya" (§D) — shared by the Picking List
+  // card's own checkbox and the "Lihat Semua Custom Engrave" summary popup
+  // (§F), both of which read the exact same `item.engraveDesignDone` once
+  // onDataChange() refreshes the shared `items` prop, so they always agree.
+  const toggleEngraveDone = async (item: RecentOrderItem) => {
+    setTogglingEngraveId(item.id);
+    try {
+      const res = await fetch(`/api/orders/${item.orderId}/item/${item.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ engraveDesignDone: !item.engraveDesignDone }),
+      });
+      if (!res.ok) throw new Error('Gagal update checklist');
+      onDataChange?.();
+    } catch {
+      toast.error('Gagal update checklist desain engrave');
+    } finally {
+      setTogglingEngraveId(null);
+    }
+  };
+
+  // Req. Warna / Race Stats / Custom Text tags shown under the Warna/Varian
+  // row of a Picking List / PICK detail card (ims-feature-custom-engrave-
+  // request-warna.md §E) — each on its own line, never merged into one
+  // paragraph. Not used in the aggregated Summary table (that one keeps the
+  // simpler single-representative-note truncation from the earlier hotfix,
+  // since a Summary row can roll up several customers' items at once).
+  const renderCustomNoteTags = (item: RecentOrderItem) => {
+    const raceStats = item.notesType === 'race_stats' ? parseRaceStatsData(item.raceStatsData) : null;
+    const raceStatsSummary = raceStats ? summarizeRaceStats(raceStats) : '';
+    return (
+      <>
+        {item.colorNote && (
+          <p className="text-[11px] text-[var(--warning)] font-medium mt-1">
+            <span className="inline-flex items-center px-1.5 py-0 rounded bg-[var(--warning)]/10 font-semibold mr-1">🎨 Req. Warna</span>
+            Warna diminta: {item.colorNote}
+          </p>
+        )}
+        {item.notesType === 'race_stats' && (
+          <button
+            onClick={() =>
+              setNoteModal({
+                sku: item.sku,
+                color: `${item.color}${item.type ? ` - ${item.type}` : ''}`,
+                kind: 'race_stats',
+                raceStats: raceStats || undefined,
+              })
+            }
+            className="flex items-center gap-1 text-[11px] text-[var(--info)] font-medium mt-1 hover:underline cursor-pointer text-left"
+          >
+            <span className="inline-flex items-center px-1.5 py-0 rounded bg-[var(--info)]/10 font-semibold flex-shrink-0">🏁 Race Stats</span>
+            {raceStatsSummary ? (
+              <span className="truncate">{raceStatsSummary}</span>
+            ) : (
+              <span className="italic text-[var(--t-muted)]">belum diisi customer</span>
+            )}
+          </button>
+        )}
+        {item.notesType === 'custom_text' && item.note && (
+          item.note.length > NOTE_INLINE_MAX_LENGTH ? (
+            <button
+              onClick={() => setNoteModal({ sku: item.sku, color: `${item.color}${item.type ? ` - ${item.type}` : ''}`, kind: 'text', text: item.note })}
+              className="flex items-center gap-1 text-[11px] text-[var(--warning)] font-medium mt-1 hover:underline cursor-pointer text-left"
+            >
+              <span className="inline-flex items-center px-1.5 py-0 rounded bg-[var(--warning)]/10 font-semibold flex-shrink-0">✏️ Custom Text</span>
+              <StickyNote className="w-3 h-3 flex-shrink-0" />
+              <span className="truncate">{item.note.slice(0, NOTE_INLINE_MAX_LENGTH)}...</span>
+            </button>
+          ) : (
+            <p className="text-[11px] text-[var(--warning)] font-medium mt-1">
+              <span className="inline-flex items-center px-1.5 py-0 rounded bg-[var(--warning)]/10 font-semibold mr-1">✏️ Custom Text</span>
+              {item.note}
+            </p>
+          )
+        )}
+      </>
+    );
+  };
+
+  // §D's checkbox — kept separate from renderCustomNoteTags since it only
+  // belongs on the Picking List/PICK detail card and the Lihat Semua Custom
+  // Engrave popup, not the (more cramped) Adjustment table cell that also
+  // reuses renderCustomNoteTags for its tags.
+  const renderEngraveCheckbox = (item: RecentOrderItem) =>
+    item.requiresOrderNotes && (
+      <label className="flex items-center gap-1.5 mt-1.5 text-[11px] cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={!!item.engraveDesignDone}
+          disabled={togglingEngraveId === item.id}
+          onChange={() => toggleEngraveDone(item)}
+          className="w-3.5 h-3.5 rounded border-[var(--bd)] cursor-pointer disabled:opacity-50"
+        />
+        {item.engraveDesignDone ? (
+          <span className="text-[var(--success)] font-medium">✅ Desain laser engrave sudah dibuat</span>
+        ) : (
+          <span className="text-[var(--t-muted)]">Tandai sudah dibuat desainnya</span>
+        )}
+      </label>
+    );
+
   return (
     <>
       <Card className="rounded-xl shadow-sm border-0">
@@ -902,7 +1079,7 @@ export function RecentOrderCard({
                                 {g.items[0]?.note && (
                                   g.items[0].note.length > NOTE_INLINE_MAX_LENGTH ? (
                                     <button
-                                      onClick={() => setNoteModal({ sku: g.groupSku, color: `${g.color}${g.type ? ` - ${g.type}` : ''}`, note: g.items[0].note })}
+                                      onClick={() => setNoteModal({ sku: g.groupSku, color: `${g.color}${g.type ? ` - ${g.type}` : ''}`, kind: 'text', text: g.items[0].note })}
                                       className="flex items-center gap-1 text-[11px] text-[var(--warning)] font-semibold hover:underline cursor-pointer"
                                     >
                                       <StickyNote className="w-3 h-3 flex-shrink-0" />
@@ -1102,12 +1279,7 @@ export function RecentOrderCard({
                               />
                               <div className="min-w-0">
                                 <span className="text-sm text-[var(--t-body)]">{item.color}{item.type ? ` - ${item.type}` : ''}</span>
-                                {item.note && (
-                                  <p className="text-[11px] text-[var(--warning)] font-medium truncate max-w-[120px]" title={item.orderNotesLabel ? `${item.orderNotesLabel}: ${item.note}` : item.note}>
-                                    {item.orderNotesLabel && <span className="font-semibold">{item.orderNotesLabel}: </span>}
-                                    {item.note}
-                                  </p>
-                                )}
+                                {renderCustomNoteTags(item)}
                               </div>
                             </div>
                           </td>
@@ -1242,6 +1414,10 @@ export function RecentOrderCard({
             const dNotReady = detailItems.filter((i) => i.itemStatus === 'Not Ready').length;
             const dInQueue = detailItems.filter((i) => i.itemStatus === 'In Queue').length;
             const dInProduction = detailItems.filter((i) => i.itemStatus === 'In Production').length;
+            // §F — only shown when this PICK actually has at least one
+            // custom-engrave item; progress = done/total across just those.
+            const customEngraveItems = detailItems.filter((i) => i.requiresOrderNotes);
+            const customEngraveDoneCount = customEngraveItems.filter((i) => i.engraveDesignDone).length;
             return (
               <>
                 <DialogHeader className="px-5 pt-5 pb-0 flex-shrink-0">
@@ -1252,7 +1428,7 @@ export function RecentOrderCard({
                   <DialogDescription>
                     {detailItems[0] && formatDate(detailItems[0].createdAt)} · {detailItems.length} item
                   </DialogDescription>
-                  <div className="flex items-center gap-2 pt-1">
+                  <div className="flex items-center gap-2 pt-1 flex-wrap">
                     {dReady > 0 && (
                       <Badge className="text-[11px] px-2 py-0 rounded-full bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/30 gap-1" variant="outline">
                         <CheckCircle2 className="w-2.5 h-2.5" />{dReady} Ready
@@ -1274,6 +1450,15 @@ export function RecentOrderCard({
                       </Badge>
                     )}
                   </div>
+                  {customEngraveItems.length > 0 && (
+                    <button
+                      onClick={() => { setEngraveFilter('all'); setEngraveOrderId(detailOrderId); }}
+                      className="mt-1 w-full flex items-center justify-between px-3 py-2 rounded-lg bg-[var(--warning)]/10 border border-[var(--warning)]/30 text-xs font-semibold text-[var(--warning-darker)] hover:brightness-95 transition-all cursor-pointer"
+                    >
+                      <span>🎖️ Lihat Semua Custom Engrave</span>
+                      <span>{customEngraveDoneCount}/{customEngraveItems.length} Selesai</span>
+                    </button>
+                  )}
                 </DialogHeader>
 
                 <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2">
@@ -1314,12 +1499,8 @@ export function RecentOrderCard({
                             <span className="text-xs text-[var(--t-body)]">{item.color}{item.type ? ` - ${item.type}` : ''}</span>
                             <span className="text-xs text-[var(--t-heading)] font-medium ml-1">× {item.orderedQty}</span>
                           </div>
-                          {item.note && (
-                            <p className="text-[11px] text-[var(--warning)] font-medium mt-1">
-                              {item.orderNotesLabel && <span className="font-semibold">{item.orderNotesLabel}: </span>}
-                              {item.note}
-                            </p>
-                          )}
+                          {renderCustomNoteTags(item)}
+                          {renderEngraveCheckbox(item)}
                         </div>
 
                         <div className="flex items-center gap-1 flex-shrink-0">
@@ -1520,20 +1701,147 @@ export function RecentOrderCard({
         <DialogContent className="sm:max-w-sm rounded-xl">
           <DialogHeader>
             <DialogTitle className="text-[var(--t-heading)] flex items-center gap-2">
-              <StickyNote className="w-4 h-4 text-[var(--warning)]" />
-              Catatan
+              {noteModal?.kind === 'race_stats' ? (
+                <span className="text-base">🏁</span>
+              ) : (
+                <StickyNote className="w-4 h-4 text-[var(--warning)]" />
+              )}
+              {noteModal?.kind === 'race_stats' ? 'Race Stats' : 'Catatan'}
             </DialogTitle>
             <DialogDescription>
               {noteModal?.sku}{noteModal?.color ? ` — ${noteModal.color}` : ''}
             </DialogDescription>
           </DialogHeader>
-          <p className="text-sm text-[var(--t-body)] whitespace-pre-wrap">{noteModal?.note}</p>
+          {noteModal?.kind === 'race_stats' ? (
+            noteModal.raceStats && summarizeRaceStats(noteModal.raceStats) ? (
+              <div className="rounded-lg border border-[var(--bd)] overflow-hidden">
+                {RACE_STATS_FIELDS.map(([key, label], idx) => (
+                  <div key={key} className={`flex text-sm ${idx > 0 ? 'border-t border-[var(--bd)]' : ''}`}>
+                    <span className="w-28 flex-shrink-0 px-2.5 py-1.5 text-[var(--t-muted)] bg-[var(--surface)]">{label}</span>
+                    <span className="flex-1 px-2.5 py-1.5 text-[var(--t-heading)]">{noteModal.raceStats![key] || '—'}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-[var(--t-muted)] italic">⏳ Race Stats belum diisi customer.</p>
+            )
+          ) : (
+            <p className="text-sm text-[var(--t-body)] whitespace-pre-wrap">{noteModal?.text}</p>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setNoteModal(null)} className="rounded-lg">
               <X className="w-3.5 h-3.5 mr-1" />
               Tutup
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* §F — "Lihat Semua Custom Engrave": every custom-engrave item in one
+          PICK at once, so the laser station doesn't open items one by one. */}
+      <Dialog open={!!engraveOrderId} onOpenChange={(o) => !o && setEngraveOrderId(null)}>
+        <DialogContent className="sm:max-w-lg rounded-xl max-h-[85vh] flex flex-col p-0">
+          {(() => {
+            const allEngraveItems = activeItems.filter((i) => i.orderId === engraveOrderId && i.requiresOrderNotes);
+            const doneCount = allEngraveItems.filter((i) => i.engraveDesignDone).length;
+            const visibleItems = allEngraveItems.filter((i) =>
+              engraveFilter === 'all' ? true : engraveFilter === 'done' ? i.engraveDesignDone : !i.engraveDesignDone
+            );
+            return (
+              <>
+                <DialogHeader className="px-5 pt-5 pb-0 flex-shrink-0">
+                  <DialogTitle className="text-[var(--t-heading)] flex items-center gap-2">
+                    <span className="text-base">🎖️</span>
+                    Semua Custom Engrave — {allEngraveItems[0]?.orderNo || ''}
+                  </DialogTitle>
+                  <DialogDescription>{doneCount}/{allEngraveItems.length} Selesai</DialogDescription>
+                  <div className="flex items-center gap-1.5 pt-1">
+                    {([
+                      ['all', 'Semua'],
+                      ['pending', 'Belum Dibuat'],
+                      ['done', 'Sudah Dibuat'],
+                    ] as const).map(([val, label]) => (
+                      <button
+                        key={val}
+                        onClick={() => setEngraveFilter(val)}
+                        className={`px-2.5 py-1 rounded-full text-[11px] font-medium cursor-pointer transition-colors ${
+                          engraveFilter === val
+                            ? 'bg-[var(--brand)] text-white'
+                            : 'bg-[var(--surface)] text-[var(--t-body)] hover:bg-[var(--surface-hover)]'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </DialogHeader>
+                <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2">
+                  {visibleItems.length === 0 && (
+                    <p className="text-sm text-[var(--t-muted)] text-center py-6">Nggak ada item di filter ini.</p>
+                  )}
+                  {visibleItems.map((item) => {
+                    const raceStats = item.notesType === 'race_stats' ? parseRaceStatsData(item.raceStatsData) : null;
+                    return (
+                      <div key={item.id} className="p-3 rounded-lg border border-[var(--bd)] bg-[var(--card)]">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-semibold text-[var(--t-heading)] bg-[var(--surface-2)] px-1.5 py-0.5 rounded">{item.sku}</span>
+                          <span className="text-xs text-[var(--t-body)]">{item.color}{item.type ? ` - ${item.type}` : ''}</span>
+                          <span className="text-xs text-[var(--t-heading)] font-medium">× {item.orderedQty}</span>
+                          {item.colorNote && (
+                            <span className="text-[10px] font-semibold px-1.5 py-0 rounded bg-[var(--warning)]/10 text-[var(--warning-darker)]">🎨 {item.colorNote}</span>
+                          )}
+                          <span className="text-[10px] font-semibold px-1.5 py-0 rounded bg-[var(--info)]/10 text-[var(--info)]">
+                            {item.notesType === 'race_stats' ? '🏁 Race Stats' : '✏️ Custom Text'}
+                          </span>
+                        </div>
+
+                        <div className="mt-2">
+                          {item.notesType === 'race_stats' ? (
+                            raceStats && summarizeRaceStats(raceStats) ? (
+                              <div className="rounded-lg border border-[var(--bd)] overflow-hidden">
+                                {RACE_STATS_FIELDS.map(([key, label], idx) => (
+                                  <div key={key} className={`flex text-xs ${idx > 0 ? 'border-t border-[var(--bd)]' : ''}`}>
+                                    <span className="w-24 flex-shrink-0 px-2 py-1 text-[var(--t-muted)] bg-[var(--surface)]">{label}</span>
+                                    <span className="flex-1 px-2 py-1 text-[var(--t-heading)]">{raceStats[key] || '—'}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-[var(--t-muted)] italic">⏳ belum diisi — follow up dulu sebelum di-engrave</p>
+                            )
+                          ) : item.note ? (
+                            <p className="text-xs text-[var(--t-body)] whitespace-pre-wrap">{item.note}</p>
+                          ) : (
+                            <p className="text-xs text-[var(--t-muted)] italic">⏳ belum diisi — follow up dulu sebelum di-engrave</p>
+                          )}
+                        </div>
+
+                        <label className="flex items-center gap-1.5 mt-2.5 text-xs cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={!!item.engraveDesignDone}
+                            disabled={togglingEngraveId === item.id}
+                            onChange={() => toggleEngraveDone(item)}
+                            className="w-3.5 h-3.5 rounded border-[var(--bd)] cursor-pointer disabled:opacity-50"
+                          />
+                          {item.engraveDesignDone ? (
+                            <span className="text-[var(--success)] font-medium">✅ Sudah dibuat</span>
+                          ) : (
+                            <span className="text-[var(--t-muted)]">Belum dibuat</span>
+                          )}
+                        </label>
+                      </div>
+                    );
+                  })}
+                </div>
+                <DialogFooter className="px-5 pb-5">
+                  <Button variant="outline" onClick={() => setEngraveOrderId(null)} className="rounded-lg w-full">
+                    Tutup
+                  </Button>
+                </DialogFooter>
+              </>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </>

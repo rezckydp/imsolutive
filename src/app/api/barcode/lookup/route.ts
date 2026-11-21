@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
       type: variant.type,
       qty: variant.qty,
       barcode: variant.barcode,
+      requestColorNote: variant.requestColorNote,
       requiresOrderNotes: variant.requiresOrderNotes,
       orderNotesLabel: variant.orderNotesLabel,
       orderNotesPlaceholder: variant.orderNotesPlaceholder,

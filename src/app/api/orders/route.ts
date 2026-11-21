@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
         status: status || "Pending",
         orderItems: {
           create: items.map(
-            (item: { variantId: string; qty: number; note?: string }) => {
+            (item: { variantId: string; qty: number; note?: string; colorNote?: string; notesType?: string | null; raceStatsData?: string | null }) => {
               const qty = item.qty || 1;
               const stockBefore = variantStocks[item.variantId];
               const stockAfter = stockBefore - qty;
@@ -150,6 +150,9 @@ export async function POST(request: NextRequest) {
                 variantId: item.variantId,
                 qty,
                 note: item.note || "",
+                colorNote: item.colorNote || null,
+                notesType: item.notesType || null,
+                raceStatsData: item.raceStatsData || null,
                 status: stockAfter >= 0 ? "Ready" : "Not Ready",
               };
             }

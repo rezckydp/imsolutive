@@ -59,15 +59,28 @@ interface ReceiveScanEntry {
   source: 'production' | 'unlinked';
 }
 
-// "Req. Color" variants (customer picks a custom color per order) must never
-// auto-stack with each other — each scan represents a different customer's
-// request and needs its own qty + note, even though they share one variantId.
-// Detected via "req" appearing in either the color OR type field — some
-// products store it in Color, others in Type, so check both.
-const isRequestColorVariant = (color: string, type: string) =>
-  color.toLowerCase().includes('req') || type.toLowerCase().includes('req');
+const DEFAULT_ORDER_NOTES_LABEL = 'Catatan Custom';
 
-const DEFAULT_ORDER_NOTES_LABEL = 'Catatan Tambahan';
+// Race Stats' 6 fields — all free text, no dropdowns (Distance/Pace come in
+// too many formats to constrain). Shared shape for the form state and the
+// JSON persisted in OrderItem.raceStatsData.
+export interface RaceStatsForm {
+  bib: string;
+  nama: string;
+  event: string;
+  distance: string;
+  pace: string;
+  time: string;
+}
+const EMPTY_RACE_STATS: RaceStatsForm = { bib: '', nama: '', event: '', distance: '', pace: '', time: '' };
+const RACE_STATS_FIELDS: Array<{ key: keyof RaceStatsForm; label: string; placeholder: string }> = [
+  { key: 'bib', label: 'No BIB', placeholder: 'e.g. 1234' },
+  { key: 'nama', label: 'Nama', placeholder: 'Nama di sertifikat' },
+  { key: 'event', label: 'Event', placeholder: 'e.g. Jakarta Marathon 2025' },
+  { key: 'distance', label: 'Distance', placeholder: 'e.g. 10K' },
+  { key: 'pace', label: 'Pace', placeholder: "e.g. 5'30\"/km" },
+  { key: 'time', label: 'Total Time', placeholder: 'e.g. 00:55:12' },
+];
 
 interface ScannedItem {
   id: string;
@@ -79,20 +92,27 @@ interface ScannedItem {
   colorHex: string;
   type: string;
   qty: number;
-  note: string;
-  // Per-variant toggle set in the Produk form (ims-feature-input-pesanan-
-  // catatan-dinamis.md) — replaces the old hardcoded "-CRS suffix" detection,
-  // so any product can opt into an order-time note field without new code.
-  requiresOrderNotes: boolean;
+  note: string; // Catatan Custom Text (notesType === 'custom_text')
+  // Independent per-variant toggles set in the Produk form (ims-feature-
+  // custom-engrave-request-warna.md §A, revises ims-feature-input-pesanan-
+  // catatan-dinamis.md) — a variant can have either, both, or neither:
+  requestColorNote: boolean;   // generalizes the old "Request Color" auto-popup
+  requiresOrderNotes: boolean; // needs a Custom Note (Race Stats OR Custom Text, chosen per transaction)
   orderNotesLabel: string;
   orderNotesPlaceholder: string;
   orderNotesRequired: boolean;
+  // Captured via the auto-popups below, kept separate so a frame can need
+  // both "what color" and "what to engrave" without mixing them into one string.
+  colorNote: string;
+  notesType: 'race_stats' | 'custom_text' | null;
+  raceStatsData: string | null; // JSON string of RaceStatsForm
   variantOptions?: Array<{
     id: string;
     color: string;
     colorHex: string;
     type: string;
     qty: number;
+    requestColorNote: boolean;
     requiresOrderNotes: boolean;
     orderNotesLabel: string | null;
     orderNotesPlaceholder: string | null;
@@ -119,6 +139,7 @@ export async function lookupBarcode(code: string): Promise<{
   colorHex?: string;
   variantType?: string;
   qty?: number;
+  requestColorNote?: boolean;
   requiresOrderNotes?: boolean;
   orderNotesLabel?: string | null;
   orderNotesPlaceholder?: string | null;
@@ -129,6 +150,7 @@ export async function lookupBarcode(code: string): Promise<{
     colorHex: string;
     type: string;
     qty: number;
+    requestColorNote: boolean;
     requiresOrderNotes: boolean;
     orderNotesLabel: string | null;
     orderNotesPlaceholder: string | null;
@@ -150,6 +172,7 @@ export async function lookupBarcode(code: string): Promise<{
         colorHex: data.colorHex,
         variantType: data.type || '',
         qty: data.qty,
+        requestColorNote: !!data.requestColorNote,
         requiresOrderNotes: !!data.requiresOrderNotes,
         orderNotesLabel: data.orderNotesLabel,
         orderNotesPlaceholder: data.orderNotesPlaceholder,
@@ -221,15 +244,22 @@ export function BarcodeScanner({
   // (ims-hotfix-cancel-item-terima-stok.md, replaces "Undo Scan Terakhir").
   const [cancellingKey, setCancellingKey] = useState<string | null>(null);
 
-  // Auto-popup Note prompt right after a Req. Color item is scanned
-  // (ims-feature-auto-popup-note-request-color.md) — Picking List/Adjustment
-  // only, never Produksi. Scanning another Req. Color item while one prompt
-  // is still open just swaps the target id, which is exactly Esc/skip
-  // behavior for the old one since nothing gets saved either way.
-  const [notePromptItemId, setNotePromptItemId] = useState<string | null>(null);
-  const [notePromptValue, setNotePromptValue] = useState('');
-  const notePromptInputRef = useRef<HTMLInputElement>(null);
-  const notePromptWrapRef = useRef<HTMLDivElement>(null);
+  // Auto-popup sequence right after a scanned item is added (ims-feature-
+  // auto-popup-note-request-color.md, generalized + extended by ims-feature-
+  // custom-engrave-request-warna.md §B/C) — Picking List/Adjustment only,
+  // never Produksi. Two stages that can chain: 'color' (Req. Warna) runs
+  // first if the variant's requestColorNote is set, then 'notesType'
+  // (Race Stats / Custom Text) if requiresOrderNotes is set — either, both,
+  // or neither, per variant. Scanning another item while one prompt is open
+  // just swaps the target id, same as Esc/skip since nothing was saved yet.
+  const [promptItemId, setPromptItemId] = useState<string | null>(null);
+  const [promptStage, setPromptStage] = useState<'color' | 'notesType' | null>(null);
+  const [colorPromptValue, setColorPromptValue] = useState('');
+  const [notesTypeChoice, setNotesTypeChoice] = useState<'race_stats' | 'custom_text' | null>(null);
+  const [raceStatsForm, setRaceStatsForm] = useState<RaceStatsForm>(EMPTY_RACE_STATS);
+  const [customTextValue, setCustomTextValue] = useState('');
+  const promptColorInputRef = useRef<HTMLInputElement>(null);
+  const promptWrapRef = useRef<HTMLDivElement>(null);
 
   // Reset order-specific sub-state when switching to the Produksi sub-tab
   useEffect(() => {
@@ -298,6 +328,23 @@ export function BarcodeScanner({
     prevLookingUp.current = lookingUp;
   }, [lookingUp]);
 
+  // Starts the color/notesType popup chain for a freshly-scanned item, per
+  // its own requestColorNote/requiresOrderNotes flags — never in Produksi.
+  const startPromptSequence = useCallback((item: ScannedItem) => {
+    if (!(mode === 'order' && orderSubTab !== 'production')) return;
+    if (item.requestColorNote) {
+      setPromptItemId(item.id);
+      setPromptStage('color');
+      setColorPromptValue('');
+    } else if (item.requiresOrderNotes) {
+      setPromptItemId(item.id);
+      setPromptStage('notesType');
+      setNotesTypeChoice(null);
+      setRaceStatsForm(EMPTY_RACE_STATS);
+      setCustomTextValue('');
+    }
+  }, [mode, orderSubTab]);
+
   // ============ SCAN HANDLER ============
 
   const handleScan = useCallback(async (code: string) => {
@@ -328,16 +375,20 @@ export function BarcodeScanner({
           type: result.variantType || '',
           qty: 1,
           note: '',
+          requestColorNote: !!result.requestColorNote,
           requiresOrderNotes: !!result.requiresOrderNotes,
           orderNotesLabel: result.orderNotesLabel || DEFAULT_ORDER_NOTES_LABEL,
           orderNotesPlaceholder: result.orderNotesPlaceholder || '',
           orderNotesRequired: result.orderNotesRequired ?? true,
+          colorNote: '',
+          notesType: null,
+          raceStatsData: null,
         };
 
         setItems((prev) => {
           const existing =
-            !isRequestColorVariant(result.color || '', result.variantType || '') &&
-            !result.requiresOrderNotes &&
+            !newItem.requestColorNote &&
+            !newItem.requiresOrderNotes &&
             prev.find((i) => i.variantId === result.variantId);
           if (existing) {
             return prev.map((i) =>
@@ -346,10 +397,7 @@ export function BarcodeScanner({
           }
           return [newItem, ...prev];
         });
-        if (isRequestColorVariant(result.color || '', result.variantType || '') && mode === 'order' && orderSubTab !== 'production') {
-          setNotePromptItemId(newItem.id);
-          setNotePromptValue('');
-        }
+        startPromptSequence(newItem);
       } else if (result.lookupType === 'product' && result.variants && result.variants.length === 1) {
         const v = result.variants[0];
         const newItem: ScannedItem = {
@@ -363,16 +411,20 @@ export function BarcodeScanner({
           type: v.type || '',
           qty: 1,
           note: '',
+          requestColorNote: !!v.requestColorNote,
           requiresOrderNotes: !!v.requiresOrderNotes,
           orderNotesLabel: v.orderNotesLabel || DEFAULT_ORDER_NOTES_LABEL,
           orderNotesPlaceholder: v.orderNotesPlaceholder || '',
           orderNotesRequired: v.orderNotesRequired ?? true,
+          colorNote: '',
+          notesType: null,
+          raceStatsData: null,
         };
 
         setItems((prev) => {
           const existing =
-            !isRequestColorVariant(v.color || '', v.type || '') &&
-            !v.requiresOrderNotes &&
+            !newItem.requestColorNote &&
+            !newItem.requiresOrderNotes &&
             prev.find((i) => i.variantId === v.id);
           if (existing) {
             return prev.map((i) =>
@@ -381,10 +433,7 @@ export function BarcodeScanner({
           }
           return [newItem, ...prev];
         });
-        if (isRequestColorVariant(v.color || '', v.type || '') && mode === 'order' && orderSubTab !== 'production') {
-          setNotePromptItemId(newItem.id);
-          setNotePromptValue('');
-        }
+        startPromptSequence(newItem);
       } else if (result.lookupType === 'product' && result.variants && result.variants.length > 1) {
         const newItem: ScannedItem = {
           id: `scan-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -398,10 +447,14 @@ export function BarcodeScanner({
           qty: 1,
           variantOptions: result.variants,
           note: '',
+          requestColorNote: false,
           requiresOrderNotes: false,
           orderNotesLabel: DEFAULT_ORDER_NOTES_LABEL,
           orderNotesPlaceholder: '',
           orderNotesRequired: true,
+          colorNote: '',
+          notesType: null,
+          raceStatsData: null,
         };
         setItems((prev) => [newItem, ...prev]);
       }
@@ -411,7 +464,7 @@ export function BarcodeScanner({
       isProcessing.current = false;
       setLookingUp(false);
     }
-  }, [mode, orderSubTab]);
+  }, [mode, orderSubTab, startPromptSequence]);
 
   // ============ RECEIVE STOK (Terima Stok) ============
 
@@ -587,6 +640,11 @@ export function BarcodeScanner({
           type: string;
           qty: number;
           matched: boolean;
+          requestColorNote?: boolean;
+          requiresOrderNotes?: boolean;
+          orderNotesLabel?: string | null;
+          orderNotesPlaceholder?: string | null;
+          orderNotesRequired?: boolean;
         }) => ({
           id: `pdf-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
           code: it.code,
@@ -598,6 +656,14 @@ export function BarcodeScanner({
           type: it.type,
           qty: it.qty || 1,
           note: '',
+          requestColorNote: !!it.requestColorNote,
+          requiresOrderNotes: !!it.requiresOrderNotes,
+          orderNotesLabel: it.orderNotesLabel || DEFAULT_ORDER_NOTES_LABEL,
+          orderNotesPlaceholder: it.orderNotesPlaceholder || '',
+          orderNotesRequired: it.orderNotesRequired ?? true,
+          colorNote: '',
+          notesType: null,
+          raceStatsData: null,
         })
       );
 
@@ -637,24 +703,29 @@ export function BarcodeScanner({
   };
 
   const handleVariantSelect = (itemId: string, variantId: string) => {
+    let updatedItem: ScannedItem | null = null;
     setItems((prev) =>
       prev.map((item) => {
         if (item.id !== itemId) return item;
         const selected = item.variantOptions?.find((v) => v.id === variantId);
-        return {
+        const next: ScannedItem = {
           ...item,
           variantId,
           color: selected?.color || '',
           colorHex: selected?.colorHex || '#000000',
           type: selected?.type || '',
+          requestColorNote: !!selected?.requestColorNote,
           requiresOrderNotes: !!selected?.requiresOrderNotes,
           orderNotesLabel: selected?.orderNotesLabel || DEFAULT_ORDER_NOTES_LABEL,
           orderNotesPlaceholder: selected?.orderNotesPlaceholder || '',
           orderNotesRequired: selected?.orderNotesRequired ?? true,
           variantOptions: undefined,
         };
+        updatedItem = next;
+        return next;
       })
     );
+    if (updatedItem) startPromptSequence(updatedItem);
   };
 
   const updateItemNote = (itemId: string, note: string) => {
@@ -666,42 +737,153 @@ export function BarcodeScanner({
     );
   };
 
-  // ============ NOTE PROMPT (Req. Color auto-popup) ============
+  // ============ NOTE PROMPT (Req. Color + Jenis Catatan Custom, chained) ============
+  // ims-feature-custom-engrave-request-warna.md §B/C — 'color' stage keeps
+  // the exact Req. Color UX (auto-focus, Enter save+continue, Esc/click-
+  // outside skip), then chains into 'notesType' when the item also needs a
+  // Custom Note. notesType can't be skipped when orderNotesRequired is true.
 
-  useEffect(() => {
-    if (notePromptItemId) {
-      setTimeout(() => notePromptInputRef.current?.focus(), 50);
+  const parseRaceStats = (json: string | null): RaceStatsForm => {
+    if (!json) return EMPTY_RACE_STATS;
+    try {
+      return { ...EMPTY_RACE_STATS, ...JSON.parse(json) };
+    } catch {
+      return EMPTY_RACE_STATS;
     }
-  }, [notePromptItemId]);
+  };
+
+  const raceStatsHasAnyField = (f: RaceStatsForm) => Object.values(f).some((v) => v.trim());
+
+  const summarizeRaceStats = (f: RaceStatsForm): string | null => {
+    const parts = [f.bib && `BIB ${f.bib}`, f.nama, f.distance].filter(Boolean);
+    return parts.length > 0 ? parts.join(' · ') : null;
+  };
 
   useEffect(() => {
-    if (!notePromptItemId) return;
+    if (promptStage === 'color') {
+      setTimeout(() => promptColorInputRef.current?.focus(), 50);
+    }
+  }, [promptStage, promptItemId]);
+
+  const closePrompt = () => {
+    setPromptItemId(null);
+    setPromptStage(null);
+    setColorPromptValue('');
+    setNotesTypeChoice(null);
+    setRaceStatsForm(EMPTY_RACE_STATS);
+    setCustomTextValue('');
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
+  // After the color stage (saved or skipped), chain into notesType if the
+  // item needs it — otherwise the sequence is done.
+  const advanceFromColor = () => {
+    const item = items.find((i) => i.id === promptItemId);
+    if (item?.requiresOrderNotes) {
+      setPromptStage('notesType');
+      setNotesTypeChoice(item.notesType ?? null);
+      setRaceStatsForm(item.notesType === 'race_stats' ? parseRaceStats(item.raceStatsData) : EMPTY_RACE_STATS);
+      setCustomTextValue(item.notesType === 'custom_text' ? item.note : '');
+    } else {
+      closePrompt();
+    }
+  };
+
+  const updateItemColorNote = (itemId: string, colorNote: string) => {
+    setItems((prev) => prev.map((item) => (item.id === itemId ? { ...item, colorNote } : item)));
+  };
+
+  const commitColorPrompt = () => {
+    if (promptItemId) updateItemColorNote(promptItemId, colorPromptValue.trim());
+    advanceFromColor();
+  };
+
+  const skipColorPrompt = () => {
+    advanceFromColor();
+  };
+
+  // Escape is handled at the Dialog level (onEscapeKeyDown below) so it
+  // skips just the popup instead of closing the whole scanner dialog.
+  const handleColorPromptKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') commitColorPrompt();
+  };
+
+  useEffect(() => {
+    if (!promptItemId) return;
     const handleOutside = (e: MouseEvent) => {
-      if (notePromptWrapRef.current && !notePromptWrapRef.current.contains(e.target as Node)) {
-        setNotePromptItemId(null);
-        setNotePromptValue('');
+      if (promptWrapRef.current && promptWrapRef.current.contains(e.target as Node)) return;
+      if (promptStage === 'color') {
+        skipColorPrompt();
+      } else if (promptStage === 'notesType') {
+        const item = items.find((i) => i.id === promptItemId);
+        if (!item?.orderNotesRequired) closePrompt();
       }
     };
     document.addEventListener('mousedown', handleOutside);
     return () => document.removeEventListener('mousedown', handleOutside);
-  }, [notePromptItemId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [promptItemId, promptStage]);
 
-  const commitNotePrompt = () => {
-    if (notePromptItemId) updateItemNote(notePromptItemId, notePromptValue.trim());
-    setNotePromptItemId(null);
-    setNotePromptValue('');
-    setTimeout(() => inputRef.current?.focus(), 50);
+  const updateItemRaceStats = (itemId: string, form: RaceStatsForm) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === itemId ? { ...item, notesType: 'race_stats', raceStatsData: JSON.stringify(form), note: '' } : item
+      )
+    );
   };
 
-  const skipNotePrompt = () => {
-    setNotePromptItemId(null);
-    setNotePromptValue('');
-    setTimeout(() => inputRef.current?.focus(), 50);
+  const updateItemCustomText = (itemId: string, text: string) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === itemId ? { ...item, notesType: 'custom_text', note: text, raceStatsData: null } : item
+      )
+    );
   };
 
-  const handleNotePromptKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') commitNotePrompt();
-    else if (e.key === 'Escape') skipNotePrompt();
+  const canCommitNotesType = () => {
+    if (notesTypeChoice === 'race_stats') return raceStatsHasAnyField(raceStatsForm);
+    if (notesTypeChoice === 'custom_text') return customTextValue.trim().length > 0;
+    return false;
+  };
+
+  const commitNotesType = () => {
+    if (!promptItemId || !canCommitNotesType()) return;
+    if (notesTypeChoice === 'race_stats') updateItemRaceStats(promptItemId, raceStatsForm);
+    else if (notesTypeChoice === 'custom_text') updateItemCustomText(promptItemId, customTextValue.trim());
+    closePrompt();
+  };
+
+  const currentPromptItem = items.find((i) => i.id === promptItemId) || null;
+  const notesTypeSkippable = !currentPromptItem?.orderNotesRequired;
+
+  const skipNotesType = () => {
+    if (!notesTypeSkippable) return;
+    closePrompt();
+  };
+
+  // Reopens the sequence on an already-filled item, for editing after the
+  // fact from the scanned-items list (tag click).
+  const reopenColorPrompt = (item: ScannedItem) => {
+    setPromptItemId(item.id);
+    setPromptStage('color');
+    setColorPromptValue(item.colorNote || '');
+  };
+
+  const reopenNotesTypePrompt = (item: ScannedItem) => {
+    setPromptItemId(item.id);
+    setPromptStage('notesType');
+    setNotesTypeChoice(item.notesType ?? null);
+    setRaceStatsForm(item.notesType === 'race_stats' ? parseRaceStats(item.raceStatsData) : EMPTY_RACE_STATS);
+    setCustomTextValue(item.notesType === 'custom_text' ? item.note : '');
+  };
+
+  // Submit-time validation — loose: any one Race Stats field, or non-empty
+  // Custom Text, satisfies a required Custom Note.
+  const isCustomNoteMissing = (item: ScannedItem) => {
+    if (!item.requiresOrderNotes || !item.orderNotesRequired) return false;
+    if (item.notesType === 'race_stats') return !raceStatsHasAnyField(parseRaceStats(item.raceStatsData));
+    if (item.notesType === 'custom_text') return !item.note.trim();
+    return true;
   };
 
   const removeItem = (itemId: string) => {
@@ -727,7 +909,7 @@ export function BarcodeScanner({
     }
 
     if (!isProductionTab) {
-      const missingNotes = validItems.filter((i) => i.requiresOrderNotes && i.orderNotesRequired && !i.note.trim());
+      const missingNotes = validItems.filter((i) => isCustomNoteMissing(i));
       if (missingNotes.length > 0) {
         setLookupError(
           missingNotes
@@ -748,7 +930,14 @@ export function BarcodeScanner({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             orderNo,
-            items: validItems.map((i) => ({ variantId: i.variantId, qty: i.qty, note: i.note || '' })),
+            items: validItems.map((i) => ({
+              variantId: i.variantId,
+              qty: i.qty,
+              note: i.note || '',
+              colorNote: i.colorNote || null,
+              notesType: i.notesType,
+              raceStatsData: i.raceStatsData,
+            })),
           }),
         });
 
@@ -844,8 +1033,7 @@ export function BarcodeScanner({
       resetPdfUpload();
       setScanHistory([]);
       setTodayTotal(null);
-      setNotePromptItemId(null);
-      setNotePromptValue('');
+      closePrompt();
       setCameraOn(false);
       setCameraError(null);
     }
@@ -859,6 +1047,15 @@ export function BarcodeScanner({
     <>
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent
+        onEscapeKeyDown={(e) => {
+          // While a color/notesType auto-popup is open, Esc skips just that
+          // popup (per its own skippability) instead of closing the whole
+          // scanner dialog.
+          if (!promptItemId) return;
+          e.preventDefault();
+          if (promptStage === 'color') skipColorPrompt();
+          else if (promptStage === 'notesType' && notesTypeSkippable) skipNotesType();
+        }}
         className="
           max-h-[90vh] flex flex-col p-0
           max-w-[calc(100%-1rem)] sm:max-w-md
@@ -1133,31 +1330,112 @@ export function BarcodeScanner({
           )}
 
           {/* Req. Color auto-popup — Enter saves + refocuses scan box, Esc/klik luar skip */}
-          {notePromptItemId && (
+          {promptItemId && promptStage === 'color' && (
             <div
-              ref={notePromptWrapRef}
+              ref={promptWrapRef}
               className="mt-2 p-2.5 rounded-lg bg-[var(--warning)]/5 border border-[var(--warning)]/30 flex-shrink-0"
             >
               <p className="text-[11px] text-[var(--warning-darker)] font-semibold mb-1.5">
-                Req. Color — catat warna yang diminta
+                Req. Warna — catat warna yang diminta
               </p>
               <div className="flex items-center gap-1.5">
                 <input
-                  ref={notePromptInputRef}
+                  ref={promptColorInputRef}
                   type="text"
-                  value={notePromptValue}
-                  onChange={(e) => setNotePromptValue(e.target.value)}
-                  onKeyDown={handleNotePromptKeyDown}
+                  value={colorPromptValue}
+                  onChange={(e) => setColorPromptValue(e.target.value)}
+                  onKeyDown={handleColorPromptKeyDown}
                   placeholder="Warna yang diminta... (misal: Lilac Purple)"
                   className="flex-1 h-9 text-sm bg-[var(--card)] border border-[var(--warning)]/30 rounded-lg px-3 text-[var(--t-heading)] placeholder:text-[var(--t-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--warning)]/40"
                 />
                 <button
-                  onClick={commitNotePrompt}
+                  onClick={commitColorPrompt}
                   className="h-9 px-3 rounded-lg bg-[var(--warning)] hover:brightness-95 text-white text-xs font-semibold cursor-pointer flex-shrink-0"
                 >
                   Simpan
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Jenis Catatan Custom auto-popup — chains after the color popup
+              (if any). Required items can't be skipped: no Esc, no klik
+              luar, no Lewati button. */}
+          {promptItemId && promptStage === 'notesType' && (
+            <div
+              ref={promptWrapRef}
+              className="mt-2 p-2.5 rounded-lg bg-[var(--info)]/5 border border-[var(--info)]/30 flex-shrink-0 space-y-2"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] text-[var(--info)] font-semibold">
+                  Jenis Catatan Custom
+                  {currentPromptItem?.orderNotesRequired && <span className="text-[var(--danger)]"> *wajib</span>}
+                </p>
+                {notesTypeSkippable && (
+                  <button onClick={skipNotesType} className="text-[11px] text-[var(--t-muted)] hover:underline cursor-pointer">
+                    Lewati
+                  </button>
+                )}
+              </div>
+
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => setNotesTypeChoice('race_stats')}
+                  className={`flex-1 h-8 rounded-md text-xs font-medium cursor-pointer transition-colors ${
+                    notesTypeChoice === 'race_stats'
+                      ? 'bg-[var(--info)] text-white'
+                      : 'bg-[var(--card)] border border-[var(--bd)] text-[var(--t-body)]'
+                  }`}
+                >
+                  🏁 Race Stats
+                </button>
+                <button
+                  onClick={() => setNotesTypeChoice('custom_text')}
+                  className={`flex-1 h-8 rounded-md text-xs font-medium cursor-pointer transition-colors ${
+                    notesTypeChoice === 'custom_text'
+                      ? 'bg-[var(--info)] text-white'
+                      : 'bg-[var(--card)] border border-[var(--bd)] text-[var(--t-body)]'
+                  }`}
+                >
+                  ✏️ Custom Text Bebas
+                </button>
+              </div>
+
+              {notesTypeChoice === 'race_stats' && (
+                <div className="grid grid-cols-2 gap-1.5">
+                  {RACE_STATS_FIELDS.map((f) => (
+                    <input
+                      key={f.key}
+                      type="text"
+                      value={raceStatsForm[f.key]}
+                      onChange={(e) => setRaceStatsForm((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                      placeholder={`${f.label}...`}
+                      title={f.label}
+                      className="h-8 text-xs bg-[var(--card)] border border-[var(--info)]/25 rounded-md px-2 text-[var(--t-heading)] placeholder:text-[var(--t-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--info)]/30"
+                    />
+                  ))}
+                </div>
+              )}
+
+              {notesTypeChoice === 'custom_text' && (
+                <textarea
+                  value={customTextValue}
+                  onChange={(e) => setCustomTextValue(e.target.value)}
+                  placeholder={currentPromptItem?.orderNotesPlaceholder || ''}
+                  rows={2}
+                  className="w-full text-xs bg-[var(--card)] border border-[var(--info)]/25 rounded-md px-2 py-1.5 text-[var(--t-heading)] placeholder:text-[var(--t-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--info)]/30 resize-none"
+                />
+              )}
+
+              {notesTypeChoice && (
+                <button
+                  onClick={commitNotesType}
+                  disabled={!canCommitNotesType()}
+                  className="w-full h-8 rounded-md bg-[var(--info)] hover:brightness-95 text-white text-xs font-semibold cursor-pointer disabled:opacity-40"
+                >
+                  Simpan
+                </button>
+              )}
             </div>
           )}
 
@@ -1281,35 +1559,40 @@ export function BarcodeScanner({
                         </div>
                       )}
 
-                      {/* Note input for Req. Color items */}
-                      {item.variantId && isRequestColorVariant(item.color, item.type) && (
-                        <div className="mt-1.5">
-                          <input
-                            type="text"
-                            value={item.note}
-                            onChange={(e) => updateItemNote(item.id, e.target.value)}
-                            placeholder="Tulis warna yang diminta customer..."
-                            className="w-full h-7 text-xs bg-[var(--warning)]/5 border border-[var(--warning)]/20 rounded-md px-2 text-[var(--warning-darker)] placeholder:text-[var(--warning)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--warning)]/30"
-                          />
-                        </div>
-                      )}
-
-                      {/* Dynamic order-notes field — toggled per variant in the Produk form
-                          (ims-feature-input-pesanan-catatan-dinamis.md), label/placeholder/
-                          required-ness all come from that variant's own settings. */}
-                      {item.variantId && item.requiresOrderNotes && (
-                        <div className="mt-1.5">
-                          <label className="text-[10px] font-semibold text-[var(--info)] flex items-center gap-1 mb-1">
-                            {item.orderNotesLabel || DEFAULT_ORDER_NOTES_LABEL}
-                            {item.orderNotesRequired && <span className="text-[var(--danger)]">*</span>}
-                          </label>
-                          <textarea
-                            value={item.note}
-                            onChange={(e) => updateItemNote(item.id, e.target.value)}
-                            placeholder={item.orderNotesPlaceholder || ''}
-                            rows={2}
-                            className="w-full text-xs bg-[var(--info)]/5 border border-[var(--info)]/25 rounded-md px-2 py-1.5 text-[var(--t-heading)] placeholder:text-[var(--info)]/50 focus:outline-none focus:ring-1 focus:ring-[var(--info)]/30 resize-none"
-                          />
+                      {/* Req. Warna + Catatan Custom tags — click to reopen the
+                          auto-popup for editing (ims-feature-custom-engrave-
+                          request-warna.md §B/C). Separate tags, never merged. */}
+                      {item.variantId && (item.requestColorNote || item.requiresOrderNotes) && (
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          {item.requestColorNote && (
+                            <button
+                              type="button"
+                              onClick={() => reopenColorPrompt(item)}
+                              className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--warning)]/10 text-[var(--warning-darker)] border border-[var(--warning)]/25 cursor-pointer hover:brightness-95"
+                            >
+                              🎨 Req. Warna: {item.colorNote ? item.colorNote : <span className="italic opacity-70">belum diisi</span>}
+                            </button>
+                          )}
+                          {item.requiresOrderNotes && (
+                            <button
+                              type="button"
+                              onClick={() => reopenNotesTypePrompt(item)}
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-medium border cursor-pointer hover:brightness-95 ${
+                                isCustomNoteMissing(item)
+                                  ? 'bg-[var(--danger)]/10 text-[var(--danger)] border-[var(--danger)]/25'
+                                  : 'bg-[var(--info)]/10 text-[var(--info)] border-[var(--info)]/25'
+                              }`}
+                            >
+                              {item.notesType === 'race_stats' ? (
+                                <>🏁 {summarizeRaceStats(parseRaceStats(item.raceStatsData)) || <span className="italic opacity-70">belum diisi customer</span>}</>
+                              ) : item.notesType === 'custom_text' ? (
+                                <>✏️ {item.note.trim() ? (item.note.trim().length > 24 ? `${item.note.trim().slice(0, 24)}…` : item.note.trim()) : <span className="italic opacity-70">belum diisi</span>}</>
+                              ) : (
+                                <>⏳ {item.orderNotesLabel || DEFAULT_ORDER_NOTES_LABEL} belum dipilih</>
+                              )}
+                              {item.orderNotesRequired && <span className="ml-0.5">*</span>}
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>

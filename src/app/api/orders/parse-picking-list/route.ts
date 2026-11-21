@@ -14,6 +14,11 @@ interface ExtractedItem {
   currentStock: number;
   qty: number;
   matched: boolean;
+  requestColorNote: boolean;
+  requiresOrderNotes: boolean;
+  orderNotesLabel: string | null;
+  orderNotesPlaceholder: string | null;
+  orderNotesRequired: boolean;
 }
 
 // POST — upload a Picking List PDF, extract Picking List No + line items
@@ -121,6 +126,11 @@ export async function POST(request: NextRequest) {
           currentStock: variant.qty,
           qty,
           matched: true,
+          requestColorNote: variant.requestColorNote,
+          requiresOrderNotes: variant.requiresOrderNotes,
+          orderNotesLabel: variant.orderNotesLabel,
+          orderNotesPlaceholder: variant.orderNotesPlaceholder,
+          orderNotesRequired: variant.orderNotesRequired,
         });
       } else if (product && product.variants.length === 1) {
         const v = product.variants[0];
@@ -135,6 +145,11 @@ export async function POST(request: NextRequest) {
           currentStock: v.qty,
           qty,
           matched: true,
+          requestColorNote: v.requestColorNote,
+          requiresOrderNotes: v.requiresOrderNotes,
+          orderNotesLabel: v.orderNotesLabel,
+          orderNotesPlaceholder: v.orderNotesPlaceholder,
+          orderNotesRequired: v.orderNotesRequired,
         });
       } else {
         // Product SKU matched but has multiple variants — can't auto-resolve color, flag for manual review
@@ -149,6 +164,11 @@ export async function POST(request: NextRequest) {
           currentStock: 0,
           qty,
           matched: false,
+          requestColorNote: false,
+          requiresOrderNotes: false,
+          orderNotesLabel: null,
+          orderNotesPlaceholder: null,
+          orderNotesRequired: true,
         });
       }
     }
@@ -177,6 +197,11 @@ export async function POST(request: NextRequest) {
         currentStock: 0,
         qty: 1,
         matched: false,
+        requestColorNote: false,
+        requiresOrderNotes: false,
+        orderNotesLabel: null,
+        orderNotesPlaceholder: null,
+        orderNotesRequired: true,
       });
     }
 

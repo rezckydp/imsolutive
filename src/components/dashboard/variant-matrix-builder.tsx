@@ -18,8 +18,12 @@ export interface MatrixRow {
   price: string; // controlled-input string; parsed to Int on submit
   qty: number;
   barcode: string;
-  // Dynamic Input Pesanan note field, per variant (ims-feature-input-pesanan-
-  // catatan-dinamis.md) — same meaning as in the simple Produk form.
+  // Two independent per-variant toggles (ims-feature-custom-engrave-request-
+  // warna.md §A, revises ims-feature-input-pesanan-catatan-dinamis.md):
+  // requestColorNote generalizes the old "Request Color" auto-popup;
+  // requiresOrderNotes needs a Custom Note (Race Stats/Custom Text, chosen
+  // per transaction). A variant can have either, both, or neither.
+  requestColorNote: boolean;
   requiresOrderNotes: boolean;
   orderNotesLabel: string;
   orderNotesPlaceholder: string;
@@ -81,6 +85,7 @@ export function buildVariantMatrixPayload(
     qty: r.qty,
     barcode: r.barcode.trim() || null,
     price: r.price.trim() ? parseInt(r.price, 10) : null,
+    requestColorNote: r.requestColorNote,
     requiresOrderNotes: r.requiresOrderNotes,
     orderNotesLabel: r.requiresOrderNotes ? (r.orderNotesLabel.trim() || null) : null,
     orderNotesPlaceholder: r.requiresOrderNotes ? (r.orderNotesPlaceholder.trim() || null) : null,
@@ -117,7 +122,7 @@ export const VariantMatrixBuilder = forwardRef<MatrixBuilderHandle, Props>(funct
   const updateRowNotes = (
     variasi1: string,
     color: string,
-    field: 'requiresOrderNotes' | 'orderNotesLabel' | 'orderNotesPlaceholder' | 'orderNotesRequired',
+    field: 'requestColorNote' | 'requiresOrderNotes' | 'orderNotesLabel' | 'orderNotesPlaceholder' | 'orderNotesRequired',
     value: string | boolean
   ) => {
     setRows((prev) =>
@@ -185,6 +190,7 @@ export const VariantMatrixBuilder = forwardRef<MatrixBuilderHandle, Props>(funct
         price: '',
         qty: 0,
         barcode: suggestBarcode(masterSku, name, c.name),
+        requestColorNote: false,
         requiresOrderNotes: false,
         orderNotesLabel: '',
         orderNotesPlaceholder: '',
@@ -209,6 +215,7 @@ export const VariantMatrixBuilder = forwardRef<MatrixBuilderHandle, Props>(funct
         price: '',
         qty: 0,
         barcode: suggestBarcode(masterSku, v1, name),
+        requestColorNote: false,
         requiresOrderNotes: false,
         orderNotesLabel: '',
         orderNotesPlaceholder: '',
@@ -275,9 +282,9 @@ export const VariantMatrixBuilder = forwardRef<MatrixBuilderHandle, Props>(funct
           <button
             type="button"
             onClick={() => toggleNotesExpanded(rowKey)}
-            title="Butuh Catatan Tambahan? (Input Pesanan)"
+            title="Req. Warna / Butuh Catatan Tambahan?"
             className={`w-7 h-7 rounded-lg flex items-center justify-center cursor-pointer transition-colors flex-shrink-0 ${
-              row.requiresOrderNotes
+              row.requestColorNote || row.requiresOrderNotes
                 ? 'bg-[var(--info)]/10 text-[var(--info)]'
                 : 'text-[var(--t-muted)] hover:bg-[var(--surface)]'
             }`}
@@ -289,7 +296,14 @@ export const VariantMatrixBuilder = forwardRef<MatrixBuilderHandle, Props>(funct
         {notesOpen && (
           <div className="px-3 pb-2.5 space-y-2 bg-[var(--surface)]/60 rounded-b-lg -mt-0.5">
             <div className="flex items-center justify-between pt-2">
-              <Label className="text-[11px] text-[var(--t-body)]">Butuh Catatan Tambahan? (Input Pesanan)</Label>
+              <Label className="text-[11px] text-[var(--t-body)]">🎨 Req. Warna? (popup minta warna saat Input Pesanan)</Label>
+              <Switch
+                checked={row.requestColorNote}
+                onCheckedChange={(checked) => updateRowNotes(row.variasi1, row.color, 'requestColorNote', checked)}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label className="text-[11px] text-[var(--t-body)]">✏️ Butuh Catatan Tambahan? (Input Pesanan)</Label>
               <Switch
                 checked={row.requiresOrderNotes}
                 onCheckedChange={(checked) => updateRowNotes(row.variasi1, row.color, 'requiresOrderNotes', checked)}

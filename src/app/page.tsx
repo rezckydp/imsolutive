@@ -134,13 +134,21 @@ interface DashboardData {
       qty: number;
       status: string;
       note?: string;
+      colorNote?: string | null;
+      notesType?: string | null;
+      raceStatsData?: string | null;
+      engraveDesignDone?: boolean;
       variant: {
         id: string;
         color: string;
         colorHex: string;
         type: string;
         qty: number;
+        requestColorNote?: boolean;
+        requiresOrderNotes?: boolean;
         orderNotesLabel?: string | null;
+        orderNotesPlaceholder?: string | null;
+        orderNotesRequired?: boolean;
         product: {
           sku: string;
           name: string;
@@ -572,7 +580,15 @@ export default function Home() {
         itemStatus: item.status,       // Ready, Not Ready, In Queue (from DB)
         orderStatus: order.status,      // Pending, Processing, Completed, Cancelled
         note: item.note || '',
+        colorNote: item.colorNote || '',
+        notesType: (item.notesType as 'race_stats' | 'custom_text' | null) || null,
+        raceStatsData: item.raceStatsData || null,
+        engraveDesignDone: !!item.engraveDesignDone,
+        requestColorNote: !!item.variant.requestColorNote,
+        requiresOrderNotes: !!item.variant.requiresOrderNotes,
         orderNotesLabel: item.variant.orderNotesLabel || '',
+        orderNotesPlaceholder: item.variant.orderNotesPlaceholder || '',
+        orderNotesRequired: item.variant.orderNotesRequired ?? true,
         createdAt: order.createdAt,
       };
     })

@@ -13,14 +13,28 @@ export async function PUT(
   try {
     const { id, itemId } = await params;
     const body = await request.json();
-    const { qty, note, variantId: newVariantId } = body;
+    const { qty, note, variantId: newVariantId, colorNote, notesType, raceStatsData, engraveDesignDone } = body;
 
-    // Support updating note only (without changing qty/variant)
-    if (note !== undefined && qty === undefined && newVariantId === undefined) {
+    // Support updating note/colorNote/notesType/raceStatsData/engraveDesignDone
+    // only (without changing qty/variant) — covers both the Catatan edit
+    // dialog and the "Tandai sudah dibuat desainnya" checkbox (ims-feature-
+    // custom-engrave-request-warna.md §D/F), the latter toggled from either
+    // the Picking List card or the "Lihat Semua Custom Engrave" summary popup.
+    if (
+      qty === undefined &&
+      newVariantId === undefined &&
+      (note !== undefined || colorNote !== undefined || notesType !== undefined || raceStatsData !== undefined || engraveDesignDone !== undefined)
+    ) {
       const beforeNoteItem = await db.orderItem.findUnique({ where: { id: itemId } });
       const updatedItem = await db.orderItem.update({
         where: { id: itemId },
-        data: { note },
+        data: {
+          ...(note !== undefined && { note }),
+          ...(colorNote !== undefined && { colorNote }),
+          ...(notesType !== undefined && { notesType }),
+          ...(raceStatsData !== undefined && { raceStatsData }),
+          ...(engraveDesignDone !== undefined && { engraveDesignDone: !!engraveDesignDone }),
+        },
         include: { variant: { include: { product: true } } },
       });
       if (beforeNoteItem) {
@@ -241,6 +255,34 @@ export async function DELETE(
   }
 }
 
+// Flattens colorNote/notesType/raceStatsData into a single printable note for
+// the Print Queue, which has no structured fields of its own (ims-feature-
+// custom-engrave-request-warna.md — out of that spec's explicit scope, but
+// kept in sync so the info isn't lost once an item leaves the Picking List).
+function buildPrintNote(item: { note: string | null; colorNote: string | null; notesType: string | null; raceStatsData: string | null }): string {
+  const parts: string[] = [];
+  if (item.colorNote) parts.push(`Req. Warna: ${item.colorNote}`);
+  if (item.notesType === "race_stats" && item.raceStatsData) {
+    try {
+      const d = JSON.parse(item.raceStatsData) as Record<string, string>;
+      const fields = [
+        d.bib && `BIB ${d.bib}`,
+        d.nama && `Nama ${d.nama}`,
+        d.event && `Event ${d.event}`,
+        d.distance && `Distance ${d.distance}`,
+        d.pace && `Pace ${d.pace}`,
+        d.time && `Time ${d.time}`,
+      ].filter(Boolean);
+      if (fields.length > 0) parts.push(`Race Stats: ${fields.join(", ")}`);
+    } catch {
+      // malformed JSON — skip, colorNote (if any) still carries over
+    }
+  } else if (item.note) {
+    parts.push(item.note);
+  }
+  return parts.join(" | ");
+}
+
 // PATCH send order item to Print Queue (Not Ready → In Queue). Optional body
 // `{ qty }` sends only part of the item — plate capacity is usually smaller
 // than total demand (ims-feature-quick-print-batch.md). A partial send
@@ -304,7 +346,7 @@ export async function PATCH(
           variantId: printQueueVariantId,
           qty: qtyToSend,
           status: "Normal",
-          note: orderItem.note || "",
+          note: buildPrintNote(orderItem),
         },
       });
 
@@ -316,6 +358,10 @@ export async function PATCH(
             qty: qtyToSend,
             status: "In Queue",
             note: orderItem.note,
+            colorNote: orderItem.colorNote,
+            notesType: orderItem.notesType,
+            raceStatsData: orderItem.raceStatsData,
+            engraveDesignDone: orderItem.engraveDesignDone,
             isPreOrder: orderItem.isPreOrder,
             createdAt: orderItem.createdAt,
           },

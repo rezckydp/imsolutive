@@ -210,11 +210,18 @@ model ProductVariant {
   updatedAt DateTime @updatedAt
 
   // Dynamic per-item note at Input Pesanan (ims-feature-input-pesanan-catatan-
-  // dinamis.md) — replaces the old "-CRS suffix" auto-detect. Set manually per
-  // variant so any future product needing custom order-time data (engrave
-  // text, custom size, etc.) just toggles this on instead of being coded in.
+  // dinamis.md, revised by ims-feature-custom-engrave-request-warna.md) — set
+  // manually per variant, independent toggles (a variant can have either,
+  // both, or neither):
+  //  - requestColorNote: generalizes the old "Request Color" auto-popup
+  //    (used to be detected by "req" appearing in color/type text — see
+  //    prisma/migrate-request-color-note.ts for the one-time backfill of
+  //    existing variants using that old convention).
+  //  - requiresOrderNotes: variant needs a Custom Note (Race Stats OR free
+  //    Custom Text, chosen per transaction — see OrderItem.notesType).
+  requestColorNote      Boolean @default(false)
   requiresOrderNotes    Boolean @default(false)
-  orderNotesLabel       String? // shown as the field's label in Input Pesanan + Picking List
+  orderNotesLabel       String? // Custom Text field label when notesType = "custom_text"
   orderNotesPlaceholder String?
   orderNotesRequired    Boolean @default(true) // only relevant when requiresOrderNotes is true
 
@@ -304,7 +311,26 @@ model OrderItem {
   variantId String
   qty       Int
   status    String   @default("Not Ready") // Ready, Not Ready, In Queue
-  note      String   @default("")         // Custom color note (e.g. "Req. Color: Navy Blue")
+  // Catatan Custom Text (notesType = "custom_text") — see ims-feature-custom-
+  // engrave-request-warna.md. Was also where the Req. Color text lived before
+  // that got its own `colorNote` field below; kept as a plain default-"" string
+  // (not nullable) since lots of existing code reads it unconditionally.
+  note      String   @default("")
+  // "Warna yang diminta" — set via the Req. Color auto-popup whenever the
+  // variant's requestColorNote is true. Separate from `note`/Catatan Custom
+  // on purpose: a frame can need both at once (what color AND what to
+  // engrave), and mixing them back into one string loses the distinction.
+  colorNote String?
+  // Which Catatan Custom shape this item carries — chosen per transaction
+  // (not fixed per variant), only meaningful when the variant's
+  // requiresOrderNotes is true. "custom_text" stores its text in `note`
+  // above; "race_stats" stores its 6 fields as JSON in `raceStatsData`.
+  notesType String?
+  raceStatsData String? // JSON string: { bib, nama, event, distance, pace, time } — all free text
+  // Laser-engrave design file done? Only meaningful when requiresOrderNotes
+  // is true. Single boolean, not a multi-stage status — ticked once the
+  // DXF/CorelDRAW file is ready to cut.
+  engraveDesignDone Boolean @default(false)
   unitPrice Int?     // POS only — snapshot of Product.price (atau BundleCategory.normalPrice kalau item bundle) at time of sale (Rupiah)
   // POS only — pendapatan yang dialokasikan ke item ini, buat laporan omzet
   // per SKU. Untuk item non-bundle sama dengan unitPrice × qty. Untuk item
