@@ -8,6 +8,16 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -219,6 +229,11 @@ export function BarcodeScanner({
   const [lookupError, setLookupError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [printPopup, setPrintPopup] = useState<{ orderNo: string; rows: OrderPrintRow[] } | null>(null);
+  // Confirm-before-discard for "Input Pesanan" (ims-hotfix-konfirmasi-tutup-
+  // input-pesanan.md) — backdrop click / (X) / Esc all route through
+  // attemptClose below instead of closing immediately, when there's
+  // scanned-but-unsaved data. "Terima Stok" is out of this hotfix's scope.
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const isProcessing = useRef(false);
 
@@ -1036,8 +1051,29 @@ export function BarcodeScanner({
       closePrompt();
       setCameraOn(false);
       setCameraError(null);
+      setShowCloseConfirm(false);
     }
     onOpenChange(val);
+  };
+
+  // "Ada data belum disimpan" — at least one scanned item, or a barcode
+  // typed but not yet looked up. Only "Input Pesanan" (mode === 'order') is
+  // in scope — "Terima Stok" commits every scan immediately, nothing to lose.
+  const hasUnsavedData = () =>
+    mode === 'order' && (items.length > 0 || manualCode.trim() !== '');
+
+  // Backdrop click, the (X) button, and Esc all funnel through Radix's
+  // onOpenChange(false) — gate all three here instead of closing outright.
+  const attemptClose = (val: boolean) => {
+    if (val) {
+      onOpenChange(val);
+      return;
+    }
+    if (hasUnsavedData()) {
+      setShowCloseConfirm(true);
+      return;
+    }
+    handleClose(false);
   };
 
   const validItemCount = items.filter((i) => i.variantId).length;
@@ -1045,7 +1081,7 @@ export function BarcodeScanner({
 
   return (
     <>
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={attemptClose}>
       <DialogContent
         onEscapeKeyDown={(e) => {
           // While a color/notesType auto-popup is open, Esc skips just that
@@ -1763,6 +1799,26 @@ export function BarcodeScanner({
       orderNo={printPopup?.orderNo ?? ''}
       rows={printPopup?.rows ?? []}
     />
+
+    <AlertDialog open={showCloseConfirm} onOpenChange={(v) => !v && setShowCloseConfirm(false)}>
+      <AlertDialogContent className="rounded-xl">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Ada data yang belum disimpan</AlertDialogTitle>
+          <AlertDialogDescription>
+            Yakin mau tutup? Data yang udah di-scan akan hilang.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel className="rounded-lg">Batal</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => handleClose(false)}
+            className="rounded-lg bg-[var(--danger)] hover:bg-[var(--danger-dark)] text-white"
+          >
+            Tutup & Buang Data
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </>
   );
 }
